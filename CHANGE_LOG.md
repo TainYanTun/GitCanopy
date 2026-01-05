@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.9-test2] - 2026-01-06
+## [1.0.9] - 2026-01-06
 
 ### GitHub Actions Intelligence (New Core Feature)
 - **Live Monitoring:** Added a dedicated Actions explorer tab with real-time CI/CD status synchronization.
