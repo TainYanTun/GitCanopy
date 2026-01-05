@@ -337,6 +337,7 @@ export interface GitCanopyAPI {
   
   // GitHub Integration
   getWorkflowRuns: (repoPath: string, branchName?: string) => Promise<WorkflowRun[]>;
+  validateGitHubToken: (token: string) => Promise<boolean>;
 
   // File system operations
   watchRepository: (repoPath: string) => Promise<void>;

@@ -90,6 +90,8 @@ const gitcanopyAPI: GitCanopyAPI = {
   // GitHub Integration
   getWorkflowRuns: (repoPath: string, branchName?: string) => 
     ipcRenderer.invoke("get-workflow-runs", repoPath, branchName),
+  validateGitHubToken: (token: string) => 
+    ipcRenderer.invoke("validate-github-token", token),
 
   // File system operations
   watchRepository: (repoPath: string): Promise<void> =>

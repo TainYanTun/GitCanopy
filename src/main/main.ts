@@ -490,6 +490,9 @@ class GitCanopyApp {
     ipcMain.handle("get-workflow-runs", (_, repoPath: string, branchName?: string) => 
       this.githubService.getWorkflowRuns(repoPath, branchName)
     );
+    ipcMain.handle("validate-github-token", (_, token: string) => 
+      this.githubService.validateGitHubToken(token)
+    );
 
     // File system operations
     ipcMain.handle("watch-repository", (_, repoPath: string) => {

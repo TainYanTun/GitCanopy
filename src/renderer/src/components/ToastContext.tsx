@@ -38,33 +38,34 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="fixed top-12 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`
               pointer-events-auto
-              flex items-center gap-3 px-4 py-3 rounded-md shadow-medium
-              border border-zed-border dark:border-zed-dark-border
-              bg-zed-surface dark:bg-zed-dark-surface
+              flex items-center gap-3 px-3 py-2 rounded border
+              border-zed-border dark:border-zed-dark-border
+              bg-zed-surface/95 dark:bg-zed-dark-surface/95
               text-zed-text dark:text-zed-dark-text
-              animate-fade-in-up transition-all duration-300
-              min-w-[200px] max-w-sm
+              backdrop-blur-md shadow-2xl
+              animate-slide-in-right transition-all duration-300
+              min-w-[240px] max-w-sm
             `}
           >
             <div className={`
-              flex-shrink-0 w-2 h-2 rounded-full
-              ${toast.type === 'success' ? 'bg-commit-feat' : ''}
-              ${toast.type === 'error' ? 'bg-commit-fix' : ''}
-              ${toast.type === 'info' ? 'bg-zed-accent dark:bg-zed-dark-accent' : ''}
+              flex-shrink-0 w-1.5 h-1.5 rounded-full
+              ${toast.type === 'success' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : ''}
+              ${toast.type === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : ''}
+              ${toast.type === 'info' ? 'bg-zed-accent dark:bg-zed-dark-accent shadow-[0_0_8px_rgba(59,130,246,0.4)]' : ''}
             `} />
-            <span className="text-sm font-medium">{toast.message}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider flex-1">{toast.message}</span>
             <button
               onClick={() => removeToast(toast.id)}
-              className="ml-auto text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text"
+              className="ml-2 text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-white transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>

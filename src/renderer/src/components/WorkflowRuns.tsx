@@ -11,7 +11,7 @@ import {
   DisconnectOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { Modal, Button } from "antd";
+import { Modal } from "antd";
 import moment from "moment";
 
 interface WorkflowRunsProps {
@@ -26,11 +26,14 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasToken, setHasToken] = useState(true);
+  const [isAuthError, setIsAuthError] = useState(false);
   const [filterByBranch, setFilterByBranch] = useState(true);
   const [isDisconnectModalVisible, setIsDisconnectModalVisible] =
     useState(false);
 
   const fetchRuns = async () => {
+    if (isAuthError) return; // Stop polling if token is dead
+
     setLoading(true);
     try {
       const settings = await window.gitcanopyAPI.getSettings();
@@ -45,8 +48,15 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
         currentBranch,
       );
       setRuns(data);
-    } catch (err) {
+      setIsAuthError(false);
+    } catch (err: any) {
       console.error("Failed to fetch runs:", err);
+      if (
+        err.message?.includes("401") ||
+        err.message?.includes("Unauthorized")
+      ) {
+        setIsAuthError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,6 +71,7 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
         githubTokenCreated: undefined,
       });
       setHasToken(false);
+      setIsAuthError(false);
       setRuns([]);
       setIsDisconnectModalVisible(false);
     } catch (err) {
@@ -69,36 +80,75 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
   };
 
   useEffect(() => {
+    const checkTokenStatus = async () => {
+      const settings = await window.gitcanopyAPI.getSettings();
+      const tokenExists = !!settings.githubToken;
+      if (tokenExists !== hasToken) {
+        setHasToken(tokenExists);
+        if (tokenExists) {
+          setIsAuthError(false);
+          fetchRuns();
+        }
+      }
+    };
+
     fetchRuns();
-    const interval = setInterval(fetchRuns, 15000); // Poll every 15 seconds
-    return () => clearInterval(interval);
-  }, [repoPath, currentBranch]);
+    const tokenInterval = setInterval(checkTokenStatus, 5000);
+    const syncInterval = setInterval(() => {
+      if (hasToken && !isAuthError && !loading) fetchRuns();
+    }, 15000);
+
+    return () => {
+      clearInterval(tokenInterval);
+      clearInterval(syncInterval);
+    };
+  }, [repoPath, currentBranch, hasToken, isAuthError]);
 
   const getStatusIcon = (status: string, conclusion: string | null) => {
     if (status === "queued" || status === "in_progress")
       return <SyncOutlined spin className="text-blue-500" />;
+
     if (conclusion === "success")
       return <CheckCircleOutlined className="text-green-500" />;
+
     if (conclusion === "failure")
       return <CloseCircleOutlined className="text-red-500" />;
+
     if (conclusion === "cancelled")
       return <StopOutlined className="text-gray-500" />;
+
     return <WarningOutlined className="text-yellow-500" />;
   };
 
-  if (!hasToken) {
+  if (!hasToken || isAuthError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-zed-bg dark:bg-zed-dark-bg">
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-zed-bg dark:bg-zed-dark-bg animate-in fade-in">
         <div className="w-12 h-12 rounded-lg bg-zed-element dark:bg-zed-dark-element flex items-center justify-center mb-4">
-          <GithubOutlined className="text-2xl text-zed-muted opacity-80" />
+          {isAuthError ? (
+            <WarningOutlined className="text-2xl text-red-500" />
+          ) : (
+            <GithubOutlined className="text-2xl text-zed-muted opacity-80" />
+          )}
         </div>
+
         <h2 className="text-sm font-semibold mb-2 text-zed-text dark:text-zed-dark-text">
-          GitHub Connection Required
+          {isAuthError
+            ? "GitHub Connection Failed"
+            : "GitHub Connection Required"}
         </h2>
-        <p className="text-xs text-zed-muted max-w-sm leading-relaxed">
-          To view workflow runs, connect your GitHub account using a Personal
-          Access Token in the top toolbar.
+
+        <p className="text-xs text-zed-muted max-w-sm leading-relaxed mb-6">
+          {isAuthError
+            ? "Your Personal Access Token is invalid or has expired. Please reconnect to resume CI/CD monitoring."
+            : "Link your GitHub account using a Personal Access Token to see live CI/CD status directly in GitCanopy."}
         </p>
+
+        <button
+          onClick={handleDisconnect}
+          className="px-4 py-2 bg-zed-accent text-white text-[10px] font-bold uppercase tracking-widest rounded-sm hover:opacity-90 transition-all"
+        >
+          {isAuthError ? "Update Token" : "Connect GitHub"}
+        </button>
       </div>
     );
   }
@@ -245,31 +295,43 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
       </div>
 
       <Modal
-        title="Disconnect GitHub?"
+        title={null}
         open={isDisconnectModalVisible}
         onCancel={() => setIsDisconnectModalVisible(false)}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setIsDisconnectModalVisible(false)}
-          >
-            Cancel
-          </Button>,
-          <Button
-            key="disconnect"
-            type="primary"
-            danger
-            onClick={handleDisconnect}
-          >
-            Disconnect
-          </Button>,
-        ]}
+        footer={null}
         centered
+        width={400}
+        classNames={{
+          content:
+            "p-0 overflow-hidden bg-zed-bg dark:bg-zed-dark-surface rounded-lg border border-zed-border dark:border-zed-dark-border shadow-2xl",
+        }}
       >
-        <p className="text-sm text-zed-muted">
-          This will remove your Personal Access Token from local settings. You
-          will need to reconnect to view workflow runs.
-        </p>
+        <div className="p-6">
+          <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-widest mb-4">
+            Disconnect GitHub?
+          </h3>
+
+          <p className="text-xs text-zed-muted dark:text-zed-dark-muted mb-8 leading-relaxed">
+            This will remove your Personal Access Token from local settings. You
+            will need to reconnect to view workflow runs.
+          </p>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setIsDisconnectModalVisible(false)}
+              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zed-muted hover:text-zed-text transition-colors"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleDisconnect}
+              className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all"
+            >
+              Disconnect
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

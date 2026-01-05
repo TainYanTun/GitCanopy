@@ -4,10 +4,22 @@ import { SettingsService } from "./settings-service";
 import { WorkflowRun } from "../../shared/types";
 
 export class GitHubService {
+  private remoteUrlCache: Map<string, string> = new Map();
+
   constructor(
     private gitService: GitService,
     private settingsService: SettingsService
   ) {}
+
+  async validateGitHubToken(token: string): Promise<boolean> {
+    try {
+      await this.fetchWithAuth("https://api.github.com/user", token);
+      return true;
+    } catch (error) {
+      console.error("Token validation failed:", error);
+      return false;
+    }
+  }
 
   async getWorkflowRuns(repoPath: string, _branchName?: string): Promise<WorkflowRun[]> {
     const settings = await this.settingsService.getSettings();
@@ -16,8 +28,16 @@ export class GitHubService {
     }
 
     try {
-      // 1. Get Remote URL
-      const remoteUrl = await this.getRemoteUrl(repoPath);
+      // 1. Get Remote URL (with caching)
+      let remoteUrl: string | undefined = this.remoteUrlCache.get(repoPath);
+      if (!remoteUrl) {
+        const fetchedUrl = await this.getRemoteUrl(repoPath);
+        if (fetchedUrl) {
+          remoteUrl = fetchedUrl;
+          this.remoteUrlCache.set(repoPath, fetchedUrl);
+        }
+      }
+      
       if (!remoteUrl) return [];
 
       // 2. Parse Owner/Repo
@@ -47,6 +67,10 @@ export class GitHubService {
       }));
 
     } catch (error) {
+      // Re-throw authentication errors so the UI can handle them
+      if (error instanceof Error && (error.message.includes("401") || error.message.includes("Unauthorized"))) {
+        throw error;
+      }
       console.error("GitHub API Error:", error);
       return [];
     }
