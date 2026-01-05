@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import { app } from "electron";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -47,14 +48,21 @@ export class GitService {
     const scriptName = process.platform === 'win32' ? 'askpass.bat' : 'askpass.sh';
     const wrapperPath = path.join(os.tmpdir(), `gitcanopy-${scriptName}`);
     
-    // Locate the askpass.js script
-    // We are at dist/main/main/services/git-service.js
-    // We want dist/main/main/scripts/askpass.js
-    // So ../scripts/askpass.js
-    const jsPath = path.resolve(__dirname, '../scripts/askpass.js');
-    
-    // In dev mode, we might be running from src with ts-node/bun? 
-    // No, main process is built with tsc.
+    // Resolve jsPath based on environment
+    let jsPath: string;
+    if (app.isPackaged) {
+      // In production, scripts are usually in Resources/app.asar.unpacked or similar
+      jsPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'dist/main/main/scripts/askpass.js');
+      if (!fs.existsSync(jsPath)) {
+        // Fallback to ASAR internal
+        jsPath = path.join(app.getAppPath(), 'dist/main/main/scripts/askpass.js');
+      }
+    } else {
+      // In dev mode (built with tsc)
+      // Current file: src/main/services/git-service.ts -> dist/main/main/services/git-service.js
+      // Target: dist/main/main/scripts/askpass.js
+      jsPath = path.resolve(__dirname, '../scripts/askpass.js');
+    }
     
     let content = '';
     if (process.platform === 'win32') {
@@ -170,11 +178,19 @@ export class GitService {
     this.commandHistory = [];
   }
 
-  async getHotFiles(repoPath: string, limit = 10): Promise<HotFile[]> {
+  async getHotFiles(repoPath: string, limit = 10, options?: CommitFilterOptions): Promise<HotFile[]> {
     try {
-      // Use log with --name-only to get all changed files across all branches
-      // LIMIT history to last 5000 commits to prevent performance issues on large repos
-      const output = await this.run(["log", "--all", "-n", "5000", "--format=", "--name-only"], repoPath);
+      // Build log command with filters
+      const args = ["log", "--all", "-n", "5000", "--format=", "--name-only"];
+      
+      if (options) {
+        if (options.author) args.push(`--author=${options.author}`);
+        if (options.since) args.push(`--since=${options.since}`);
+        if (options.until) args.push(`--until=${options.until}`);
+        if (options.query) args.push(`--grep=${options.query}`, "--regexp-ignore-case");
+      }
+
+      const output = await this.run(args, repoPath);
       
       const counts: Record<string, number> = {};
       const lines = output.split('\n');

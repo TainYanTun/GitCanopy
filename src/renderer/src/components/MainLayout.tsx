@@ -249,6 +249,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       case "history":
         return (
           <CommitHistory
+            repoPath={repository.path}
             commits={commits}
             branches={branches}
             headCommitHash={repository.headCommit}
@@ -302,6 +303,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <HotFiles
                   repoPath={repository.path}
                   onFileClick={handleFileHistorySelect}
+                  filters={commitFilters}
                 />
               </div>
             </div>
@@ -529,7 +531,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         )}
 
         {/* Editor Area (Graph or Insights) */}
-        <div className="flex-1 flex flex-col bg-zed-bg dark:bg-zed-dark-bg relative">
+        <div className="flex-1 flex flex-col bg-zed-bg dark:bg-zed-dark-bg relative min-w-0">
           {/* Canvas Area */}
           <div className="flex-1 overflow-hidden relative group">
             {renderMainContent()}
@@ -538,7 +540,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
         {/* Right Sidebar for Commit Details */}
         {selectedCommit && (
-          <div className="w-80 flex-shrink-0 flex flex-col border-l border-zed-border dark:border-zed-dark-border bg-zed-surface dark:bg-zed-dark-surface animate-slide-in-right">
+          <div className="w-80 flex-shrink-0 flex flex-col border-l border-zed-border dark:border-zed-dark-border bg-zed-surface dark:bg-zed-dark-surface animate-slide-in-right z-30">
             <div className="px-3 py-2 text-xs font-bold text-zed-muted dark:text-zed-dark-muted uppercase tracking-wider flex items-center justify-between group">
               <span>Commit Details</span>
               <button

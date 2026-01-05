@@ -14,6 +14,7 @@ import {
 } from "@ant-design/icons";
 import { Modal } from "antd";
 import moment from "moment";
+import { useToast } from "./ToastContext";
 
 interface WorkflowRunsProps {
   repoPath: string;
@@ -24,15 +25,19 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
   repoPath,
   currentBranch,
 }) => {
+  const { showToast } = useToast();
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [hasToken, setHasToken] = useState(true);
   const [isAuthError, setIsAuthError] = useState(false);
   const [filterByBranch, setFilterByBranch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tokenInput, setTokenInput] = useState("");
   const [isDisconnectModalVisible, setIsDisconnectModalVisible] =
     useState(false);
+  const [isConnectModalVisible, setIsConnectModalVisible] = useState(false);
 
   const fetchRuns = async () => {
     if (isAuthError) return;
@@ -62,6 +67,43 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveToken = async () => {
+    const token = tokenInput.trim();
+    if (!token) return;
+
+    setIsValidating(true);
+    try {
+      const isValid = await window.gitcanopyAPI.validateGitHubToken(token);
+
+      if (!isValid) {
+        showToast(
+          "Invalid GitHub Token. Please check your token and scopes.",
+          "error",
+        );
+        setIsValidating(false);
+        return;
+      }
+
+      const settings = await window.gitcanopyAPI.getSettings();
+      await window.gitcanopyAPI.saveSettings({
+        ...settings,
+        githubToken: token,
+        githubTokenCreated: Date.now(),
+      });
+
+      setHasToken(true);
+      setIsAuthError(false);
+      setIsConnectModalVisible(false);
+      setTokenInput("");
+      showToast("GitHub connected successfully", "success");
+      fetchRuns();
+    } catch (e) {
+      showToast("Connection failed. Check your internet or token.", "error");
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -147,18 +189,73 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
             : "GitHub Connection Required"}
         </h2>
 
-        <p className="text-xs text-zed-muted max-sm leading-relaxed mb-6">
+        <p className="text-xs text-zed-muted max-w-sm leading-relaxed mb-6">
           {isAuthError
             ? "Your Personal Access Token is invalid or has expired. Please reconnect to resume CI/CD monitoring."
             : "Link your GitHub account using a Personal Access Token to see live CI/CD status directly in GitCanopy."}
         </p>
 
         <button
-          onClick={handleDisconnect}
+          onClick={() => setIsConnectModalVisible(true)}
           className="px-4 py-2 bg-zed-accent text-white text-[10px] font-bold uppercase tracking-widest rounded-sm hover:opacity-90 transition-all"
         >
           {isAuthError ? "Update Token" : "Connect GitHub"}
         </button>
+
+        {/* Connect Modal */}
+        <Modal
+          title={null}
+          open={isConnectModalVisible}
+          onCancel={() => setIsConnectModalVisible(false)}
+          footer={null}
+          centered
+          width={400}
+          classNames={{
+            content:
+              "p-0 overflow-hidden bg-zed-bg dark:bg-zed-dark-surface rounded-lg border border-zed-border dark:border-zed-dark-border shadow-2xl",
+          }}
+        >
+          <div className="p-6">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zed-text dark:text-zed-dark-text mb-4">
+              GitHub Authentication
+            </h3>
+            <p className="text-xs text-zed-muted dark:text-zed-dark-muted mb-6 leading-relaxed">
+              Generate a <strong>Personal Access Token</strong> with{" "}
+              <code className="bg-zed-element dark:bg-zed-dark-element px-1 rounded font-mono">
+                repo
+              </code>{" "}
+              scope to monitor CI/CD status.
+            </p>
+
+            <div className="space-y-6">
+              <input
+                type="password"
+                placeholder="Paste token (ghp_...)"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveToken()}
+                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border px-3 py-2 text-xs font-mono focus:outline-none focus:border-zed-accent text-zed-text dark:text-zed-dark-text placeholder:opacity-30"
+              />
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setIsConnectModalVisible(false)}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zed-muted hover:text-zed-text transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveToken}
+                  disabled={!tokenInput.trim() || isValidating}
+                  className="px-4 py-1.5 bg-zed-accent hover:opacity-90 text-white text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isValidating && <SyncOutlined spin className="text-[8px]" />}
+                  {isValidating ? "Checking..." : "Save Token"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       </div>
     );
   }

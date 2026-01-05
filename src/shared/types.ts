@@ -342,7 +342,7 @@ export interface GitCanopyAPI {
     commitHash: string,
     filePath: string,
   ) => Promise<string>;
-  getHotFiles: (repoPath: string, limit?: number) => Promise<HotFile[]>;
+  getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) => Promise<HotFile[]>;
   getContributors: (repoPath: string) => Promise<ContributorStats[]>;
   getGitCommandHistory: (limit?: number, offset?: number) => Promise<GitCommandLog[]>;
   clearGitCommandHistory: () => Promise<void>;

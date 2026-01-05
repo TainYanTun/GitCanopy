@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { WorkflowRun } from "@shared/types";
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   SyncOutlined,
   WarningOutlined,
   GithubOutlined,

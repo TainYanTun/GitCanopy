@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { HotFile } from "@shared/types";
+import { HotFile, CommitFilterOptions } from "@shared/types";
 
 interface HotFilesProps {
   repoPath: string;
   onFileClick?: (path: string) => void;
+  filters?: CommitFilterOptions;
 }
 
-export const HotFiles: React.FC<HotFilesProps> = ({ repoPath, onFileClick }) => {
+export const HotFiles: React.FC<HotFilesProps> = ({ repoPath, onFileClick, filters }) => {
   const [hotFiles, setHotFiles] = useState<HotFile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,7 +15,7 @@ export const HotFiles: React.FC<HotFilesProps> = ({ repoPath, onFileClick }) => 
     const fetchHotFiles = async () => {
       setLoading(true);
       try {
-        const files = await window.gitcanopyAPI.getHotFiles(repoPath, 24);
+        const files = await window.gitcanopyAPI.getHotFiles(repoPath, 24, filters);
         setHotFiles(files);
       } catch (error) {
         console.error("Failed to fetch hot files:", error);
@@ -23,7 +24,7 @@ export const HotFiles: React.FC<HotFilesProps> = ({ repoPath, onFileClick }) => 
       }
     };
     fetchHotFiles();
-  }, [repoPath]);
+  }, [repoPath, filters]);
 
   if (loading) {
     return (

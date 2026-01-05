@@ -145,9 +145,9 @@ class GitCanopyApp {
       y: undefined,
     };
 
-    const preloadPath = isDev
-      ? path.join(__dirname, "../../preload/preload/preload.js")
-      : path.join(app.getAppPath(), "dist/preload/preload/preload.js");
+    const preloadPath = app.isPackaged
+      ? path.join(app.getAppPath(), "dist/preload/preload/preload.js")
+      : path.join(__dirname, "../../preload/preload/preload.js");
     
     logInfo("App", `Preload path: ${preloadPath}`);
     if (!fs.existsSync(preloadPath)) {
@@ -448,8 +448,8 @@ class GitCanopyApp {
     ipcMain.handle("git:get-diff", (_, repoPath, commitHash, filePath) =>
       this.gitService.getDiff(repoPath, commitHash, filePath),
     );
-    ipcMain.handle("git:get-hot-files", (_, repoPath, limit) =>
-      this.gitService.getHotFiles(repoPath, limit),
+    ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>
+      this.gitService.getHotFiles(repoPath, limit, options),
     );
     ipcMain.handle("git:get-contributors", (_, repoPath) =>
       this.gitService.getContributors(repoPath),
