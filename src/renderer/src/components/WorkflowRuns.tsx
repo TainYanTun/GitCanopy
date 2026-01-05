@@ -10,6 +10,7 @@ import {
   BranchesOutlined,
   DisconnectOutlined,
   StopOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { Modal } from "antd";
 import moment from "moment";
@@ -27,12 +28,14 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
   const [loading, setLoading] = useState(false);
   const [hasToken, setHasToken] = useState(true);
   const [isAuthError, setIsAuthError] = useState(false);
-  const [filterByBranch, setFilterByBranch] = useState(true);
+  const [filterByBranch, setFilterByBranch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDisconnectModalVisible, setIsDisconnectModalVisible] =
     useState(false);
 
   const fetchRuns = async () => {
-    if (isAuthError) return; // Stop polling if token is dead
+    if (isAuthError) return;
 
     setLoading(true);
     try {
@@ -120,6 +123,13 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
     return <WarningOutlined className="text-yellow-500" />;
   };
 
+  const getStatusColor = (status: string, conclusion: string | null) => {
+    if (status === "queued" || status === "in_progress") return "bg-blue-500";
+    if (conclusion === "success") return "bg-green-500";
+    if (conclusion === "failure") return "bg-red-500";
+    return "bg-zed-muted/30";
+  };
+
   if (!hasToken || isAuthError) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-zed-bg dark:bg-zed-dark-bg animate-in fade-in">
@@ -137,7 +147,7 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
             : "GitHub Connection Required"}
         </h2>
 
-        <p className="text-xs text-zed-muted max-w-sm leading-relaxed mb-6">
+        <p className="text-xs text-zed-muted max-sm leading-relaxed mb-6">
           {isAuthError
             ? "Your Personal Access Token is invalid or has expired. Please reconnect to resume CI/CD monitoring."
             : "Link your GitHub account using a Personal Access Token to see live CI/CD status directly in GitCanopy."}
@@ -155,43 +165,73 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-zed-bg dark:bg-zed-dark-bg font-sans selection:bg-zed-accent/20">
-      {/* View Header - Minimalist */}
-      <div className="px-6 py-4 border-b border-zed-border dark:border-zed-dark-border bg-zed-bg dark:bg-zed-dark-bg flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="text-sm font-bold text-zed-text dark:text-zed-dark-text tracking-tight flex items-center gap-2">
-            <GithubOutlined className="opacity-80" />
-            ACTIONS
+      {/* View Header - Refined Minimalist */}
+      <div className="px-6 py-3 border-b border-zed-border dark:border-zed-dark-border bg-zed-bg dark:bg-zed-dark-bg flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 pr-2 border-r border-zed-border/50 dark:border-zed-dark-border/50">
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-zed-text dark:text-zed-dark-text flex items-center gap-2">
+              <GithubOutlined className="opacity-80 text-xs" />
+              ACTIONS
+            </div>
           </div>
-          <div className="h-4 w-px bg-zed-border dark:border-zed-dark-border mx-1"></div>
-          <div className="flex items-center gap-2 text-xs text-zed-muted dark:text-zed-dark-muted font-mono">
-            <BranchesOutlined />
-            <span>{currentBranch}</span>
+
+          {/* Context & Toggles Group */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 h-6 text-[10px] leading-none text-zed-muted dark:text-zed-dark-muted font-mono bg-zed-element/30 dark:bg-zed-dark-element/30 px-2 rounded-sm border border-zed-border/30">
+              <BranchesOutlined className="text-[9px] leading-none shrink-0" />
+              <span className="leading-none">{currentBranch}</span>
+            </div>
+
+            <div className="flex bg-zed-element/50 dark:bg-zed-dark-element/50 p-0.5 rounded-sm border border-zed-border dark:border-zed-dark-border">
+              <button
+                onClick={() => setFilterByBranch(true)}
+                className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase transition-all ${filterByBranch ? "bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted hover:text-zed-text"}`}
+              >
+                Branch
+              </button>
+              <button
+                onClick={() => setFilterByBranch(false)}
+                className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase transition-all ${!filterByBranch ? "bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted hover:text-zed-text"}`}
+              >
+                All
+              </button>
+            </div>
           </div>
+
           <div className="h-4 w-px bg-zed-border dark:border-zed-dark-border mx-1"></div>
-          <div className="flex bg-zed-element/50 dark:bg-zed-dark-element/50 p-0.5 rounded-sm border border-zed-border dark:border-zed-dark-border">
-            <button
-              onClick={() => setFilterByBranch(true)}
-              className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase transition-all ${filterByBranch ? "bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-white shadow-sm" : "text-zed-muted hover:text-zed-text"}`}
-            >
-              Branch
-            </button>
-            <button
-              onClick={() => setFilterByBranch(false)}
-              className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase transition-all ${!filterByBranch ? "bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-white shadow-sm" : "text-zed-muted hover:text-zed-text"}`}
-            >
-              All
-            </button>
+
+          {/* Search Bar */}
+          <div className="flex items-center h-6 gap-2 bg-zed-bg dark:bg-zed-dark-bg px-2 rounded-sm border border-zed-border dark:border-zed-dark-border focus-within:border-zed-accent/50 transition-all shadow-inner">
+            <SearchOutlined className="text-[10px] text-zed-muted opacity-40 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search history..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none text-[10px] font-mono text-zed-text dark:text-zed-dark-text w-28 placeholder:opacity-20 tracking-tight h-full"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-zed-border dark:border-zed-dark-border mx-1"></div>
+
+          {/* Status Filter Toggles */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex bg-zed-element/50 dark:bg-zed-dark-element/50 p-0.5 rounded-sm border border-zed-border dark:border-zed-dark-border">
+              {["all", "success", "failure", "in_progress"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-2.5 py-0.5 rounded-sm text-[9px] font-bold uppercase transition-all ${statusFilter === s ? "bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted hover:text-zed-text"}`}
+                >
+                  {s === "in_progress" ? "Active" : s}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* Account Group */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={fetchRuns}
-            disabled={loading}
-            className="p-1.5 rounded-sm hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-white transition-all active:scale-95 flex items-center justify-center w-7 h-7"
-            title="Refresh"
-          >
-            <SyncOutlined spin={loading} className="text-[13px] opacity-80" />
-          </button>
           <button
             onClick={() => setIsDisconnectModalVisible(true)}
             className="p-1.5 rounded-sm hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-white transition-all active:scale-95 flex items-center justify-center w-7 h-7"
@@ -202,12 +242,25 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
         </div>
       </div>
 
-      {/* Runs List - Table-like dense layout */}
+      {/* Runs List */}
       <div className="flex-1 overflow-y-auto">
         <div className="w-full">
-          {runs.filter(
-            (r) => !filterByBranch || r.head_branch === currentBranch,
-          ).length === 0 && !loading ? (
+          {runs.filter((r) => {
+            const matchesBranch =
+              !filterByBranch || r.head_branch === currentBranch;
+            const matchesSearch =
+              searchQuery === "" ||
+              r.display_title
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+              r.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus =
+              statusFilter === "all" ||
+              (statusFilter === "in_progress"
+                ? r.status === "in_progress"
+                : r.conclusion === statusFilter);
+            return matchesBranch && matchesSearch && matchesStatus;
+          }).length === 0 && !loading ? (
             <div className="py-32 flex flex-col items-center justify-center opacity-40">
               <GithubOutlined className="text-2xl mb-3 text-zed-muted" />
               <span className="text-xs font-medium text-zed-text dark:text-zed-dark-text">
@@ -216,19 +269,23 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
             </div>
           ) : (
             <div className="flex flex-col">
-              {/* Optional Header Row for clarity if needed, but minimalist often skips it */}
-              <div className="flex items-center px-6 py-2 border-b border-zed-border/50 dark:border-zed-dark-border/50 text-[10px] font-bold uppercase tracking-widest text-zed-muted opacity-50">
-                <div className="w-8"></div> {/* Status */}
-                <div className="flex-1">Workflow / Commit</div>
-                <div className="w-24 text-right">Duration</div>
-                <div className="w-32 text-right">Age</div>
-                <div className="w-8"></div> {/* Action */}
-              </div>
-
               {runs
-                .filter(
-                  (r) => !filterByBranch || r.head_branch === currentBranch,
-                )
+                .filter((r) => {
+                  const matchesBranch =
+                    !filterByBranch || r.head_branch === currentBranch;
+                  const matchesSearch =
+                    searchQuery === "" ||
+                    r.display_title
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                    r.name.toLowerCase().includes(searchQuery.toLowerCase());
+                  const matchesStatus =
+                    statusFilter === "all" ||
+                    (statusFilter === "in_progress"
+                      ? r.status === "in_progress"
+                      : r.conclusion === statusFilter);
+                  return matchesBranch && matchesSearch && matchesStatus;
+                })
                 .map((run) => {
                   const duration = moment.duration(
                     moment(run.updated_at).diff(moment(run.created_at)),
@@ -244,47 +301,52 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
                       onClick={() =>
                         window.gitcanopyAPI.openExternal(run.html_url)
                       }
-                      className="flex items-center px-6 py-2 border-b border-zed-border/30 dark:border-zed-dark-border/30 hover:bg-zed-element/30 dark:hover:bg-zed-dark-element/30 cursor-pointer group transition-colors text-xs"
+                      className="flex items-center px-6 py-3 border-b border-zed-border/30 dark:border-zed-dark-border/30 hover:bg-zed-element/20 dark:hover:bg-zed-dark-element/20 cursor-pointer group transition-colors relative"
                     >
+                      {/* Status Strip */}
+                      <div className={`absolute left-0 top-2 bottom-2 w-0.5 rounded-full ${getStatusColor(run.status, run.conclusion)} opacity-60`} />
+
                       {/* Status Icon */}
-                      <div className="w-8 shrink-0 flex items-center justify-start">
+                      <div className="w-8 shrink-0 flex items-center justify-start ml-2">
                         {getStatusIcon(run.status, run.conclusion)}
                       </div>
 
-                      {/* Main Info */}
+                      {/* Activity Info */}
                       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-zed-text dark:text-zed-dark-text truncate">
-                            {run.name}
-                          </span>
-                          <span className="text-[10px] text-zed-muted opacity-60">
-                            #{run.run_number}
-                          </span>
+                        <div className="text-sm font-medium text-zed-text dark:text-zed-dark-text truncate leading-snug">
+                          {run.display_title}
                         </div>
-                        <div className="flex items-center gap-2 text-zed-muted text-[10px]">
-                          <span className="uppercase font-bold tracking-wider opacity-70">
-                            {run.event}
+                        <div className="flex items-center gap-2 text-zed-muted dark:text-zed-dark-muted text-[10px] opacity-60">
+                          <span className="font-bold uppercase tracking-tight">
+                            {run.name} #{run.run_number}
                           </span>
-                          <span className="opacity-40">•</span>
-                          <span className="font-mono opacity-80">
+                          <span>•</span>
+                          <span>by {run.actor.login}</span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <BranchesOutlined className="text-[8px]" />
+                            {run.head_branch}
+                          </span>
+                          <span>•</span>
+                          <span className="font-mono">
                             {run.head_sha.substring(0, 7)}
                           </span>
                         </div>
                       </div>
 
-                      {/* Duration */}
-                      <div className="w-24 text-right text-zed-muted font-mono text-[10px] opacity-70">
-                        {durationString}
-                      </div>
-
-                      {/* Age */}
-                      <div className="w-32 text-right text-zed-muted dark:text-zed-dark-muted text-[11px] group-hover:text-zed-text dark:group-hover:text-white transition-colors">
-                        {moment(run.created_at).fromNow(true)} ago
-                      </div>
-
-                      {/* Action */}
-                      <div className="w-8 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ExportOutlined className="text-zed-muted hover:text-zed-text" />
+                      {/* Timing Content */}
+                      <div className="flex items-center gap-8 text-right shrink-0">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <div className="text-[10px] font-mono text-zed-text dark:text-zed-dark-text opacity-80">
+                            {durationString}
+                          </div>
+                          <div className="text-[10px] text-zed-muted dark:text-zed-dark-muted">
+                            {moment(run.created_at).fromNow()}
+                          </div>
+                        </div>
+                        <div className="w-6 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ExportOutlined className="text-zed-muted hover:text-zed-text text-xs" />
+                        </div>
                       </div>
                     </div>
                   );
@@ -307,7 +369,7 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
         }}
       >
         <div className="p-6">
-          <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-widest mb-4">
+          <h3 className="text-[10px] font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-widest mb-4">
             Disconnect GitHub?
           </h3>
 

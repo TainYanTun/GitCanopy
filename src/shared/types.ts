@@ -212,6 +212,19 @@ export interface WorkflowRun {
   updated_at: string;
   run_number: number;
   event: string;
+  display_title: string;
+  head_commit?: {
+    id: string;
+    message: string;
+    timestamp: string;
+    author: {
+      name: string;
+      email: string;
+    };
+  };
+  actor: {
+    login: string;
+  };
 }
 
 export interface TooltipData {

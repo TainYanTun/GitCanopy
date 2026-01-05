@@ -527,9 +527,7 @@ class GitCanopyApp {
         if (parsed.protocol === "http:" || parsed.protocol === "https:") {
           return shell.openExternal(url);
         }
-        console.warn(
-          `Blocked attempt to open invalid protocol: ${parsed.protocol}`,
-        );
+        console.warn(`Blocked attempt to open invalid protocol: ${parsed.protocol}`);
         return Promise.reject(new Error("Invalid protocol"));
       } catch (e) {
         console.warn(`Blocked attempt to open invalid URL: ${url}`);

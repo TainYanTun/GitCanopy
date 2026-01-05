@@ -366,24 +366,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </svg>
           </button>
 
-          <span className="text-xs font-medium text-zed-muted uppercase tracking-wider pl-2 border-l border-zed-border dark:border-zed-dark-border">
-            {repository.name}
-          </span>
-        </div>
-
-        {/* GitHub Status Indicator */}
-        <div className="flex-1 flex justify-center no-drag">
-           <GitHubStatus 
-             repoPath={repository.path} 
-             currentBranch={repository.currentBranch} 
-             onOpenActions={() => setCurrentView("actions")}
-           />
-        </div>
-
-        <div className="flex items-center gap-2 no-drag">
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"
+                    <span className="text-xs font-medium text-zed-muted uppercase tracking-wider pl-2 border-l border-zed-border dark:border-zed-dark-border">
+                      {repository.name}
+                    </span>
+                  </div>
+          
+                  <div className="flex items-center gap-2 no-drag">
+                    <GitHubStatus 
+                      repoPath={repository.path} 
+                      currentBranch={repository.currentBranch} 
+                      onOpenActions={() => setCurrentView("actions")}
+                    />
+          
+                    <button
+                      onClick={toggleTheme}            className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"
             title="Toggle Theme"
           >
             <svg
@@ -588,7 +584,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {/* Status Bar */}
       <div className="h-9 shrink-0 flex items-center justify-between px-3 bg-zed-surface dark:bg-zed-dark-surface border-t border-zed-border dark:border-zed-dark-border text-[11px] text-zed-text dark:text-zed-dark-text select-none py-1 no-drag relative z-20">
         <div className="flex items-center">
-          <div className={`flex items-center border-r border-zed-border dark:border-zed-dark-border mr-3 transition-all duration-300 ${isSidebarOpen ? "w-[228px] justify-between pr-4" : "w-auto gap-1 pr-2"}`}>
+          <div
+            className={`flex items-center border-r border-zed-border dark:border-zed-dark-border mr-3 transition-all duration-300 ${isSidebarOpen ? "w-[228px] justify-between pr-4" : "w-auto gap-1 pr-2"}`}
+          >
             <button
               onClick={() => setCurrentView("graph")}
               className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "graph" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
@@ -713,7 +711,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             className="flex items-center gap-1.5 text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors group px-1.5 py-0.5 rounded-sm hover:bg-zed-element dark:hover:bg-zed-dark-element"
           >
             <div className="w-3 h-3 flex items-center justify-center">
-                <SyncOutlined className="text-[11px] group-active:animate-spin opacity-70 group-hover:opacity-100" />
+              <SyncOutlined className="text-[11px] group-active:animate-spin opacity-70 group-hover:opacity-100" />
             </div>
             <span className="font-medium">Sync</span>
           </button>

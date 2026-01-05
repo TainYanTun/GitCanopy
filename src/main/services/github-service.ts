@@ -63,7 +63,20 @@ export class GitHubService {
         created_at: run.created_at,
         updated_at: run.updated_at,
         run_number: run.run_number,
-        event: run.event
+        event: run.event,
+        display_title: (run.display_title === run.name && run.head_commit?.message) ? run.head_commit.message : (run.display_title || run.name),
+        head_commit: run.head_commit ? {
+          id: run.head_commit.id,
+          message: run.head_commit.message,
+          timestamp: run.head_commit.timestamp,
+          author: {
+            name: run.head_commit.author?.name || "Unknown",
+            email: run.head_commit.author?.email || ""
+          }
+        } : undefined,
+        actor: {
+          login: run.actor?.login || "github-actions"
+        }
       }));
 
     } catch (error) {
