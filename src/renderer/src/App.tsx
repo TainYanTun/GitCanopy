@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ConfigProvider, theme as antdTheme, App as AntdApp } from "antd";
 import { Repository } from "../../shared/types";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { MainLayout } from "./components/MainLayout";
@@ -6,6 +7,7 @@ import { LoadingScreen } from "./components/LoadingScreen";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useToast } from "./components/ToastContext";
 import { AuthModal } from "./components/AuthModal";
+import { useTheme } from "./components/ThemeContext";
 
 interface AppState {
   repository: Repository | null;
@@ -15,12 +17,16 @@ interface AppState {
 
 const App: React.FC = () => {
   const { showToast } = useToast();
+  const { theme } = useTheme();
+  
   const [state, setState] = useState<AppState>({
     repository: null,
     loading: false,
     error: null,
   });
   
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   const [authPrompt, setAuthPrompt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -251,26 +257,34 @@ const App: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary>
-      <div className="h-full w-full bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-zed-dark-text relative">
-        {authPrompt && (
-          <AuthModal
-            prompt={authPrompt}
-            onSubmit={handleAuthSubmit}
-            onCancel={handleAuthCancel}
-          />
-        )}
-        {state.repository ? (
-          <MainLayout
-            repository={state.repository}
-            onCloseRepository={handleCloseRepository}
-            onRefreshRepository={refreshRepository}
-          />
-        ) : (
-          <WelcomeScreen onSelectRepository={handleSelectRepository} />
-        )}
-      </div>
-    </ErrorBoundary>
+    <ConfigProvider
+      theme={{
+        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+      }}
+    >
+      <AntdApp style={{ height: '100%' }}>
+        <ErrorBoundary>
+          <div className="h-full w-full bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-zed-dark-text relative overflow-hidden">
+            {authPrompt && (
+              <AuthModal
+                prompt={authPrompt}
+                onSubmit={handleAuthSubmit}
+                onCancel={handleAuthCancel}
+              />
+            )}
+            {state.repository ? (
+              <MainLayout
+                repository={state.repository}
+                onCloseRepository={handleCloseRepository}
+                onRefreshRepository={refreshRepository}
+              />
+            ) : (
+              <WelcomeScreen onSelectRepository={handleSelectRepository} />
+            )}
+          </div>
+        </ErrorBoundary>
+      </AntdApp>
+    </ConfigProvider>
   );
 };
 

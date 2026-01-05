@@ -15,6 +15,7 @@ import { RepositoryWatcher } from "./services/repository-watcher";
 import { SettingsService } from "./services/settings-service";
 import { AuthService } from "./services/auth-service";
 import { UpdateService } from "./services/update-service";
+import { GitHubService } from "./services/github-service";
 import { logInfo, logError } from "./services/logger-service";
 import { CommitFilterOptions } from "../shared/types";
 
@@ -25,6 +26,7 @@ class GitCanopyApp {
   private settingsService: SettingsService;
   private authService: AuthService;
   private updateService: UpdateService;
+  private githubService: GitHubService;
 
   constructor() {
     this.authService = new AuthService();
@@ -32,6 +34,7 @@ class GitCanopyApp {
     this.repositoryWatcher = new RepositoryWatcher();
     this.settingsService = new SettingsService();
     this.updateService = new UpdateService();
+    this.githubService = new GitHubService(this.gitService, this.settingsService);
     this.initializeApp();
   }
 
@@ -459,8 +462,7 @@ class GitCanopyApp {
     ipcMain.handle("clear-git-command-history", () =>
       this.gitService.clearCommandHistory(),
     );
-    ipcMain.handle(
-      "get-file-data-url",
+    ipcMain.handle("get-file-data-url",
       async (_, repoPath: string, filePath: string) => {
         try {
           const absolutePath = path.join(repoPath, filePath);
@@ -482,6 +484,11 @@ class GitCanopyApp {
           return null;
         }
       },
+    );
+    
+    // GitHub Integration
+    ipcMain.handle("get-workflow-runs", (_, repoPath: string, branchName?: string) => 
+      this.githubService.getWorkflowRuns(repoPath, branchName)
     );
 
     // File system operations

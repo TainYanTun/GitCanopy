@@ -674,6 +674,15 @@ export class GitService {
   }
 
 
+  async getRemoteUrl(repoPath: string, remoteName: string = "origin"): Promise<string> {
+    try {
+      const output = await this.run(["remote", "get-url", remoteName], repoPath);
+      return output.trim();
+    } catch {
+      return "";
+    }
+  }
+
   async getDiff(repoPath: string, commitHash: string, filePath: string): Promise<string> {
     try {
       // 1. Handle Untracked / Unstaged / Staged / Commit Diffs

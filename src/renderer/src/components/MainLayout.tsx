@@ -19,6 +19,9 @@ import { ChangesView } from "./ChangesView";
 import { BranchCheckout } from "./BranchCheckout";
 import { HelpView } from "./HelpView";
 import { GitConsole } from "./GitConsole";
+import { GitHubStatus } from "./GitHubStatus";
+import { WorkflowRuns } from "./WorkflowRuns";
+import { SyncOutlined } from "@ant-design/icons";
 
 interface MainLayoutProps {
   repository: Repository;
@@ -53,6 +56,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     | "checkout"
     | "help"
     | "console"
+    | "actions"
   >("graph");
 
   useEffect(() => {
@@ -321,6 +325,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         return <HelpView />;
       case "console":
         return <GitConsole />;
+      case "actions":
+        return (
+          <WorkflowRuns
+            repoPath={repository.path}
+            currentBranch={repository.currentBranch}
+          />
+        );
       default:
         return null;
     }
@@ -358,6 +369,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           <span className="text-xs font-medium text-zed-muted uppercase tracking-wider pl-2 border-l border-zed-border dark:border-zed-dark-border">
             {repository.name}
           </span>
+        </div>
+
+        {/* GitHub Status Indicator */}
+        <div className="flex-1 flex justify-center no-drag">
+           <GitHubStatus 
+             repoPath={repository.path} 
+             currentBranch={repository.currentBranch} 
+             onOpenActions={() => setCurrentView("actions")}
+           />
         </div>
 
         <div className="flex items-center gap-2 no-drag">
@@ -566,9 +586,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       </div>
 
       {/* Status Bar */}
-      <div className="h-8 flex items-center justify-between px-3 bg-zed-surface dark:bg-zed-dark-surface border-t border-zed-border dark:border-zed-dark-border text-[11px] text-zed-text dark:text-zed-dark-text select-none py-1">
+      <div className="h-9 shrink-0 flex items-center justify-between px-3 bg-zed-surface dark:bg-zed-dark-surface border-t border-zed-border dark:border-zed-dark-border text-[11px] text-zed-text dark:text-zed-dark-text select-none py-1 no-drag relative z-20">
         <div className="flex items-center">
-          <div className="w-[228px] flex items-center gap-2.5 border-r border-zed-border dark:border-zed-dark-border mr-3">
+          <div className={`flex items-center border-r border-zed-border dark:border-zed-dark-border mr-3 transition-all duration-300 ${isSidebarOpen ? "w-[228px] justify-between pr-4" : "w-auto gap-1 pr-2"}`}>
             <button
               onClick={() => setCurrentView("graph")}
               className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "graph" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
@@ -646,25 +666,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               </svg>
             </button>
             <button
-              onClick={() => setCurrentView("contributors")}
-              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "contributors" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
-              title="Contributors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            </button>
-            <button
               onClick={() => setCurrentView("checkout")}
               className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "checkout" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
               title="Checkout Branch"
@@ -683,6 +684,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 />
               </svg>
             </button>
+            <button
+              onClick={() => setCurrentView("contributors")}
+              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "contributors" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
+              title="Contributors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+            </button>
           </div>
 
           <button
@@ -690,21 +710,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               refreshData();
               showToast("Refreshing repository data...", "info");
             }}
-            className="flex items-center gap-1.5 text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors group"
+            className="flex items-center gap-1.5 text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors group px-1.5 py-0.5 rounded-sm hover:bg-zed-element dark:hover:bg-zed-dark-element"
           >
-            <svg
-              className="w-3 h-3 group-active:animate-spin"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
+            <div className="w-3 h-3 flex items-center justify-center">
+                <SyncOutlined className="text-[11px] group-active:animate-spin opacity-70 group-hover:opacity-100" />
+            </div>
             <span className="font-medium">Sync</span>
           </button>
         </div>

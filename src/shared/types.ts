@@ -189,6 +189,29 @@ export interface AppSettings {
   compactMode: boolean;
   colorBlindMode: boolean;
   recentRepositories?: string[];
+  githubToken?: string;
+  githubTokenCreated?: number;
+}
+
+export interface WorkflowRunStep {
+  name: string;
+  status: "queued" | "in_progress" | "completed";
+  conclusion: "success" | "failure" | "cancelled" | "skipped" | "timed_out" | "action_required" | "neutral" | null;
+  number: number;
+}
+
+export interface WorkflowRun {
+  id: number;
+  name: string;
+  head_branch: string;
+  head_sha: string;
+  status: "queued" | "in_progress" | "completed";
+  conclusion: "success" | "failure" | "cancelled" | "skipped" | "timed_out" | "action_required" | "neutral" | null;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  run_number: number;
+  event: string;
 }
 
 export interface TooltipData {
@@ -311,6 +334,9 @@ export interface GitCanopyAPI {
   getGitCommandHistory: (limit?: number, offset?: number) => Promise<GitCommandLog[]>;
   clearGitCommandHistory: () => Promise<void>;
   getFileDataUrl: (repoPath: string, filePath: string) => Promise<string | null>;
+  
+  // GitHub Integration
+  getWorkflowRuns: (repoPath: string, branchName?: string) => Promise<WorkflowRun[]>;
 
   // File system operations
   watchRepository: (repoPath: string) => Promise<void>;

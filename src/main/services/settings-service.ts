@@ -58,11 +58,11 @@ export class SettingsService {
   }
 
   private validateSettings(settings: AppSettings): AppSettings {
-    return {
+    const validated: AppSettings = {
       theme: ['light', 'dark', 'system'].includes(settings.theme) ? settings.theme : 'system',
-      maxCommits: Math.max(100, Math.min(settings.maxCommits, 50000)),
+      maxCommits: Math.max(100, Math.min(settings.maxCommits || 1000, 50000)),
       autoRefresh: Boolean(settings.autoRefresh),
-      refreshInterval: Math.max(1000, Math.min(settings.refreshInterval, 60000)),
+      refreshInterval: Math.max(1000, Math.min(settings.refreshInterval || 5000, 60000)),
       showAuthor: Boolean(settings.showAuthor),
       showTimestamp: Boolean(settings.showTimestamp),
       compactMode: Boolean(settings.compactMode),
@@ -71,6 +71,16 @@ export class SettingsService {
         ? settings.recentRepositories.filter(r => typeof r === 'string').slice(0, 10)
         : [],
     };
+
+    // Preserve GitHub token if present
+    if (settings.githubToken && typeof settings.githubToken === 'string') {
+        validated.githubToken = settings.githubToken;
+    }
+    if (settings.githubTokenCreated && typeof settings.githubTokenCreated === 'number') {
+        validated.githubTokenCreated = settings.githubTokenCreated;
+    }
+
+    return validated;
   }
 
   resetToDefaults(): Promise<void> {

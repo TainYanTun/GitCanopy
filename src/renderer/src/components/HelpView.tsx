@@ -387,11 +387,62 @@ export const HelpView: React.FC = () => {
           </div>
         </section>
 
-        {/* 07. Data Integrity & Security */}
-        <section className="space-y-8 pb-12">
+        {/* 07. GitHub Integration */}
+        <section className="space-y-8">
           <div className="flex items-baseline gap-4">
             <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
               07
+            </span>
+            <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
+              GitHub Integration
+            </h2>
+          </div>
+
+          <div className="space-y-8 pl-8">
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase">
+                Actions Status Watcher
+              </h3>
+              <p className="text-sm text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                Connect your GitHub account to monitor CI/CD pipelines directly within the app. GitCanopy polls the GitHub API to show real-time status for the current branch.
+              </p>
+              <div className="bg-zed-element/30 dark:bg-zed-dark-element/30 p-4 rounded-lg border border-zed-border dark:border-zed-dark-border text-xs space-y-2 mt-4">
+                <p className="font-bold text-zed-text dark:text-zed-dark-text">How to Connect:</p>
+                <ol className="list-decimal list-inside space-y-1 text-zed-muted dark:text-zed-dark-muted ml-1">
+                    <li>Generate a <strong>Personal Access Token (Classic)</strong> on GitHub.</li>
+                    <li>Ensure the <code className="font-mono bg-zed-element dark:bg-zed-dark-element px-1 rounded">repo</code> scope is checked.</li>
+                    <li>Click the <strong>Connect</strong> button in the top toolbar.</li>
+                    <li>Paste your token. It is stored locally and securely.</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs font-mono">
+                <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
+                    <span className="text-zed-text dark:text-zed-dark-text font-bold">Passed</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"></span>
+                    <span className="text-zed-text dark:text-zed-dark-text font-bold">Failed</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    <span className="text-zed-text dark:text-zed-dark-text font-bold">Running</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                    <span className="text-zed-text dark:text-zed-dark-text font-bold">Queued</span>
+                </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 08. Data Integrity & Security */}
+        <section className="space-y-8 pb-12">
+          <div className="flex items-baseline gap-4">
+            <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
+              08
             </span>
             <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
               Data Integrity & Security

@@ -87,6 +87,10 @@ const gitcanopyAPI: GitCanopyAPI = {
   getFileDataUrl: (repoPath: string, filePath: string): Promise<string | null> =>
     ipcRenderer.invoke("get-file-data-url", repoPath, filePath),
 
+  // GitHub Integration
+  getWorkflowRuns: (repoPath: string, branchName?: string) => 
+    ipcRenderer.invoke("get-workflow-runs", repoPath, branchName),
+
   // File system operations
   watchRepository: (repoPath: string): Promise<void> =>
     ipcRenderer.invoke("watch-repository", repoPath),
