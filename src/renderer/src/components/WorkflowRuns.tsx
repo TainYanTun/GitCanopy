@@ -11,6 +11,7 @@ import {
   DisconnectOutlined,
   StopOutlined,
   SearchOutlined,
+  TagOutlined,
 } from "@ant-design/icons";
 import { Modal } from "antd";
 import moment from "moment";
@@ -415,18 +416,21 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
                         </div>
                         <div className="flex items-center gap-2 text-zed-muted dark:text-zed-dark-muted text-[10px] opacity-60">
                           <span className="font-bold uppercase tracking-tight">
-                            {run.name} #{run.run_number}
+                            {run.name} #{run.run_number}:
                           </span>
-                          <span>•</span>
                           <span>by {run.actor.login}</span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <BranchesOutlined className="text-[8px]" />
-                            {run.head_branch}
+                            <span className="opacity-50">on</span>
+                            {run.head_branch?.startsWith('v') ? <TagOutlined className="text-[8px] opacity-80" /> : <BranchesOutlined className="text-[8px] opacity-80" />}
+                            <span className="text-zed-text dark:text-zed-dark-text font-medium">{run.head_branch}</span>
                           </span>
                           <span>•</span>
-                          <span className="font-mono">
-                            {run.head_sha.substring(0, 7)}
+                          <span className="flex items-center gap-1">
+                            <span className="opacity-50">commit</span>
+                            <span className="font-mono text-zed-text dark:text-zed-dark-text opacity-80">
+                              {run.head_sha.substring(0, 7)}
+                            </span>
                           </span>
                         </div>
                       </div>

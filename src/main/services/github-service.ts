@@ -45,39 +45,46 @@ export class GitHubService {
       if (!repoInfo) return [];
 
       // 3. Construct API URL
-      // We'll fetch the last 30 runs for the entire repository to ensure builds/releases are visible
-      const apiUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/actions/runs?per_page=30`;
+      // Increase per_page to 100 to ensure builds/releases are visible even in busy repositories
+      const apiUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/actions/runs?per_page=100`;
       
       // 4. Fetch
       const response = await this.fetchWithAuth(apiUrl, settings.githubToken);
       if (!response.workflow_runs) return [];
 
-      return response.workflow_runs.map((run: any) => ({
-        id: run.id,
-        name: run.name,
-        head_branch: run.head_branch,
-        head_sha: run.head_sha,
-        status: run.status,
-        conclusion: run.conclusion,
-        html_url: run.html_url,
-        created_at: run.created_at,
-        updated_at: run.updated_at,
-        run_number: run.run_number,
-        event: run.event,
-        display_title: (run.display_title === run.name && run.head_commit?.message) ? run.head_commit.message : (run.display_title || run.name),
-        head_commit: run.head_commit ? {
-          id: run.head_commit.id,
-          message: run.head_commit.message,
-          timestamp: run.head_commit.timestamp,
-          author: {
-            name: run.head_commit.author?.name || "Unknown",
-            email: run.head_commit.author?.email || ""
+      return response.workflow_runs.map((run: any) => {
+        // High-fidelity title resolution: Prefer commit message for build/release workflows
+        const isGenericTitle = !run.display_title || run.display_title === run.name || run.display_title.includes('.yml');
+        const commitMessage = run.head_commit?.message;
+        const displayTitle = (isGenericTitle && commitMessage) ? commitMessage : (run.display_title || run.name);
+
+        return {
+          id: run.id,
+          name: run.name,
+          head_branch: run.head_branch,
+          head_sha: run.head_sha,
+          status: run.status,
+          conclusion: run.conclusion,
+          html_url: run.html_url,
+          created_at: run.created_at,
+          updated_at: run.updated_at,
+          run_number: run.run_number,
+          event: run.event,
+          display_title: displayTitle,
+          head_commit: run.head_commit ? {
+            id: run.head_commit.id,
+            message: run.head_commit.message,
+            timestamp: run.head_commit.timestamp,
+            author: {
+              name: run.head_commit.author?.name || "Unknown",
+              email: run.head_commit.author?.email || ""
+            }
+          } : undefined,
+          actor: {
+            login: run.actor?.login || "github-actions"
           }
-        } : undefined,
-        actor: {
-          login: run.actor?.login || "github-actions"
-        }
-      }));
+        };
+      });
 
     } catch (error) {
       // Re-throw authentication errors so the UI can handle them
