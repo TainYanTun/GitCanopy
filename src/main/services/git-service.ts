@@ -678,18 +678,13 @@ export class GitService {
     try {
       // 1. Handle Untracked / Unstaged / Staged / Commit Diffs
       let args: string[] = [];
+      const EMPTY_TREE_HASH = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
       
       if (!commitHash) {
         // Unstaged or Untracked
         const status = await this.run(["status", "--porcelain", "--", filePath], repoPath);
         if (status.startsWith("??")) {
           // Untracked: Show as all additions
-          // We use --no-index to compare with empty file to get a full addition diff
-          // But a simpler way for Electron is to just return a special indicator for binary
-          // or read the file. Let's use git's own diff mechanism for consistency.
-          args = ["diff", "--no-index", "/dev/null", filePath];
-          // Note: git diff --no-index might need absolute paths or relative to CWD
-          // For simplicity and safety, let's try a different approach:
           try {
             const isBinary = await this.isBinaryFile(path.join(repoPath, filePath));
             if (isBinary) return "BINARY_FILE";
@@ -711,30 +706,51 @@ export class GitService {
         args = ["diff", `${commitHash}^`, commitHash, "--", filePath];
       }
 
-      // 2. Check for binary before running full diff if it's a commit/staged diff
-      if (args.length > 0 && args[0] !== "diff") {
-         // This shouldn't happen with the logic above
-      } else if (args.length > 0) {
-        // Check if it's a binary diff first using numstat
-        const checkArgs = [...args];
-        const numstatIdx = checkArgs.indexOf("--");
-        if (numstatIdx !== -1) {
-          checkArgs.splice(numstatIdx, 0, "--numstat");
-        } else {
-          checkArgs.push("--numstat");
-        }
-        
-        const statsOutput = await this.run(checkArgs, repoPath).catch(() => "");
-        if (statsOutput) {
-          const parts = statsOutput.split("\t");
-          if (parts[0] === "-" || parts[1] === "-") {
-            return "BINARY_FILE";
+      // 2. Helper to execute diff with binary check
+      const executeDiff = async (diffArgs: string[]): Promise<string> => {
+        if (diffArgs.length > 0 && diffArgs[0] === "diff") {
+          // Check binary first using numstat
+          const checkArgs = [...diffArgs];
+          const numstatIdx = checkArgs.indexOf("--");
+          if (numstatIdx !== -1) {
+            checkArgs.splice(numstatIdx, 0, "--numstat");
+          } else {
+            checkArgs.push("--numstat");
+          }
+          
+          try {
+            const statsOutput = await this.run(checkArgs, repoPath);
+            if (statsOutput) {
+              const parts = statsOutput.split("\t");
+              if (parts[0] === "-" || parts[1] === "-") {
+                return "BINARY_FILE";
+              }
+            }
+          } catch (e: any) {
+            // If invalid revision, we MUST fail here so we can fallback
+            if (e.message?.includes("unknown revision") || e.message?.includes("bad revision")) {
+              throw e;
+            }
           }
         }
-      }
+        return await this.run(diffArgs, repoPath);
+      };
 
-      const diff = await this.run(args, repoPath);
-      return diff || "No changes detected.";
+      // 3. Run with Fallback for Root Commit
+      try {
+        const diff = await executeDiff(args);
+        return diff || "No changes detected.";
+      } catch (error: any) {
+        // Check if failure is due to missing parent (root commit)
+        if (commitHash && args.includes(`${commitHash}^`) && 
+            (error.message?.includes("unknown revision") || error.message?.includes("bad revision"))) {
+            
+            // Fallback: Diff against empty tree
+            const rootArgs = ["diff", EMPTY_TREE_HASH, commitHash, "--", filePath];
+            return await executeDiff(rootArgs);
+        }
+        throw error;
+      }
     } catch (error) {
       console.error(`Failed to get diff for ${filePath} at ${commitHash || 'working tree'}:`, error);
       return `Error loading diff: ${error instanceof Error ? error.message : "Unknown error"}`;

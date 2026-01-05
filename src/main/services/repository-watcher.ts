@@ -69,6 +69,27 @@ export class RepositoryWatcher {
       });
       watchers.push(gitWatcher);
 
+      // ALSO watch the working directory for file changes (to update Status)
+      // Note: Recursive watching is supported on macOS and Windows. 
+      // On Linux this might need a different strategy (or chokidar), but for now sticking to native.
+      console.log(`[Watcher] Starting recursive watch on working tree ${repoPath}`);
+      const workTreeWatcher = watch(repoPath, { recursive: true }, (eventType, filename) => {
+        if (!filename) return;
+        
+        // Filter out .git (handled above) and node_modules (noise)
+        if (filename.includes('.git') || filename.includes('node_modules')) return;
+        
+        // Ignore build output directories (common defaults)
+        if (filename.includes('dist/') || filename.includes('build/') || filename.includes('.next/')) return;
+
+        // For any other file change in the working tree
+        debounceCallback({
+          type: 'repository-changed',
+          repository: { path: repoPath } as any
+        });
+      });
+      watchers.push(workTreeWatcher);
+
       this.watchers.set(repoPath, watchers);
     } catch (error) {
       console.error('Failed to watch repository:', error);

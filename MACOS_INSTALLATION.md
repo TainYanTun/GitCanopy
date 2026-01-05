@@ -16,7 +16,7 @@ If you see a message saying **"GitCanopy is damaged and can't be opened"** or **
 5.  You will only need to do this once.
 
 ### Method 2: The Terminal Fix (If Method 1 fails)
-If macOS insists the app is "damaged," it is likely just a quarantine flag. Open your Terminal and run:
+If macOS insists the app is "damaged," it is likely just a quarantine flag. Open your Terminal and run from root directory:
 
 ```bash
 xattr -cr /Applications/GitCanopy.app

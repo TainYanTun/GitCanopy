@@ -27,7 +27,7 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 ## 🛠 Usage Guide
 
 ### Opening a Repository
-- Launch GitCanopy and click **Open Repository** (or press `⌘O`).
+- Launch GitCanopy and click **Open Repository**.
 - Select any folder containing a `.git` directory.
 - Your most recent repositories will appear on the Welcome Screen for quick access.
 

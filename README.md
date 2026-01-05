@@ -2,7 +2,7 @@
 
 <img src="assets/logo.png" width="280" alt="GitCanopy Interface" />
 
-# GitCanopy: Git Visulization Client designed for Professional Engineers
+# GitCanopy: Git Visualization Client designed for Professional Engineers
 
 Transform complex commit histories into stable, readable graphs with a hyper-minimalist, lightning-fast workflow.
 

@@ -14,7 +14,7 @@ Currently, only the latest stable release of GitCanopy is supported for security
 We take the security of GitCanopy seriously. If you discover a security vulnerability, please do **not** open a public issue. Instead, follow these steps:
 
 1.  **Private Reporting:** Use GitHub's [Private Vulnerability Reporting](https://github.com/TainYanTun/GitCanopy/security/advisories/new) feature if available.
-2.  **Direct Contact:** If private reporting is unavailable, please contact the maintainer directly via GitHub or at [tainyantun@proton.me](mailto:tainyantun@proton.me) (placeholder - please update with your preferred contact).
+2.  **Direct Contact:** If private reporting is unavailable, please contact the maintainer directly via GitHub or at [leotainyan18@gail.com](mailto:leotainyan18@gail.com) (placeholder - please update with your preferred contact).
 
 ### What to include:
 *   A description of the vulnerability.
