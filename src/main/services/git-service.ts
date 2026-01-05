@@ -6,6 +6,7 @@ import * as path from "path";
 import * as os from "os";
 import { LRUCache } from "lru-cache";
 import { AuthService } from "./auth-service";
+import { logError } from "./logger-service";
 import {
   Repository,
   Commit,
@@ -147,10 +148,18 @@ export class GitService {
   }
 
   private logCommand(args: string[], success: boolean, exitCode: number, duration: number) {
+    // Sanitize arguments to mask tokens/passwords in URLs
+    const sanitizedArgs = args.map(arg => {
+      if (arg.includes("://") && arg.includes("@")) {
+        return arg.replace(/:\/\/([^:]+):([^@]+)@/, "://***:***@").replace(/:\/\/([^@]+)@/, "://***@");
+      }
+      return arg;
+    });
+
     const log: GitCommandLog = {
       id: Math.random().toString(36).substring(2, 9),
       command: "git",
-      args,
+      args: sanitizedArgs,
       timestamp: Date.now(),
       duration,
       exitCode,
@@ -326,13 +335,13 @@ export class GitService {
 
       return { files, ahead, behind };
     } catch (error) {
-      console.error("Failed to get status:", error);
+      logError("GitService", `Failed to get status: ${error}`);
       return { files: [], ahead: 0, behind: 0 };
     }
   }
 
   async stageFile(repoPath: string, filePath: string): Promise<void> {
-    await this.run(["add", filePath], repoPath);
+    await this.run(["add", "--", filePath], repoPath);
   }
 
   async stageAll(repoPath: string): Promise<void> {
@@ -342,7 +351,8 @@ export class GitService {
   async clone(url: string, targetPath: string): Promise<void> {
     const parentDir = path.dirname(targetPath);
     const repoName = path.basename(targetPath);
-    await this.run(["clone", url, repoName], parentDir);
+    // Use -- to separate URL from potentially malicious repo names starting with -
+    await this.run(["clone", "--", url, repoName], parentDir);
   }
 
   async cloneToParent(url: string, parentPath: string): Promise<string> {
@@ -408,7 +418,7 @@ export class GitService {
     try {
       await this.run(["rev-parse", "--is-inside-work-tree"], repoPath);
     } catch (error) {
-       console.error(`[GitService] Validation failed for ${repoPath}:`, error);
+       logError("GitService", `Validation failed for ${repoPath}: ${error}`);
        throw new Error(`Not a valid Git repository: ${repoPath}`);
     }
 
@@ -566,7 +576,7 @@ export class GitService {
     try {
       await this.run(["checkout", "--", branchName], repoPath);
     } catch (error) {
-      console.error(`Failed to checkout branch ${branchName}:`, error);
+      logError("GitService", `Failed to checkout branch ${branchName}: ${error}`);
       throw error;
     }
   }
@@ -581,11 +591,11 @@ export class GitService {
   }
 
   async applyStash(repoPath: string, index: string): Promise<void> {
-    await this.run(["stash", "apply", index], repoPath);
+    await this.run(["stash", "apply", "--", index], repoPath);
   }
 
   async dropStash(repoPath: string, index: string): Promise<void> {
-    await this.run(["stash", "drop", index], repoPath);
+    await this.run(["stash", "drop", "--", index], repoPath);
   }
 
 
@@ -613,7 +623,7 @@ export class GitService {
 
       return commit;
     } catch (error) {
-      console.error(`Failed to get commit details for ${commitHash}:`, error);
+      logError("GitService", `Failed to get commit details for ${commitHash}: ${error}`);
       throw error;
     }
   }
@@ -777,7 +787,7 @@ export class GitService {
         throw error;
       }
     } catch (error) {
-      console.error(`Failed to get diff for ${filePath} at ${commitHash || 'working tree'}:`, error);
+      logError("GitService", `Failed to get diff for ${filePath} at ${commitHash || 'working tree'}: ${error}`);
       return `Error loading diff: ${error instanceof Error ? error.message : "Unknown error"}`;
     }
   }

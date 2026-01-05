@@ -61,7 +61,7 @@ For developers looking to build from source or contribute, please refer to the [
 - **Manage Changes:** Stage, commit, and push your work from the **Changes View**.
 - **Analyze Activity:** Use **Team Insights** and **File Hotspots** to track contributor impact.
 
-> 💡 See [Full Documentation](documentation.md) for advanced features.
+> 💡 See [Full Documentation](documentation.md) for more advanced features.
 
 ---
 

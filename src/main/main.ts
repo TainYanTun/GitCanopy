@@ -16,7 +16,7 @@ import { SettingsService } from "./services/settings-service";
 import { AuthService } from "./services/auth-service";
 import { UpdateService } from "./services/update-service";
 import { GitHubService } from "./services/github-service";
-import { logInfo, logError } from "./services/logger-service";
+import { logInfo, logError, logWarn } from "./services/logger-service";
 import { CommitFilterOptions } from "../shared/types";
 
 class GitCanopyApp {
@@ -435,7 +435,7 @@ class GitCanopyApp {
             version = pkg.version;
           }
         } catch (e) {
-          console.error("Failed to read package.json version:", e);
+          logError("App", `Failed to read package.json version: ${e}`);
         }
       }
       return version;
@@ -465,7 +465,15 @@ class GitCanopyApp {
     ipcMain.handle("get-file-data-url",
       async (_, repoPath: string, filePath: string) => {
         try {
-          const absolutePath = path.join(repoPath, filePath);
+          // Security: Prevent path traversal
+          const absolutePath = path.resolve(repoPath, filePath);
+          const resolvedRepoPath = path.resolve(repoPath);
+
+          if (!absolutePath.startsWith(resolvedRepoPath)) {
+            logWarn("Security", `Blocked path traversal attempt: ${filePath} in ${repoPath}`);
+            return null;
+          }
+
           if (!fs.existsSync(absolutePath)) return null;
 
           const buffer = await fs.promises.readFile(absolutePath);
@@ -480,7 +488,7 @@ class GitCanopyApp {
 
           return `data:${mimeType};base64,${buffer.toString("base64")}`;
         } catch (error) {
-          console.error("Failed to get file data URL:", error);
+          logError("App", `Failed to get file data URL: ${error}`);
           return null;
         }
       },
@@ -527,10 +535,10 @@ class GitCanopyApp {
         if (parsed.protocol === "http:" || parsed.protocol === "https:") {
           return shell.openExternal(url);
         }
-        console.warn(`Blocked attempt to open invalid protocol: ${parsed.protocol}`);
+        logWarn("Security", `Blocked attempt to open invalid protocol: ${parsed.protocol}`);
         return Promise.reject(new Error("Invalid protocol"));
       } catch (e) {
-        console.warn(`Blocked attempt to open invalid URL: ${url}`);
+        logWarn("Security", `Blocked attempt to open invalid URL: ${url}`);
         return Promise.reject(new Error("Invalid URL"));
       }
     });
@@ -560,7 +568,7 @@ class GitCanopyApp {
       await this.settingsService.addRecentRepository(repoPath);
       return repository;
     } catch (error) {
-      console.error("Failed to load repository:", error);
+      logError("App", `Failed to load repository: ${error}`);
 
       dialog.showErrorBox(
         "Invalid Repository",

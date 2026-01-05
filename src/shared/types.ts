@@ -191,6 +191,7 @@ export interface AppSettings {
   recentRepositories?: string[];
   githubToken?: string;
   githubTokenCreated?: number;
+  lastSeenVersion?: string;
 }
 
 export interface WorkflowRunStep {

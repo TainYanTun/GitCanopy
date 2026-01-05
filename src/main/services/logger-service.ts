@@ -21,3 +21,7 @@ export const logError = (context: string, error: unknown) => {
 export const logInfo = (context: string, message: string) => {
   logger.info(`[${context}] ${message}`);
 };
+
+export const logWarn = (context: string, message: string) => {
+  logger.warn(`[${context}] ${message}`);
+};

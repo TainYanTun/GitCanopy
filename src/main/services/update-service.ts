@@ -20,7 +20,10 @@ export class UpdateService {
     try {
         autoUpdater.checkForUpdatesAndNotify();
     } catch (error) {
-        logError('UpdateService', error);
+        // Only log if it's a real error, not just a network issue
+        if (error instanceof Error && !error.message.includes('offline')) {
+            logError('UpdateService', error);
+        }
     }
   }
 

@@ -1,6 +1,7 @@
 import { watch, FSWatcher, existsSync } from 'fs';
 import { join } from 'path';
 import { AppEvent } from '../../shared/types';
+import { logInfo, logError } from './logger-service';
 
 export class RepositoryWatcher {
   private watchers: Map<string, FSWatcher[]> = new Map();
@@ -29,7 +30,7 @@ export class RepositoryWatcher {
     };
 
     try {
-      console.log(`[Watcher] Starting recursive watch on ${gitPath}`);
+      logInfo('Watcher', `Starting recursive watch on ${gitPath}`);
       // Watching the .git directory recursively is most reliable on macOS/Windows
       const gitWatcher = watch(gitPath, { recursive: true }, (eventType, filename) => {
         if (!filename) return;
@@ -38,14 +39,14 @@ export class RepositoryWatcher {
         if (filename.endsWith('.lock')) return;
 
         if (filename === 'HEAD' || filename === 'ORIG_HEAD') {
-          console.log(`[Watcher] Head change detected: ${filename}`);
+          logInfo('Watcher', `Head change detected: ${filename}`);
           debounceCallback({
             type: 'head-changed',
             newHead: '',
             oldHead: '',
           });
         } else if (filename.startsWith('refs') || filename === 'packed-refs') {
-          console.log(`[Watcher] Refs change detected: ${filename}`);
+          logInfo('Watcher', `Refs change detected: ${filename}`);
           debounceCallback({
             type: 'branches-updated',
             branches: [],
@@ -56,7 +57,7 @@ export class RepositoryWatcher {
             commits: []
           });
         } else if (filename === 'index') {
-          console.log(`[Watcher] Index change detected (commit/stage)`);
+          logInfo('Watcher', `Index change detected (commit/stage)`);
           debounceCallback({
             type: 'repository-changed',
             repository: { path: repoPath } as any
@@ -72,7 +73,7 @@ export class RepositoryWatcher {
       // ALSO watch the working directory for file changes (to update Status)
       // Note: Recursive watching is supported on macOS and Windows. 
       // On Linux this might need a different strategy (or chokidar), but for now sticking to native.
-      console.log(`[Watcher] Starting recursive watch on working tree ${repoPath}`);
+      logInfo('Watcher', `Starting recursive watch on working tree ${repoPath}`);
       const workTreeWatcher = watch(repoPath, { recursive: true }, (eventType, filename) => {
         if (!filename) return;
         
@@ -92,7 +93,7 @@ export class RepositoryWatcher {
 
       this.watchers.set(repoPath, watchers);
     } catch (error) {
-      console.error('Failed to watch repository:', error);
+      logError('Watcher', error);
       watchers.forEach(watcher => watcher.close());
     }
   }

@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useToast } from "./components/ToastContext";
 import { AuthModal } from "./components/AuthModal";
 import { useTheme } from "./components/ThemeContext";
+import { WhatsNewModal } from "./components/WhatsNewModal";
 
 interface AppState {
   repository: Repository | null;
@@ -28,9 +29,27 @@ const App: React.FC = () => {
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [authPrompt, setAuthPrompt] = useState<string | null>(null);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState("");
 
   useEffect(() => {
     if (!window.gitcanopyAPI) return;
+
+    const checkVersion = async () => {
+      try {
+        const settings = await window.gitcanopyAPI.getSettings();
+        const version = await window.gitcanopyAPI.getAppVersion();
+        setCurrentVersion(version);
+
+        if (settings.lastSeenVersion !== version) {
+          setShowWhatsNew(true);
+        }
+      } catch (e) {
+        console.error("Failed to check version:", e);
+      }
+    };
+
+    checkVersion();
 
     const unsubscribe = window.gitcanopyAPI.onAuthRequest(({ prompt }) => {
       setAuthPrompt(prompt);
@@ -54,6 +73,20 @@ const App: React.FC = () => {
   const handleAuthCancel = async () => {
     await window.gitcanopyAPI.cancelAuth();
     setAuthPrompt(null);
+  };
+
+  const handleCloseWhatsNew = async () => {
+    try {
+      const settings = await window.gitcanopyAPI.getSettings();
+      await window.gitcanopyAPI.saveSettings({
+        ...settings,
+        lastSeenVersion: currentVersion
+      });
+      setShowWhatsNew(false);
+    } catch (e) {
+      console.error(e);
+      setShowWhatsNew(false);
+    }
   };
 
   // Handle repository selection
@@ -265,6 +298,11 @@ const App: React.FC = () => {
       <AntdApp style={{ height: '100%' }}>
         <ErrorBoundary>
           <div className="h-full w-full bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-zed-dark-text relative overflow-hidden">
+            <WhatsNewModal 
+              visible={showWhatsNew} 
+              onClose={handleCloseWhatsNew} 
+              version={currentVersion} 
+            />
             {authPrompt && (
               <AuthModal
                 prompt={authPrompt}

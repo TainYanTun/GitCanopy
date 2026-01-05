@@ -1,7 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { safeStorage } from 'electron';
 import { AppSettings } from '../../shared/types';
 import { getAppDataPath, safeJsonParse } from '../utils';
+import { logError } from './logger-service';
 
 export class SettingsService {
   private settingsPath: string;
@@ -32,9 +34,16 @@ export class SettingsService {
       const settings = safeJsonParse<AppSettings>(settingsJson, this.defaultSettings);
 
       // Merge with defaults to ensure all properties exist
-      return { ...this.defaultSettings, ...settings };
+      const mergedSettings = { ...this.defaultSettings, ...settings };
+
+      // Decrypt GitHub token if it exists and is encrypted
+      if (mergedSettings.githubToken && typeof mergedSettings.githubToken === 'string') {
+        mergedSettings.githubToken = this.decryptToken(mergedSettings.githubToken);
+      }
+
+      return mergedSettings;
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logError("SettingsService", `Failed to load settings: ${error}`);
       return this.defaultSettings;
     }
   }
@@ -47,13 +56,50 @@ export class SettingsService {
         mkdirSync(settingsDir, { recursive: true });
       }
 
+      // Clone settings to avoid mutating the original object
+      const settingsToSave = { ...settings };
+
+      // Encrypt GitHub token before saving
+      if (settingsToSave.githubToken && typeof settingsToSave.githubToken === 'string') {
+        settingsToSave.githubToken = this.encryptToken(settingsToSave.githubToken);
+      }
+
       // Validate settings before saving
-      const validatedSettings = this.validateSettings(settings);
+      const validatedSettings = this.validateSettings(settingsToSave);
 
       writeFileSync(this.settingsPath, JSON.stringify(validatedSettings, null, 2));
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logError("SettingsService", `Failed to save settings: ${error}`);
       throw new Error('Could not save settings');
+    }
+  }
+
+  private encryptToken(token: string): string {
+    if (!token || !safeStorage.isEncryptionAvailable()) {
+      return token;
+    }
+    try {
+      const encrypted = safeStorage.encryptString(token);
+      return `enc:${encrypted.toString('base64')}`;
+    } catch (error) {
+      logError("SettingsService", `Failed to encrypt token: ${error}`);
+      return token;
+    }
+  }
+
+  private decryptToken(encryptedToken: string): string {
+    if (!encryptedToken || !encryptedToken.startsWith('enc:') || !safeStorage.isEncryptionAvailable()) {
+      return encryptedToken;
+    }
+    try {
+      const base64Data = encryptedToken.substring(4);
+      const buffer = Buffer.from(base64Data, 'base64');
+      return safeStorage.decryptString(buffer);
+    } catch (error) {
+      logError("SettingsService", `Failed to decrypt token: ${error}`);
+      // If decryption fails, it might be a plain token that was saved with 'enc:' prefix by mistake,
+      // or from a different machine. In any case, we return the original if it doesn't work.
+      return encryptedToken;
     }
   }
 
@@ -72,12 +118,15 @@ export class SettingsService {
         : [],
     };
 
-    // Preserve GitHub token if present
+    // Preserve GitHub token if present (it's already encrypted if it was supposed to be)
     if (settings.githubToken && typeof settings.githubToken === 'string') {
         validated.githubToken = settings.githubToken;
     }
     if (settings.githubTokenCreated && typeof settings.githubTokenCreated === 'number') {
         validated.githubTokenCreated = settings.githubTokenCreated;
+    }
+    if (settings.lastSeenVersion && typeof settings.lastSeenVersion === 'string') {
+        validated.lastSeenVersion = settings.lastSeenVersion;
     }
 
     return validated;

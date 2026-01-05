@@ -1,6 +1,7 @@
 import { net } from "electron";
 import { GitService } from "./git-service";
 import { SettingsService } from "./settings-service";
+import { logError } from "./logger-service";
 import { WorkflowRun } from "../../shared/types";
 
 export class GitHubService {
@@ -16,7 +17,7 @@ export class GitHubService {
       await this.fetchWithAuth("https://api.github.com/user", token);
       return true;
     } catch (error) {
-      console.error("Token validation failed:", error);
+      logError("GitHubService", `Token validation failed: ${error}`);
       return false;
     }
   }
@@ -162,7 +163,9 @@ export class GitHubService {
               reject(e);
             }
           } else {
-            reject(new Error(`GitHub API returned ${response.statusCode}: ${data}`));
+            // Provide a clean error message without potentially sensitive response data
+            const errorMsg = `GitHub API error (${response.statusCode})`;
+            reject(new Error(errorMsg));
           }
         });
         response.on("error", (error: any) => reject(error));

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { BrowserWindow } from 'electron';
+import { logError } from './logger-service';
 
 export class AuthService {
   private server: net.Server | null = null;
@@ -45,8 +46,8 @@ export class AuthService {
         });
 
         socket.on('error', (err) => {
-          console.error('[AuthService] Socket error:', err);
-          this.cleanupActiveRequest();
+          logError('AuthService', `Socket error: ${err}`);
+          socket.destroy();
         });
 
         socket.on('close', () => {
