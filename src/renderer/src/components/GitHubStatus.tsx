@@ -38,7 +38,7 @@ export const GitHubStatus: React.FC<GitHubStatusProps> = ({
     try {
       const fetchedRuns = await window.gitcanopyAPI.getWorkflowRuns(
         repoPath,
-        currentBranch,
+        undefined, // Fetch all runs to include tags and releases
       );
       setRuns(fetchedRuns);
       setIsAuthError(false);
@@ -72,12 +72,21 @@ export const GitHubStatus: React.FC<GitHubStatusProps> = ({
 
   useEffect(() => {
     checkToken();
+    
+    // Listen for repository changes (e.g., after a push) to trigger immediate refresh
+    const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
+      if (hasToken && !isAuthError) {
+        fetchStatus();
+      }
+    });
+
     const tokenCheckInterval = setInterval(checkToken, 5000);
     const statusInterval = setInterval(() => {
       if (hasToken && !isAuthError) fetchStatus();
-    }, 30000);
+    }, 10000); // Increased frequency to 10s for better production responsiveness
 
     return () => {
+      unlisten();
       clearInterval(tokenCheckInterval);
       clearInterval(statusInterval);
     };

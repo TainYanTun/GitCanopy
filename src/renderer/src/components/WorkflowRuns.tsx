@@ -54,7 +54,7 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
       setHasToken(true);
       const data = await window.gitcanopyAPI.getWorkflowRuns(
         repoPath,
-        currentBranch,
+        filterByBranch ? currentBranch : undefined,
       );
       setRuns(data);
       setIsAuthError(false);
@@ -139,16 +139,25 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
     };
 
     fetchRuns();
+
+    // Trigger immediate fetch on repository changes (e.g., after push/tag)
+    const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
+      if (hasToken && !isAuthError && !loading) {
+        fetchRuns();
+      }
+    });
+
     const tokenInterval = setInterval(checkTokenStatus, 5000);
     const syncInterval = setInterval(() => {
       if (hasToken && !isAuthError && !loading) fetchRuns();
-    }, 15000);
+    }, 10000); // 10s for snappier production feedback
 
     return () => {
+      unlisten();
       clearInterval(tokenInterval);
       clearInterval(syncInterval);
     };
-  }, [repoPath, currentBranch, hasToken, isAuthError]);
+  }, [repoPath, currentBranch, hasToken, isAuthError, filterByBranch]);
 
   const getStatusIcon = (status: string, conclusion: string | null) => {
     if (status === "queued" || status === "in_progress")
