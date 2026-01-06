@@ -366,7 +366,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
         );
       case "stashes":
-        return <StashGallery repoPath={repository.path} />;
+        return (
+          <StashGallery 
+            repoPath={repository.path} 
+            onViewChanges={() => setCurrentView("changes")}
+          />
+        );
       case "help":
         return <HelpView />;
       case "console":

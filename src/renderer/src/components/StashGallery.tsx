@@ -3,9 +3,10 @@ import { useToast } from "./ToastContext";
 
 interface StashGalleryProps {
   repoPath: string;
+  onViewChanges?: () => void;
 }
 
-export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath }) => {
+export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath, onViewChanges }) => {
   const { showToast } = useToast();
   const [stashes, setStashes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,12 +36,16 @@ export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath }) => {
       } catch (error: any) {
         const errorMessage = error.message || "";
         if (errorMessage.includes("STASH_CONFLICT")) {
-          showToast("Stash applied with conflicts. Please resolve them.", "warning");
+          showToast("Conflicts detected. Redirecting to Changes view...", "warning");
+          // Give the user a moment to read the toast then switch
+          setTimeout(() => {
+            onViewChanges?.();
+          }, 1500);
         } else {
           showToast("Failed to apply stash", "error");
         }
         console.error(error);
-        fetchStashes(); // Refresh anyway to show the current state
+        fetchStashes();
       }
     }
   };
