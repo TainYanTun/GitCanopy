@@ -240,6 +240,20 @@ class GitCanopyApp {
                 this.mainWindow?.webContents.send("menu:open-repository");
               },
             },
+            {
+              label: "Branch Switcher...",
+              accelerator: "CmdOrCtrl+B",
+              click: () => {
+                this.mainWindow?.webContents.send("menu:open-branch-switcher");
+              },
+            },
+            {
+              label: "Sync Repository",
+              accelerator: "CmdOrCtrl+R",
+              click: () => {
+                this.mainWindow?.webContents.send("menu:sync-repository");
+              },
+            },
             { type: "separator" },
             { role: "close" },
           ],
@@ -293,6 +307,20 @@ class GitCanopyApp {
               accelerator: "CmdOrCtrl+O",
               click: () => {
                 this.mainWindow?.webContents.send("menu:open-repository");
+              },
+            },
+            {
+              label: "Branch Switcher...",
+              accelerator: "CmdOrCtrl+B",
+              click: () => {
+                this.mainWindow?.webContents.send("menu:open-branch-switcher");
+              },
+            },
+            {
+              label: "Sync Repository",
+              accelerator: "CmdOrCtrl+R",
+              click: () => {
+                this.mainWindow?.webContents.send("menu:sync-repository");
               },
             },
             { type: "separator" },
@@ -364,9 +392,14 @@ class GitCanopyApp {
     ipcMain.handle("discard-changes", (_, repoPath: string, filePath: string) =>
       this.gitService.discardChanges(repoPath, filePath),
     );
-    ipcMain.handle("commit", (_, repoPath: string, message: string) =>
-      this.gitService.commit(repoPath, message),
-    );
+    ipcMain.handle("commit", async (_, repoPath: string, message: string) => {
+      this.repositoryWatcher.pause();
+      try {
+        await this.gitService.commit(repoPath, message);
+      } finally {
+        this.repositoryWatcher.resume();
+      }
+    });
     ipcMain.handle("push", (_, repoPath: string) =>
       this.gitService.push(repoPath),
     );
@@ -394,15 +427,34 @@ class GitCanopyApp {
     );
     ipcMain.handle(
       "checkout-branch",
-      (_, repoPath: string, branchName: string) =>
-        this.gitService.checkoutBranch(repoPath, branchName),
+      async (_, repoPath: string, branchName: string) => {
+        this.repositoryWatcher.pause();
+        try {
+          await this.gitService.checkoutBranch(repoPath, branchName);
+        } finally {
+          this.repositoryWatcher.resume();
+        }
+      }
     );
     ipcMain.handle("get-stash-list", (_, repoPath: string) =>
       this.gitService.getStashList(repoPath),
     );
-    ipcMain.handle("git:apply-stash", (_, repoPath: string, index: string) =>
-      this.gitService.applyStash(repoPath, index),
-    );
+    ipcMain.handle("git:stash", async (_, repoPath: string) => {
+      this.repositoryWatcher.pause();
+      try {
+        await this.gitService.stash(repoPath);
+      } finally {
+        this.repositoryWatcher.resume();
+      }
+    });
+    ipcMain.handle("git:apply-stash", async (_, repoPath: string, index: string) => {
+      this.repositoryWatcher.pause();
+      try {
+        await this.gitService.applyStash(repoPath, index);
+      } finally {
+        this.repositoryWatcher.resume();
+      }
+    });
     ipcMain.handle("git:drop-stash", (_, repoPath: string, index: string) =>
       this.gitService.dropStash(repoPath, index),
     );

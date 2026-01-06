@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
-export type ToastType = 'info' | 'success' | 'error';
+export type ToastType = 'info' | 'success' | 'error' | 'warning';
 
 export interface Toast {
   id: string;
@@ -57,6 +57,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               flex-shrink-0 w-1.5 h-1.5 rounded-full
               ${toast.type === 'success' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : ''}
               ${toast.type === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : ''}
+              ${toast.type === 'warning' ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]' : ''}
               ${toast.type === 'info' ? 'bg-zed-accent dark:bg-zed-dark-accent shadow-[0_0_8px_rgba(59,130,246,0.4)]' : ''}
             `} />
             <span className="text-[11px] font-bold uppercase tracking-wider flex-1">{toast.message}</span>

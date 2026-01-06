@@ -5,11 +5,13 @@ import { groupBranches, BranchGroup } from '../utils/branch-utils';
 interface BranchExplorerProps {
   branches: Branch[];
   currentBranchName: string;
+  onBranchSelect?: (branchName: string) => void;
 }
 
 export const BranchExplorer: React.FC<BranchExplorerProps> = ({
   branches,
   currentBranchName,
+  onBranchSelect,
 }) => {
   const [localGroups, setLocalGroups] = useState<BranchGroup[]>([]);
   const [remoteGroups, setRemoteGroups] = useState<BranchGroup[]>([]);
@@ -42,13 +44,14 @@ export const BranchExplorer: React.FC<BranchExplorerProps> = ({
   const renderBranch = (branch: Branch) => (
     <div
       key={`branch-${branch.name}`}
-      className={`flex items-center gap-2 px-2 py-1 text-sm rounded select-none transition-colors group/branch
+      className={`flex items-center gap-2 px-2 py-1 text-sm rounded select-none transition-colors group/branch cursor-pointer
                   ${
                     branch.name === currentBranchName
                       ? 'bg-zed-accent/20 text-zed-accent'
-                      : 'text-zed-text dark:text-zed-dark-text opacity-70'
+                      : 'text-zed-text dark:text-zed-dark-text opacity-70 hover:bg-zed-element dark:hover:bg-zed-dark-element hover:opacity-100'
                   }`}
-      title={branch.name}
+      title={`${branch.name} (Double-click to checkout)`}
+      onDoubleClick={() => onBranchSelect?.(branch.name)}
     >
       <svg
         className={`w-3.5 h-3.5 flex-shrink-0 ${

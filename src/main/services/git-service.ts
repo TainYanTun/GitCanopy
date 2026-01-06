@@ -30,6 +30,7 @@ export class GitService {
   
   private authService: AuthService | null = null;
   private askPassScriptPath: string | null = null;
+  private commandQueue: Promise<any> = Promise.resolve();
 
   constructor(authService?: AuthService) {
     if (authService) {
@@ -52,16 +53,11 @@ export class GitService {
     // Resolve jsPath based on environment
     let jsPath: string;
     if (app.isPackaged) {
-      // In production, scripts are usually in Resources/app.asar.unpacked or similar
       jsPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'dist/main/main/scripts/askpass.js');
       if (!fs.existsSync(jsPath)) {
-        // Fallback to ASAR internal
         jsPath = path.join(app.getAppPath(), 'dist/main/main/scripts/askpass.js');
       }
     } else {
-      // In dev mode (built with tsc)
-      // Current file: src/main/services/git-service.ts -> dist/main/main/services/git-service.js
-      // Target: dist/main/main/scripts/askpass.js
       jsPath = path.resolve(__dirname, '../scripts/askpass.js');
     }
     
@@ -94,57 +90,63 @@ export class GitService {
   }
 
   private async run(args: string[], cwd: string): Promise<string> {
-    const startTime = Date.now();
-    
-    // Prepare env
-    const env = { ...process.env };
-    if (this.authService) {
-        env.GIT_ASKPASS = this.getAskPassScriptPath();
-        env.GIT_CANOPY_AUTH_SOCK = this.authService.getSocketPath();
-        env.GIT_TERMINAL_PROMPT = '0'; // Disable terminal prompt fallback
-        
-        // Ensure the socket server is running
-        await this.authService.start();
-    }
+    // Add to queue to prevent concurrent Git access issues
+    const result = this.commandQueue.then(async () => {
+      const startTime = Date.now();
+      
+      // Prepare env
+      const env = { ...process.env };
+      if (this.authService) {
+          env.GIT_ASKPASS = this.getAskPassScriptPath();
+          env.GIT_CANOPY_AUTH_SOCK = this.authService.getSocketPath();
+          env.GIT_TERMINAL_PROMPT = '0'; // Disable terminal prompt fallback
+          
+          // Ensure the socket server is running
+          await this.authService.start();
+      }
 
-    return new Promise((resolve, reject) => {
-      const gitProcess = spawn("git", args, { cwd, env });
-      let stdout = "";
-      let stderr = "";
-      const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB limit
+      return new Promise<string>((resolve, reject) => {
+        const gitProcess = spawn("git", args, { cwd, env });
+        let stdout = "";
+        let stderr = "";
+        const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB limit
 
-      gitProcess.stdout.on("data", (data) => {
-        if (stdout.length + data.length > MAX_BUFFER_SIZE) {
-          gitProcess.kill();
-          reject(new Error(`Git command output exceeded maximum buffer size of ${MAX_BUFFER_SIZE} bytes`));
-          return;
-        }
-        stdout += data;
-      });
-
-      gitProcess.stderr.on("data", (data) => (stderr += data));
-
-      gitProcess.on("close", (code) => {
-        const duration = Date.now() - startTime;
-        this.logCommand(args, code === 0, code || 0, duration);
-
-        if (code === 0) {
-          resolve(stdout);
-        } else {
-          // If the process was killed due to buffer size, the reject is already handled.
-          // Only reject here if it wasn't already rejected.
-          if (stdout.length <= MAX_BUFFER_SIZE) {
-             reject(new Error(stderr || `Git command failed with code ${code}`));
+        gitProcess.stdout.on("data", (data) => {
+          if (stdout.length + data.length > MAX_BUFFER_SIZE) {
+            gitProcess.kill();
+            reject(new Error(`Git command output exceeded maximum buffer size of ${MAX_BUFFER_SIZE} bytes`));
+            return;
           }
-        }
-      });
+          stdout += data;
+        });
 
-      gitProcess.on("error", (err) => {
-        const duration = Date.now() - startTime;
-        this.logCommand(args, false, -1, duration);
-        reject(err);
+        gitProcess.stderr.on("data", (data) => (stderr += data));
+
+        gitProcess.on("close", (code) => {
+          const duration = Date.now() - startTime;
+          this.logCommand(args, code === 0, code || 0, duration);
+
+          if (code === 0) {
+            resolve(stdout);
+          } else {
+            // If the process was killed due to buffer size, the reject is already handled.
+            // Only reject here if it wasn't already rejected.
+            if (stdout.length <= MAX_BUFFER_SIZE) {
+               reject(new Error(stderr || `Git command failed with code ${code}`));
+            }
+          }
+        });
+
+        gitProcess.on("error", (err) => {
+          const duration = Date.now() - startTime;
+          this.logCommand(args, false, -1, duration);
+          reject(err);
+        });
       });
     });
+
+    this.commandQueue = result.catch(() => {}); // Continue queue even if command fails
+    return result;
   }
 
   private logCommand(args: string[], success: boolean, exitCode: number, duration: number) {
@@ -401,7 +403,7 @@ export class GitService {
 
   async commit(repoPath: string, message: string): Promise<void> {
     if (!message.trim()) throw new Error("Commit message cannot be empty");
-    await this.run(["commit", "-m", message], repoPath);
+    await this.runWithRetry(["commit", "-m", message], repoPath);
   }
 
   async push(repoPath: string): Promise<void> {
@@ -574,7 +576,7 @@ export class GitService {
 
   async checkoutBranch(repoPath: string, branchName: string): Promise<void> {
     try {
-      await this.run(["checkout", "--", branchName], repoPath);
+      await this.runWithRetry(["checkout", branchName], repoPath);
     } catch (error) {
       logError("GitService", `Failed to checkout branch ${branchName}: ${error}`);
       throw error;
@@ -590,8 +592,63 @@ export class GitService {
     }
   }
 
+  async stash(repoPath: string): Promise<void> {
+    await this.runWithRetry(["stash", "push", "-m", `Auto-stash before checkout: ${new Date().toLocaleString()}`], repoPath);
+  }
+
+  private async runWithRetry(args: string[], cwd: string, retries = 10, delay = 500): Promise<string> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await this.run(args, cwd);
+      } catch (error: any) {
+        const message = error.message || "";
+        const isLockError = message.includes("index.lock") || message.includes("could not write index") || message.includes("Unable to create");
+        
+        if (isLockError && i < retries - 1) {
+          console.log(`[GitService] Index locked, retrying command '${args[0]} ${args[1]}' (${i + 1}/${retries})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Git command failed after retries");
+  }
+
   async applyStash(repoPath: string, index: string): Promise<void> {
-    await this.run(["stash", "apply", "--", index], repoPath);
+    const isConflictMessage = (msg: string) => {
+      const lower = msg.toLowerCase();
+      return lower.includes("conflict") || 
+             lower.includes("merge conflict") || 
+             lower.includes("unmerged") ||
+             lower.includes("fix conflicts");
+    };
+
+    try {
+      await this.runWithRetry(["stash", "apply", "--index", index], repoPath);
+    } catch (error: any) {
+      const message = error.message || "";
+      if (isConflictMessage(message)) {
+        throw new Error("STASH_CONFLICT: Stash applied with merge conflicts. Please resolve them in your editor.");
+      }
+      
+      // Fallback: try without --index
+      try {
+        await this.runWithRetry(["stash", "apply", index], repoPath);
+      } catch (innerError: any) {
+        const innerMessage = innerError.message || "";
+        if (isConflictMessage(innerMessage)) {
+          throw new Error("STASH_CONFLICT: Stash applied with merge conflicts. Please resolve them in your editor.");
+        }
+        
+        // If it's code 1 and we got here, it's very likely a conflict even if the message is weird
+        if (innerMessage.includes("failed with code 1")) {
+           throw new Error("STASH_CONFLICT: Stash applied with merge conflicts. Please resolve them in your editor.");
+        }
+        
+        throw innerError;
+      }
+    }
   }
 
   async dropStash(repoPath: string, index: string): Promise<void> {

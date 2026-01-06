@@ -16,7 +16,8 @@ import { StashGallery } from "./StashGallery";
 import { CommitGraph } from "./CommitGraph";
 import { CommitDetails } from "./CommitDetails";
 import { ChangesView } from "./ChangesView";
-import { BranchCheckout } from "./BranchCheckout";
+import { BranchSwitcherModal } from "./BranchSwitcherModal";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { HelpView } from "./HelpView";
 import { GitConsole } from "./GitConsole";
 import { GitHubStatus } from "./GitHubStatus";
@@ -45,6 +46,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const [commitFilters, setCommitFilters] = useState<CommitFilterOptions>({});
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [isBranchSwitcherOpen, setIsBranchSwitcherOpen] = useState(false);
+  const [pendingCheckoutBranch, setPendingCheckoutBranch] = useState<string | null>(null);
+  const [showStashConfirm, setShowStashConfirm] = useState(false);
   const PAGE_SIZE = 50;
   const [currentView, setCurrentView] = useState<
     | "graph"
@@ -53,7 +57,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     | "changes"
     | "contributors"
     | "stashes"
-    | "checkout"
     | "help"
     | "console"
     | "actions"
@@ -153,23 +156,57 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     let unsubscribeBranches: (() => void) | undefined;
     let unsubscribeCommits: (() => void) | undefined;
     let unsubscribeHead: (() => void) | undefined;
+    let unsubscribeMenuSwitcher: (() => void) | undefined;
+    let unsubscribeMenuSync: (() => void) | undefined;
 
     if (window.gitcanopyAPI) {
       unsubscribeBranches = window.gitcanopyAPI.onBranchesUpdated(refreshData);
       unsubscribeCommits = window.gitcanopyAPI.onCommitsUpdated(refreshData);
       unsubscribeHead = window.gitcanopyAPI.onHeadChanged(refreshData);
+      
+      unsubscribeMenuSwitcher = window.gitcanopyAPI.onMenuOpenBranchSwitcher(() => {
+        setIsBranchSwitcherOpen(true);
+      });
+      
+      unsubscribeMenuSync = window.gitcanopyAPI.onMenuSyncRepository(() => {
+        refreshData();
+        showToast("Syncing repository...", "info");
+      });
     }
 
     return () => {
       unsubscribeBranches?.();
       unsubscribeCommits?.();
       unsubscribeHead?.();
+      unsubscribeMenuSwitcher?.();
+      unsubscribeMenuSync?.();
     };
   }, [repository.path, repository.currentBranch, refreshData]);
 
   const handleBranchSelect = async (branchName: string) => {
     if (branchName === repository.currentBranch) return;
 
+    try {
+      // 1. Check for uncommitted changes
+      const status = await window.gitcanopyAPI.getStatus(repository.path);
+      const hasChanges = status.files.some(f => f.status !== 'untracked');
+
+      if (hasChanges) {
+        setPendingCheckoutBranch(branchName);
+        setShowStashConfirm(true);
+        return;
+      }
+
+      // 2. No changes? Direct checkout
+      await performCheckout(branchName);
+    } catch (error) {
+      console.error("Status check failed:", error);
+      // Fallback to direct checkout attempt if status check fails
+      await performCheckout(branchName);
+    }
+  };
+
+  const performCheckout = async (branchName: string) => {
     if (
       window.gitcanopyAPI &&
       typeof window.gitcanopyAPI.checkoutBranch === "function"
@@ -178,8 +215,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         showToast(`Checking out ${branchName}...`, "info");
         await window.gitcanopyAPI.checkoutBranch(repository.path, branchName);
         showToast(`Checked out ${branchName}`, "success");
-
-        // Refresh local state
         refreshData();
       } catch (error) {
         console.error("Checkout failed:", error);
@@ -190,6 +225,23 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       }
     } else {
       showToast("Checkout feature is currently unavailable.", "info");
+    }
+  };
+
+  const handleStashAndCheckout = async () => {
+    if (!pendingCheckoutBranch) return;
+    
+    try {
+      setShowStashConfirm(false);
+      showToast("Stashing changes...", "info");
+      await window.gitcanopyAPI.stash(repository.path);
+      showToast("Changes stashed", "success");
+      
+      await performCheckout(pendingCheckoutBranch);
+      setPendingCheckoutBranch(null);
+    } catch (error) {
+      console.error("Stash & Checkout failed:", error);
+      showToast("Failed to stash changes", "error");
     }
   };
 
@@ -222,6 +274,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         event.preventDefault();
         refreshData();
         showToast("Refreshing repository...", "info");
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === "b") {
+        event.preventDefault();
+        setIsBranchSwitcherOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -311,18 +367,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         );
       case "stashes":
         return <StashGallery repoPath={repository.path} />;
-      case "checkout":
-        return (
-          <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">
-            <div className="p-12 max-w-4xl mx-auto">
-              <BranchCheckout
-                branches={branches}
-                currentBranchName={repository.currentBranch}
-                onBranchSelect={handleBranchSelect}
-              />
-            </div>
-          </div>
-        );
       case "help":
         return <HelpView />;
       case "console":
@@ -341,6 +385,28 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   return (
     <div className="h-full w-full flex flex-col bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-zed-dark-text overflow-hidden">
+      {isBranchSwitcherOpen && (
+        <BranchSwitcherModal
+          visible={isBranchSwitcherOpen}
+          branches={branches}
+          currentBranch={repository.currentBranch}
+          onClose={() => setIsBranchSwitcherOpen(false)}
+          onSelectBranch={handleBranchSelect}
+        />
+      )}
+      <ConfirmDialog
+        isOpen={showStashConfirm}
+        title="Uncommitted Changes Detected"
+        message="You have modified files in your working directory. Switching branches may cause conflicts. Would you like to stash your changes before switching?"
+        confirmText="Stash & Checkout"
+        cancelText="Cancel"
+        type="warning"
+        onConfirm={handleStashAndCheckout}
+        onCancel={() => {
+          setShowStashConfirm(false);
+          setPendingCheckoutBranch(null);
+        }}
+      />
       {/* Title Bar / Toolbar */}
       <div className="h-10 flex items-center justify-between px-4 bg-zed-bg dark:bg-zed-dark-bg border-b border-zed-border dark:border-zed-dark-border select-none shrink-0 draggable">
         <div className="flex items-center gap-3">
@@ -350,7 +416,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           {/* Sidebar Toggle */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted hover:text-zed-text transition-colors no-drag ${!isSidebarOpen ? "text-zed-accent dark:text-zed-accent" : ""}`}
+            className={`p-1.5 rounded hover:bg-zed-element dark:hover:bg-zinc-700 text-zed-muted hover:text-zed-text dark:hover:text-white transition-colors no-drag ${!isSidebarOpen ? "text-zed-accent dark:text-zed-accent" : ""}`}
             title="Toggle Sidebar"
           >
             <svg
@@ -455,7 +521,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     <span
                       className={`w-2 h-2 rounded-full ${repository.isDetached ? "bg-commit-refactor" : "bg-zed-accent"}`}
                     ></span>
-                    <span className="truncate">{repository.currentBranch}</span>
+                    <button 
+                      onClick={() => setIsBranchSwitcherOpen(true)}
+                      className="truncate hover:text-zed-accent hover:underline cursor-pointer focus:outline-none"
+                      title="Click to switch branch (Cmd+B)"
+                    >
+                      {repository.currentBranch}
+                    </button>
                     {repository.isDetached && (
                       <span className="text-[9px] bg-zed-element dark:bg-zed-dark-element px-1 rounded border border-zed-border dark:border-zed-dark-border opacity-70">
                         DETACHED
@@ -514,6 +586,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <BranchExplorer
                   branches={branches}
                   currentBranchName={repository.currentBranch}
+                  onBranchSelect={handleBranchSelect}
                 />
               </div>
 
@@ -545,7 +618,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <span>Commit Details</span>
               <button
                 onClick={() => setSelectedCommit(null)}
-                className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted hover:text-zed-text transition-colors no-drag"
+                className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zinc-700 text-zed-muted hover:text-zed-text dark:hover:text-white transition-colors no-drag"
                 title="Close Commit Details"
               >
                 <svg
@@ -666,9 +739,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               </svg>
             </button>
             <button
-              onClick={() => setCurrentView("checkout")}
-              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "checkout" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
-              title="Checkout Branch"
+              onClick={() => setIsBranchSwitcherOpen(true)}
+              className={`p-1.5 rounded-none transition-all duration-200 text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-white hover:bg-zed-element/50 dark:hover:bg-zinc-700`}
+              title="Switch Branch (Cmd+B)"
             >
               <svg
                 className="w-4 h-4"

@@ -32,9 +32,15 @@ export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath }) => {
         await window.gitcanopyAPI.applyStash(repoPath, index);
         showToast("Stash applied successfully", "success");
         fetchStashes();
-      } catch (error) {
-        showToast("Failed to apply stash", "error");
+      } catch (error: any) {
+        const errorMessage = error.message || "";
+        if (errorMessage.includes("STASH_CONFLICT")) {
+          showToast("Stash applied with conflicts. Please resolve them.", "warning");
+        } else {
+          showToast("Failed to apply stash", "error");
+        }
         console.error(error);
+        fetchStashes(); // Refresh anyway to show the current state
       }
     }
   };

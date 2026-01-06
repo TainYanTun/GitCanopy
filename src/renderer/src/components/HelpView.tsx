@@ -1,6 +1,9 @@
 import React from "react";
 
 export const HelpView: React.FC = () => {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const modKey = isMac ? 'Cmd' : 'Ctrl';
+
   return (
     <div className="h-full overflow-y-auto bg-zed-bg dark:bg-zed-dark-bg selection:bg-zed-accent/30 animate-in fade-in duration-500">
       <div className="max-w-2xl mx-auto px-8 py-20 space-y-24 text-zed-text dark:text-zed-dark-text font-sans antialiased">
@@ -319,19 +322,25 @@ export const HelpView: React.FC = () => {
             </h2>
           </div>
 
-          <div className="pl-8">
+          <div className="pl-8 space-y-6">
             <div className="grid grid-cols-2 gap-y-4 max-w-sm text-[11px] font-mono uppercase tracking-tighter bg-zed-element/20 dark:bg-zed-dark-element/20 p-6 rounded-xl border border-zed-border dark:border-zed-dark-border shadow-inner">
               <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
                 Sync Data
               </div>{" "}
               <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
-                Cmd R
+                {modKey} R
               </div>
               <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
                 Open Repo
               </div>{" "}
               <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
-                Cmd O
+                {modKey} O
+              </div>
+              <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
+                Switch Branch
+              </div>{" "}
+              <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
+                {modKey} B
               </div>
               <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
                 Escape View
@@ -339,6 +348,7 @@ export const HelpView: React.FC = () => {
               <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
                 Esc
               </div>
+
               <div className="text-zed-muted dark:text-zed-dark-muted/50 border-t border-zed-border dark:border-zed-dark-border/50 pt-4">
                 Search Tags
               </div>{" "}

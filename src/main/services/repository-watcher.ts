@@ -6,6 +6,17 @@ import { logInfo, logError } from './logger-service';
 export class RepositoryWatcher {
   private watchers: Map<string, FSWatcher[]> = new Map();
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private isPaused = false;
+
+  public pause(): void {
+    this.isPaused = true;
+    logInfo('Watcher', 'Watcher paused');
+  }
+
+  public resume(): void {
+    this.isPaused = false;
+    logInfo('Watcher', 'Watcher resumed');
+  }
 
   watchRepository(repoPath: string, callback: (event: AppEvent) => void): void {
     if (this.watchers.has(repoPath)) {
@@ -18,6 +29,8 @@ export class RepositoryWatcher {
     if (!existsSync(gitPath)) return;
 
     const debounceCallback = (event: AppEvent) => {
+      if (this.isPaused) return;
+      
       const key = `${repoPath}:${event.type}`;
       if (this.debounceTimers.has(key)) {
         clearTimeout(this.debounceTimers.get(key)!);
