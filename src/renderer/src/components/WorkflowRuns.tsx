@@ -140,24 +140,34 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
 
     fetchRuns();
 
-    // Trigger immediate fetch on repository changes (e.g., after push/tag)
     const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
-      if (hasToken && !isAuthError && !loading) {
-        fetchRuns();
-      }
+      if (hasToken && !isAuthError && !loading) fetchRuns();
     });
 
-    const tokenInterval = setInterval(checkTokenStatus, 5000);
-    const syncInterval = setInterval(() => {
+    const handleFocus = () => {
       if (hasToken && !isAuthError && !loading) fetchRuns();
-    }, 10000); // 10s for snappier production feedback
+    };
+    window.addEventListener("focus", handleFocus);
+
+    const poll = async () => {
+      if (!hasToken || isAuthError || loading) return;
+      await fetchRuns();
+      
+      const isRunning = runs.some(r => r.status === "in_progress" || r.status === "queued");
+      clearInterval(syncInterval);
+      syncInterval = setInterval(poll, isRunning ? 5000 : 30000);
+    };
+
+    let syncInterval = setInterval(poll, 15000);
+    const tokenInterval = setInterval(checkTokenStatus, 5000);
 
     return () => {
       unlisten();
+      window.removeEventListener("focus", handleFocus);
       clearInterval(tokenInterval);
       clearInterval(syncInterval);
     };
-  }, [repoPath, currentBranch, hasToken, isAuthError, filterByBranch]);
+  }, [repoPath, currentBranch, hasToken, isAuthError, filterByBranch, runs.some(r => r.status === "in_progress")]);
 
   const getStatusIcon = (status: string, conclusion: string | null) => {
     if (status === "queued" || status === "in_progress")

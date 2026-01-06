@@ -73,24 +73,41 @@ export const GitHubStatus: React.FC<GitHubStatusProps> = ({
   useEffect(() => {
     checkToken();
     
-    // Listen for repository changes (e.g., after a push) to trigger immediate refresh
     const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
-      if (hasToken && !isAuthError) {
-        fetchStatus();
-      }
+      if (hasToken && !isAuthError) fetchStatus();
     });
 
-    const tokenCheckInterval = setInterval(checkToken, 5000);
-    const statusInterval = setInterval(() => {
+    // Smart Refresh: Sync when window gets focus
+    const handleFocus = () => {
       if (hasToken && !isAuthError) fetchStatus();
-    }, 10000); // Increased frequency to 10s for better production responsiveness
+    };
+    window.addEventListener("focus", handleFocus);
+
+    // Dynamic Polling: Fast (5s) if a build is active, Slow (30s) if idle
+    const poll = async () => {
+      if (!hasToken || isAuthError || loading) return;
+      
+      await fetchStatus();
+      
+      // Look at the most recent run to determine next interval
+      const latest = runs[0];
+      const isRunning = latest?.status === "in_progress" || latest?.status === "queued";
+      
+      // Clear and reschedule
+      clearInterval(statusInterval);
+      statusInterval = setInterval(poll, isRunning ? 5000 : 30000);
+    };
+
+    let statusInterval = setInterval(poll, 10000);
+    const tokenCheckInterval = setInterval(checkToken, 5000);
 
     return () => {
       unlisten();
+      window.removeEventListener("focus", handleFocus);
       clearInterval(tokenCheckInterval);
       clearInterval(statusInterval);
     };
-  }, [repoPath, currentBranch, hasToken, isAuthError]);
+  }, [repoPath, currentBranch, hasToken, isAuthError, runs[0]?.status]);
 
   const handleSaveToken = async () => {
     const token = tokenInput.trim();
