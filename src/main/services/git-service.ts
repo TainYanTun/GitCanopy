@@ -21,6 +21,58 @@ import {
   StatusFile,
 } from "../../shared/types";
 
+class ReadWriteLock {
+  private readers = 0;
+  private writeQueue: (() => void)[] = [];
+  private readQueue: (() => void)[] = [];
+  private writerActive = false;
+
+  async acquireRead(): Promise<() => void> {
+    // If a writer is active or writers are waiting, we wait (Write Preference to avoid starvation)
+    if (this.writerActive || this.writeQueue.length > 0) {
+      await new Promise<void>(resolve => this.readQueue.push(resolve));
+    }
+    this.readers++;
+    return () => this.releaseRead();
+  }
+
+  releaseRead() {
+    this.readers--;
+    this.processQueue();
+  }
+
+  async acquireWrite(): Promise<() => void> {
+    if (this.writerActive || this.readers > 0) {
+      await new Promise<void>(resolve => this.writeQueue.push(resolve));
+    }
+    this.writerActive = true;
+    return () => this.releaseWrite();
+  }
+
+  releaseWrite() {
+    this.writerActive = false;
+    this.processQueue();
+  }
+
+  private processQueue() {
+    if (this.writerActive) return;
+
+    // Prioritize writers
+    if (this.writeQueue.length > 0) {
+      if (this.readers === 0) {
+        const nextWriter = this.writeQueue.shift();
+        if (nextWriter) nextWriter();
+      }
+    } else if (this.readQueue.length > 0) {
+      // No writers waiting, flush all readers
+      while (this.readQueue.length > 0) {
+        const nextReader = this.readQueue.shift();
+        if (nextReader) nextReader();
+      }
+    }
+  }
+}
+
 export class GitService {
   private commandHistory: GitCommandLog[] = [];
   private maxHistorySize = 100;
@@ -30,7 +82,7 @@ export class GitService {
   
   private authService: AuthService | null = null;
   private askPassScriptPath: string | null = null;
-  private commandQueue: Promise<any> = Promise.resolve();
+  private commandLock = new ReadWriteLock();
 
   constructor(authService?: AuthService) {
     if (authService) {
@@ -89,9 +141,22 @@ export class GitService {
     return url;
   }
 
+  private isWriteCommand(args: string[]): boolean {
+    const writeCommands = new Set([
+      'add', 'commit', 'checkout', 'merge', 'rebase', 'reset', 
+      'stash', 'clean', 'pull', 'push', 'clone', 'fetch', 
+      'rm', 'mv', 'revert', 'cherry-pick'
+    ]);
+    return writeCommands.has(args[0]);
+  }
+
   private async run(args: string[], cwd: string): Promise<string> {
-    // Add to queue to prevent concurrent Git access issues
-    const result = this.commandQueue.then(async () => {
+    const isWrite = this.isWriteCommand(args);
+    const release = isWrite 
+      ? await this.commandLock.acquireWrite() 
+      : await this.commandLock.acquireRead();
+
+    try {
       const startTime = Date.now();
       
       // Prepare env
@@ -105,11 +170,11 @@ export class GitService {
           await this.authService.start();
       }
 
-      return new Promise<string>((resolve, reject) => {
+      return await new Promise<string>((resolve, reject) => {
         const gitProcess = spawn("git", args, { cwd, env });
         let stdout = "";
         let stderr = "";
-        const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB limit
+        const MAX_BUFFER_SIZE = 20 * 1024 * 1024; // Increased to 20MB for larger diffs
 
         gitProcess.stdout.on("data", (data) => {
           if (stdout.length + data.length > MAX_BUFFER_SIZE) {
@@ -130,7 +195,6 @@ export class GitService {
             resolve(stdout);
           } else {
             // If the process was killed due to buffer size, the reject is already handled.
-            // Only reject here if it wasn't already rejected.
             if (stdout.length <= MAX_BUFFER_SIZE) {
                reject(new Error(stderr || `Git command failed with code ${code}`));
             }
@@ -143,10 +207,9 @@ export class GitService {
           reject(err);
         });
       });
-    });
-
-    this.commandQueue = result.catch(() => {}); // Continue queue even if command fails
-    return result;
+    } finally {
+      release();
+    }
   }
 
   private logCommand(args: string[], success: boolean, exitCode: number, duration: number) {

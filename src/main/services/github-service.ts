@@ -36,8 +36,8 @@ export class GitHubService {
       // 1. Get and verify Remote URL
       let remoteUrl = this.remoteUrlCache.get(repoPath);
       
-      // If not in cache or previously determined as non-github, try one last time to be sure
-      if (remoteUrl === undefined || this.nonGitHubRepos.has(repoPath)) {
+      // If not in cache, try to fetch it
+      if (remoteUrl === undefined) {
         const fetchedUrl = await this.getRemoteUrl(repoPath);
         
         if (!fetchedUrl || !this.isGitHubUrl(fetchedUrl)) {

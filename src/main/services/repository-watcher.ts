@@ -1,21 +1,20 @@
-import { watch, FSWatcher, existsSync } from 'fs';
-import { join } from 'path';
-import { AppEvent } from '../../shared/types';
-import { logInfo, logError } from './logger-service';
+import * as chokidar from "chokidar";
+import { AppEvent } from "../../shared/types";
+import { logInfo, logError } from "./logger-service";
 
 export class RepositoryWatcher {
-  private watchers: Map<string, FSWatcher[]> = new Map();
+  private watchers: Map<string, chokidar.FSWatcher> = new Map();
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private isPaused = false;
 
   public pause(): void {
     this.isPaused = true;
-    logInfo('Watcher', 'Watcher paused');
+    logInfo("Watcher", "Watcher paused");
   }
 
   public resume(): void {
     this.isPaused = false;
-    logInfo('Watcher', 'Watcher resumed');
+    logInfo("Watcher", "Watcher resumed");
   }
 
   watchRepository(repoPath: string, callback: (event: AppEvent) => void): void {
@@ -23,99 +22,133 @@ export class RepositoryWatcher {
       this.unwatchRepository(repoPath);
     }
 
-    const watchers: FSWatcher[] = [];
-    const gitPath = join(repoPath, '.git');
-
-    if (!existsSync(gitPath)) return;
-
     const debounceCallback = (event: AppEvent) => {
       if (this.isPaused) return;
-      
+
       const key = `${repoPath}:${event.type}`;
       if (this.debounceTimers.has(key)) {
         clearTimeout(this.debounceTimers.get(key)!);
       }
 
-      this.debounceTimers.set(key, setTimeout(() => {
-        callback(event);
-        this.debounceTimers.delete(key);
-      }, 100)); // 100ms debounce
+      this.debounceTimers.set(
+        key,
+        setTimeout(() => {
+          callback(event);
+          this.debounceTimers.delete(key);
+        }, 100),
+      ); // 100ms debounce
     };
 
     try {
-      logInfo('Watcher', `Starting recursive watch on ${gitPath}`);
-      // Watching the .git directory recursively is most reliable on macOS/Windows
-      const gitWatcher = watch(gitPath, { recursive: true }, (eventType, filename) => {
-        if (!filename) return;
+      logInfo("Watcher", `Starting chokidar watch on ${repoPath}`);
 
-        // Ignore lock files
-        if (filename.endsWith('.lock')) return;
+      const watcher = chokidar.watch(repoPath, {
+        persistent: true,
+        ignoreInitial: true,
+        ignorePermissionErrors: true,
+        ignored: (path: string) => {
+          // Normalize path for check (although path usually comes as is)
+          // Check for node_modules (performance killer #1)
+          if (path.includes("node_modules")) return true;
 
-        if (filename === 'HEAD' || filename === 'ORIG_HEAD') {
-          logInfo('Watcher', `Head change detected: ${filename}`);
+          // Check for .git internals
+          if (path.includes(".git")) {
+            // Must allow .git folder itself
+            if (path.endsWith(".git")) return false;
+
+            // Ignore heavy .git subdirectories
+            if (path.includes(".git/objects")) return true;
+            if (path.includes(".git/logs")) return true;
+            if (path.includes(".git/hooks")) return true;
+
+            // Allow specific important files/dirs
+            if (path.includes(".git/HEAD")) return false;
+            if (path.includes(".git/ORIG_HEAD")) return false;
+            if (path.includes(".git/index")) return false;
+            if (path.includes(".git/packed-refs")) return false;
+            if (path.includes(".git/refs")) return false;
+
+            // For other .git files, default to allow (e.g. config, description)
+            return false;
+          }
+
+          // Ignore common build output directories
+          if (
+            path.includes("/dist/") ||
+            path.includes("/build/") ||
+            path.includes("/.next/") ||
+            path.includes("/out/")
+          )
+            return true;
+
+          // Ignore lock files
+          if (path.endsWith(".lock") || path.endsWith("-lock.json"))
+            return true;
+
+          return false;
+        },
+      });
+
+      watcher.on("all", (eventName, path) => {
+        if (!path) return;
+
+        // 1. Handle .git changes
+        if (path.includes(".git")) {
+          if (path.endsWith("HEAD") || path.endsWith("ORIG_HEAD")) {
+            logInfo("Watcher", `Head change detected: ${path}`);
+            debounceCallback({
+              type: "head-changed",
+              newHead: "",
+              oldHead: "",
+            });
+          } else if (path.includes("refs/") || path.endsWith("packed-refs")) {
+            logInfo("Watcher", `Refs change detected: ${path}`);
+            debounceCallback({
+              type: "branches-updated",
+              branches: [],
+            });
+            debounceCallback({
+              type: "commits-updated",
+              commits: [],
+            });
+          } else if (path.endsWith("index")) {
+            logInfo("Watcher", `Index change detected`);
+            debounceCallback({
+              type: "repository-changed",
+              repository: { path: repoPath } as any,
+            });
+            // Index change often implies stage/unstage, so we might want to refresh commits view status
+            debounceCallback({
+              type: "commits-updated",
+              commits: [],
+            });
+          }
+        } else {
+          // 2. Handle Working Tree changes
+          // Any other change in the working directory
           debounceCallback({
-            type: 'head-changed',
-            newHead: '',
-            oldHead: '',
-          });
-        } else if (filename.startsWith('refs') || filename === 'packed-refs') {
-          logInfo('Watcher', `Refs change detected: ${filename}`);
-          debounceCallback({
-            type: 'branches-updated',
-            branches: [],
-          });
-          // Also trigger commit update because new branches/tags often mean new commits
-          debounceCallback({
-            type: 'commits-updated',
-            commits: []
-          });
-        } else if (filename === 'index') {
-          logInfo('Watcher', `Index change detected (commit/stage)`);
-          debounceCallback({
-            type: 'repository-changed',
-            repository: { path: repoPath } as any
-          });
-          debounceCallback({
-            type: 'commits-updated',
-            commits: []
+            type: "repository-changed",
+            repository: { path: repoPath } as any,
           });
         }
       });
-      watchers.push(gitWatcher);
 
-      // ALSO watch the working directory for file changes (to update Status)
-      // Note: Recursive watching is supported on macOS and Windows. 
-      // On Linux this might need a different strategy (or chokidar), but for now sticking to native.
-      logInfo('Watcher', `Starting recursive watch on working tree ${repoPath}`);
-      const workTreeWatcher = watch(repoPath, { recursive: true }, (eventType, filename) => {
-        if (!filename) return;
-        
-        // Filter out .git (handled above) and node_modules (noise)
-        if (filename.includes('.git') || filename.includes('node_modules')) return;
-        
-        // Ignore build output directories (common defaults)
-        if (filename.includes('dist/') || filename.includes('build/') || filename.includes('.next/')) return;
-
-        // For any other file change in the working tree
-        debounceCallback({
-          type: 'repository-changed',
-          repository: { path: repoPath } as any
-        });
+      watcher.on("error", (error) => {
+        logError("Watcher", `Chokidar error: ${error}`);
       });
-      watchers.push(workTreeWatcher);
 
-      this.watchers.set(repoPath, watchers);
+      this.watchers.set(repoPath, watcher);
     } catch (error) {
-      logError('Watcher', error);
-      watchers.forEach(watcher => watcher.close());
+      logError("Watcher", error);
     }
   }
 
-  unwatchRepository(repoPath: string): void {
-    const watchers = this.watchers.get(repoPath);
-    if (watchers) {
-      watchers.forEach(watcher => watcher.close());
+  async unwatchRepository(repoPath: string): Promise<void> {
+    const watcher = this.watchers.get(repoPath);
+    if (watcher) {
+      await watcher.close();
       this.watchers.delete(repoPath);
+      logInfo("Watcher", `Stopped watching ${repoPath}`);
     }
   }
 
