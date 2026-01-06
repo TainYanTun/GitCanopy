@@ -5,7 +5,8 @@ import { logError } from "./logger-service";
 import { WorkflowRun } from "../../shared/types";
 
 export class GitHubService {
-  private remoteUrlCache: Map<string, string> = new Map();
+  private remoteUrlCache: Map<string, string | null> = new Map();
+  private nonGitHubRepos: Set<string> = new Set();
 
   constructor(
     private gitService: GitService,
@@ -15,6 +16,9 @@ export class GitHubService {
   async validateGitHubToken(token: string): Promise<boolean> {
     try {
       await this.fetchWithAuth("https://api.github.com/user", token);
+      // Clear negative caches when a token is validated to allow recovery
+      this.nonGitHubRepos.clear();
+      this.remoteUrlCache.clear();
       return true;
     } catch (error) {
       logError("GitHubService", `Token validation failed: ${error}`);
@@ -22,21 +26,29 @@ export class GitHubService {
     }
   }
 
-  async getWorkflowRuns(repoPath: string, _branchName?: string): Promise<WorkflowRun[]> {
+  async getWorkflowRuns(repoPath: string, branchName?: string): Promise<WorkflowRun[]> {
     const settings = await this.settingsService.getSettings();
     if (!settings.githubToken) {
       return [];
     }
 
     try {
-      // 1. Get Remote URL (with caching)
-      let remoteUrl: string | undefined = this.remoteUrlCache.get(repoPath);
-      if (!remoteUrl) {
+      // 1. Get and verify Remote URL
+      let remoteUrl = this.remoteUrlCache.get(repoPath);
+      
+      // If not in cache or previously determined as non-github, try one last time to be sure
+      if (remoteUrl === undefined || this.nonGitHubRepos.has(repoPath)) {
         const fetchedUrl = await this.getRemoteUrl(repoPath);
-        if (fetchedUrl) {
-          remoteUrl = fetchedUrl;
-          this.remoteUrlCache.set(repoPath, fetchedUrl);
+        
+        if (!fetchedUrl || !this.isGitHubUrl(fetchedUrl)) {
+          this.remoteUrlCache.set(repoPath, null);
+          this.nonGitHubRepos.add(repoPath);
+          return [];
         }
+        
+        remoteUrl = fetchedUrl;
+        this.remoteUrlCache.set(repoPath, fetchedUrl);
+        this.nonGitHubRepos.delete(repoPath); // It's a GitHub repo now!
       }
       
       if (!remoteUrl) return [];
@@ -45,19 +57,21 @@ export class GitHubService {
       const repoInfo = this.parseRepoInfo(remoteUrl);
       if (!repoInfo) return [];
 
-      // 3. Construct API URL
-      // Increase per_page to 100 to ensure builds/releases are visible even in busy repositories
-      const apiUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/actions/runs?per_page=100`;
+      // 3. Construct API URL with branch filtering for accuracy
+      let apiUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/actions/runs?per_page=50`;
+      if (branchName) {
+        apiUrl += `&branch=${encodeURIComponent(branchName)}`;
+      }
       
       // 4. Fetch
       const response = await this.fetchWithAuth(apiUrl, settings.githubToken);
-      if (!response.workflow_runs) return [];
+      if (!response || !response.workflow_runs) return [];
 
       return response.workflow_runs.map((run: any) => {
         // High-fidelity title resolution: Prefer commit message for build/release workflows
         const isGenericTitle = !run.display_title || run.display_title === run.name || run.display_title.includes('.yml');
         const commitMessage = run.head_commit?.message;
-        const displayTitle = (isGenericTitle && commitMessage) ? commitMessage : (run.display_title || run.name);
+        const displayTitle = (isGenericTitle && commitMessage) ? commitMessage.split('\n')[0] : (run.display_title || run.name);
 
         return {
           id: run.id,
@@ -87,14 +101,27 @@ export class GitHubService {
         };
       });
 
-    } catch (error) {
-      // Re-throw authentication errors so the UI can handle them
-      if (error instanceof Error && (error.message.includes("401") || error.message.includes("Unauthorized"))) {
+    } catch (error: any) {
+      const status = error.message?.match(/\((\d+)\)/)?.[1];
+      
+      if (status === "401" || status === "403") {
+        // Auth issues should be reported to the user, not blacklisted as "non-github"
         throw error;
       }
+      
+      if (status === "404") {
+        // Only blacklist on 404 if we're sure the token is valid (token validation happens elsewhere)
+        this.nonGitHubRepos.add(repoPath);
+      }
+      
       console.error("GitHub API Error:", error);
       return [];
     }
+  }
+
+  private isGitHubUrl(url: string): boolean {
+    const lower = url.toLowerCase();
+    return lower.includes("github.com");
   }
 
   private async getRemoteUrl(repoPath: string): Promise<string | null> {
@@ -121,12 +148,13 @@ export class GitHubService {
         url = url.slice(0, -4);
       }
 
-      // Handle SSH: git@github.com:user/repo
-      if (url.startsWith("git@")) {
-        const match = url.match(/:([^/]+)\/(.+)$/);
-        if (match) {
-          return { owner: match[1], repo: match[2] };
-        }
+      // Handle SSH: git@github.com:user/repo OR ssh://git@github.com/user/repo
+      if (url.includes("@github.com")) {
+        const parts = url.split("github.com")[1];
+        // parts will be ":user/repo" or "/user/repo"
+        const cleanPath = parts.startsWith(":") || parts.startsWith("/") ? parts.substring(1) : parts;
+        const [owner, repo] = cleanPath.split("/");
+        if (owner && repo) return { owner, repo };
       }
 
       // Handle HTTPS: https://github.com/user/repo
