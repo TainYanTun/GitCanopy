@@ -2,8 +2,8 @@ import React from "react";
 import { Modal } from "antd";
 import {
   RocketOutlined,
-  GithubOutlined,
-  HistoryOutlined,
+  SearchOutlined,
+  DashboardOutlined,
   ThunderboltOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
@@ -60,14 +60,14 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 1 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <GithubOutlined className="text-base" />
+                <SearchOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  GitHub Actions Explorer
+                  Spotlight Branch Switcher
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Deep CI/CD integration with live status, commit-title resolution, and advanced filtering. Monitor runs for any branch or tag directly within the interface.
+                  Navigate branches instantly with the new searchable Spotlight view. Just hit <kbd className="px-1 rounded bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border">Cmd/Ctrl + B</kbd> to find and switch.
                 </p>
               </div>
             </div>
@@ -75,14 +75,14 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 2 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <HistoryOutlined className="text-base" />
+                <ThunderboltOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Enhanced Commit Explorer
+                  Concurrent Git Engine
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Redesigned History view with a widescreen layout. Linked analytics now allow you to filter Repository Hotspots by author, date, or search query.
+                  A new Read-Write Lock system allows parallel read operations. Your diffs and history load instantly even during heavy fetch or pull operations.
                 </p>
               </div>
             </div>
@@ -90,14 +90,14 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 3 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
-                <ThunderboltOutlined className="text-base" />
+                <DashboardOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Live Working Tree Sync
+                  High-Performance Watcher
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Real-time synchronization for local edits. Status updates instantly as you save files, including support for initial commit diffs.
+                  Upgraded to Chokidar with smart ignore patterns. Enjoy massive CPU savings in large repositories while maintaining real-time working tree sync.
                 </p>
               </div>
             </div>
@@ -108,9 +108,9 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                 <SafetyCertificateOutlined className="text-base" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">Security & Performance</h3>
+                <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">Safe-Checkout & Robust Diffing</h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Encryption-at-rest for GitHub tokens, path traversal protection for file data, and Git command hardening for a safer, faster engineering experience.
+                  Protect your work with validation-checked checkouts. Plus, an increased 20MB buffer ensures complex diffs for massive projects never fail.
                 </p>
               </div>
             </div>

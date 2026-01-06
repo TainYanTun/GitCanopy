@@ -1,6 +1,6 @@
 {
   "name": "gitcanopy",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Electron-based Git visualizer that displays commit history as an interactive graph with semantic coloring, Stable graphs and high FPS virtualized rendering",
   "main": "dist/main/main/main.js",
   "homepage": "./",

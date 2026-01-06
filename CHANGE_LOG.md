@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-01-07
+
+### Performance & Engine Optimization
+- **Enhanced Concurrency:** Implemented a Read-Write Lock system for Git operations, allowing parallel read commands (diffs/logs) while safely serializing write operations.
+- **High-Performance Watcher:** Upgraded to `chokidar` with optimized ignore patterns for `node_modules` and Git internals, drastically reducing CPU usage in large repositories.
+- **Large Repo Support:** Doubled the internal Git output buffer to 20MB to prevent crashes when processing large diffs or extensive histories.
+
+### New Features & UX Improvements
+- **Spotlight Branch Switcher:** Added a fast, searchable branch switcher accessible via `CmdOrCtrl+B`.
+- **Safe-Checkout Flow:** Implemented a robust checkout process that validates working tree state before switching, preventing accidental data loss.
+- **Intelligent Redirects:** Added automatic UI redirection to the "Changes" view when stash/pop operations encounter conflicts.
+
+### Bug Fixes
+- **GitHub Actions:** Resolved false-negative status reports and improved parsing for non-standard remote Git URLs.
+- **Process Stability:** Fixed minor race conditions in the repository watcher during rapid sequential Git operations.
+
 ## [1.0.9] - 2026-01-06
 
 ### GitHub Actions Intelligence (New Core Feature)
