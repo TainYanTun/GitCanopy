@@ -12,7 +12,7 @@ import { CommitMiniLog } from "./CommitMiniLog";
 import { HotFiles } from "./HotFiles";
 import { CommitHistory } from "./CommitHistory";
 import { Contributors } from "./Contributors";
-import { StashGallery } from "./StashGallery";
+import { GitObjectsGallery } from "./GitObjectsGallery";
 import { CommitGraph } from "./CommitGraph";
 import { CommitDetails } from "./CommitDetails";
 import { ChangesView } from "./ChangesView";
@@ -56,7 +56,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     | "history"
     | "changes"
     | "contributors"
-    | "stashes"
+    | "objects"
     | "help"
     | "console"
     | "actions"
@@ -366,11 +366,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </div>
           </div>
         );
-      case "stashes":
+      case "objects":
         return (
-          <StashGallery 
+          <GitObjectsGallery 
             repoPath={repository.path} 
+            headCommit={repository.headCommit}
             onViewChanges={() => setCurrentView("changes")}
+            onRefreshRepo={refreshData}
           />
         );
       case "help":
@@ -800,9 +802,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="flex items-center gap-4 text-zed-muted dark:text-zed-dark-muted">
           <div className="flex items-center gap-1 border-r border-zed-border dark:border-zed-dark-border pr-4 mr-2">
             <button
-              onClick={() => setCurrentView("stashes")}
-              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "stashes" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
-              title="Stash Gallery"
+              onClick={() => setCurrentView("objects")}
+              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "objects" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
+              title="Git Objects (Stashes & Tags)"
             >
               <svg
                 className="w-4 h-4"

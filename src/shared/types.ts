@@ -197,7 +197,15 @@ export interface AppSettings {
 export interface WorkflowRunStep {
   name: string;
   status: "queued" | "in_progress" | "completed";
-  conclusion: "success" | "failure" | "cancelled" | "skipped" | "timed_out" | "action_required" | "neutral" | null;
+  conclusion:
+    | "success"
+    | "failure"
+    | "cancelled"
+    | "skipped"
+    | "timed_out"
+    | "action_required"
+    | "neutral"
+    | null;
   number: number;
 }
 
@@ -207,7 +215,15 @@ export interface WorkflowRun {
   head_branch: string;
   head_sha: string;
   status: "queued" | "in_progress" | "completed";
-  conclusion: "success" | "failure" | "cancelled" | "skipped" | "timed_out" | "action_required" | "neutral" | null;
+  conclusion:
+    | "success"
+    | "failure"
+    | "cancelled"
+    | "skipped"
+    | "timed_out"
+    | "action_required"
+    | "neutral"
+    | null;
   html_url: string;
   created_at: string;
   updated_at: string;
@@ -297,7 +313,13 @@ export interface CommitFilterOptions {
 
 export interface StatusFile {
   path: string;
-  status: "added" | "modified" | "deleted" | "renamed" | "untracked" | "conflicted";
+  status:
+    | "added"
+    | "modified"
+    | "deleted"
+    | "renamed"
+    | "untracked"
+    | "conflicted";
   staged: boolean;
 }
 
@@ -339,20 +361,45 @@ export interface GitCanopyAPI {
   stash: (repoPath: string) => Promise<void>;
   applyStash: (repoPath: string, index: string) => Promise<void>;
   dropStash: (repoPath: string, index: string) => Promise<void>;
+
+  // Tag operations
+  createTag: (
+    repoPath: string,
+    tagName: string,
+    commitHash?: string,
+    message?: string,
+  ) => Promise<void>;
+  deleteTag: (repoPath: string, tagName: string) => Promise<void>;
+  pushTag: (repoPath: string, tagName: string) => Promise<void>;
+  getTags: (repoPath: string) => Promise<string[]>;
+
   getCommitDetails: (repoPath: string, commitHash: string) => Promise<Commit>;
   getDiff: (
     repoPath: string,
     commitHash: string,
     filePath: string,
   ) => Promise<string>;
-  getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) => Promise<HotFile[]>;
+  getHotFiles: (
+    repoPath: string,
+    limit?: number,
+    options?: CommitFilterOptions,
+  ) => Promise<HotFile[]>;
   getContributors: (repoPath: string) => Promise<ContributorStats[]>;
-  getGitCommandHistory: (limit?: number, offset?: number) => Promise<GitCommandLog[]>;
+  getGitCommandHistory: (
+    limit?: number,
+    offset?: number,
+  ) => Promise<GitCommandLog[]>;
   clearGitCommandHistory: () => Promise<void>;
-  getFileDataUrl: (repoPath: string, filePath: string) => Promise<string | null>;
-  
+  getFileDataUrl: (
+    repoPath: string,
+    filePath: string,
+  ) => Promise<string | null>;
+
   // GitHub Integration
-  getWorkflowRuns: (repoPath: string, branchName?: string) => Promise<WorkflowRun[]>;
+  getWorkflowRuns: (
+    repoPath: string,
+    branchName?: string,
+  ) => Promise<WorkflowRun[]>;
   validateGitHubToken: (token: string) => Promise<boolean>;
 
   // File system operations
@@ -387,7 +434,7 @@ export interface GitCanopyAPI {
   showItemInFolder: (path: string) => Promise<void>;
   openExternal: (url: string) => Promise<void>;
   copyToClipboard: (text: string) => Promise<void>;
-  
+
   // Auth
   submitAuth: (answer: string) => Promise<void>;
   cancelAuth: () => Promise<void>;

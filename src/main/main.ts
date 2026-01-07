@@ -463,6 +463,20 @@ class GitCanopyApp {
       this.gitService.dropStash(repoPath, index),
     );
 
+    // Tag operations
+    ipcMain.handle("git:create-tag", (_, repoPath: string, tagName: string, commitHash?: string, message?: string) =>
+      this.gitService.createTag(repoPath, tagName, commitHash, message),
+    );
+    ipcMain.handle("git:delete-tag", (_, repoPath: string, tagName: string) =>
+      this.gitService.deleteTag(repoPath, tagName),
+    );
+    ipcMain.handle("git:push-tag", (_, repoPath: string, tagName: string) =>
+      this.gitService.pushTag(repoPath, tagName),
+    );
+    ipcMain.handle("git:get-tags", (_, repoPath: string) =>
+      this.gitService.getTagsList(repoPath),
+    );
+
     // Initial Path Handling
     ipcMain.handle("get-initial-repo", () => {
       const args = isDev ? process.argv.slice(2) : process.argv.slice(1);

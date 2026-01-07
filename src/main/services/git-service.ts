@@ -758,6 +758,36 @@ export class GitService {
     await this.run(["stash", "drop", "--", index], repoPath);
   }
 
+  async createTag(repoPath: string, tagName: string, commitHash?: string, message?: string): Promise<void> {
+    const args = ["tag", tagName];
+    if (message) {
+      args.push("-m", message);
+      args.push("-a"); // Annotated tag
+    }
+    if (commitHash) {
+      args.push(commitHash);
+    }
+    await this.run(args, repoPath);
+  }
+
+  async deleteTag(repoPath: string, tagName: string): Promise<void> {
+    await this.run(["tag", "-d", tagName], repoPath);
+  }
+
+  async pushTag(repoPath: string, tagName: string): Promise<void> {
+    await this.run(["push", "origin", tagName], repoPath);
+  }
+
+  async getTagsList(repoPath: string): Promise<string[]> {
+    try {
+      // Returns list of tags sorted by creatordate (newest first)
+      const output = await this.run(["tag", "--sort=-creatordate"], repoPath);
+      return output.trim().split("\n").filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
 
   async getCommitDetails(repoPath: string, commitHash: string): Promise<Commit> {
     const args = ["show", "--pretty=format:%H|%P|%an|%ae|%ad|%s", "--numstat", "--date=raw", commitHash];

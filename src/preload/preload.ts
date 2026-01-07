@@ -74,6 +74,19 @@ const gitcanopyAPI: GitCanopyAPI = {
   dropStash: (repoPath: string, index: string): Promise<void> =>
     ipcRenderer.invoke("git:drop-stash", repoPath, index),
 
+  // Tag operations
+  createTag: (repoPath: string, tagName: string, commitHash?: string, message?: string): Promise<void> =>
+    ipcRenderer.invoke("git:create-tag", repoPath, tagName, commitHash, message),
+
+  deleteTag: (repoPath: string, tagName: string): Promise<void> =>
+    ipcRenderer.invoke("git:delete-tag", repoPath, tagName),
+
+  pushTag: (repoPath: string, tagName: string): Promise<void> =>
+    ipcRenderer.invoke("git:push-tag", repoPath, tagName),
+
+  getTags: (repoPath: string): Promise<string[]> =>
+    ipcRenderer.invoke("git:get-tags", repoPath),
+
   getCommitDetails: (repoPath: string, commitHash: string): Promise<Commit> =>
     ipcRenderer.invoke("get-commit-details", repoPath, commitHash),
 
