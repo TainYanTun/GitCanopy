@@ -140,34 +140,35 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
 
     fetchRuns();
 
-    const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
-      if (hasToken && !isAuthError && !loading) fetchRuns();
-    });
-
-    const handleFocus = () => {
-      if (hasToken && !isAuthError && !loading) fetchRuns();
-    };
-    window.addEventListener("focus", handleFocus);
-
     const poll = async () => {
       if (!hasToken || isAuthError || loading) return;
       await fetchRuns();
-      
-      const isRunning = runs.some(r => r.status === "in_progress" || r.status === "queued");
-      clearInterval(syncInterval);
-      syncInterval = setInterval(poll, isRunning ? 5000 : 30000);
     };
 
-    let syncInterval = setInterval(poll, 15000);
+    // Fast polling (5s) if there are active runs, otherwise 15s
+    const isRunning = runs.some(
+      (r) => r.status === "in_progress" || r.status === "queued",
+    );
+    const syncInterval = setInterval(poll, isRunning ? 5000 : 15000);
     const tokenInterval = setInterval(checkTokenStatus, 5000);
+
+    const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
+      fetchRuns(); // Fetch immediately on change
+    });
 
     return () => {
       unlisten();
-      window.removeEventListener("focus", handleFocus);
       clearInterval(tokenInterval);
       clearInterval(syncInterval);
     };
-  }, [repoPath, currentBranch, hasToken, isAuthError, filterByBranch, runs.some(r => r.status === "in_progress")]);
+  }, [
+    repoPath,
+    currentBranch,
+    hasToken,
+    isAuthError,
+    filterByBranch,
+    runs.some((r) => r.status === "in_progress"),
+  ]);
 
   const getStatusIcon = (status: string, conclusion: string | null) => {
     if (status === "queued" || status === "in_progress")
@@ -331,6 +332,17 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
 
           <div className="h-4 w-px bg-zed-border dark:border-zed-dark-border mx-1"></div>
 
+          <button
+            onClick={fetchRuns}
+            disabled={loading}
+            className="p-1.5 rounded-sm hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-white transition-all active:scale-95 flex items-center justify-center h-6"
+            title="Refresh Actions"
+          >
+            <SyncOutlined spin={loading} className="text-[11px]" />
+          </button>
+
+          <div className="h-4 w-px bg-zed-border dark:border-zed-dark-border mx-1"></div>
+
           {/* Status Filter Toggles */}
           <div className="flex items-center gap-1.5">
             <div className="flex bg-zed-element/50 dark:bg-zed-dark-element/50 p-0.5 rounded-sm border border-zed-border dark:border-zed-dark-border">
@@ -421,7 +433,9 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
                       className="flex items-center px-6 py-3 border-b border-zed-border/30 dark:border-zed-dark-border/30 hover:bg-zed-element/20 dark:hover:bg-zed-dark-element/20 cursor-pointer group transition-colors relative"
                     >
                       {/* Status Strip */}
-                      <div className={`absolute left-0 top-2 bottom-2 w-0.5 rounded-full ${getStatusColor(run.status, run.conclusion)} opacity-60`} />
+                      <div
+                        className={`absolute left-0 top-2 bottom-2 w-0.5 rounded-full ${getStatusColor(run.status, run.conclusion)} opacity-60`}
+                      />
 
                       {/* Status Icon */}
                       <div className="w-8 shrink-0 flex items-center justify-start ml-2">
@@ -441,8 +455,14 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
                           <span>•</span>
                           <span className="flex items-center gap-1">
                             <span className="opacity-50">on</span>
-                            {run.head_branch?.startsWith('v') ? <TagOutlined className="text-[8px] opacity-80" /> : <BranchesOutlined className="text-[8px] opacity-80" />}
-                            <span className="text-zed-text dark:text-zed-dark-text font-medium">{run.head_branch}</span>
+                            {run.head_branch?.startsWith("v") ? (
+                              <TagOutlined className="text-[8px] opacity-80" />
+                            ) : (
+                              <BranchesOutlined className="text-[8px] opacity-80" />
+                            )}
+                            <span className="text-zed-text dark:text-zed-dark-text font-medium">
+                              {run.head_branch}
+                            </span>
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
