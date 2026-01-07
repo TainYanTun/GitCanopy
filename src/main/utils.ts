@@ -46,7 +46,7 @@ export const getAppDataPath = (subDir?: string): string => {
 
 // Sanitize file name for safe storage
 export const sanitizeFileName = (fileName: string): string => {
-  return fileName.replace(/[^a-z0-9.-_]/gi, '_').toLowerCase();
+  return fileName.replace(/[^a-z0-9._-]/gi, '_').toLowerCase();
 };
 
 // Format bytes to human readable string

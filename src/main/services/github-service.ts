@@ -120,20 +120,25 @@ export class GitHubService {
   }
 
   private isGitHubUrl(url: string): boolean {
-    const lower = url.toLowerCase();
-    return lower.includes("github.com");
+    try {
+      const lower = url.toLowerCase().trim();
+      
+      // Handle SSH format: git@github.com:owner/repo
+      if (lower.startsWith("git@github.com:")) {
+        return true;
+      }
+
+      // Handle standard URL formats
+      const parsed = new URL(url);
+      return parsed.hostname === "github.com";
+    } catch {
+      // If URL parsing fails, check if it's a valid git SSH short-format manually
+      return /^git@github\.com:[\w.-]+\/[\w.-]+(?:\.git)?$/.test(url.trim());
+    }
   }
 
   private async getRemoteUrl(repoPath: string): Promise<string | null> {
     try {
-      // Accessing the private 'run' method of GitService via a public helper would be better,
-      // but for now we can assume GitService might expose a run command or we create a specific one.
-      // Let's add a public `getRemoteOriginUrl` to GitService or use a direct spawn here?
-      // Better to keep git logic in GitService. 
-      // I'll assume GitService has been updated or I'll hack it here with a direct call if needed,
-      // but let's try to add it to GitService first.
-      // Wait, I can't modify GitService easily from here without checking it.
-      // Let's assume I will add `getRemoteUrl` to GitService next.
       return await this.gitService.getRemoteUrl(repoPath); 
     } catch {
       return null;
@@ -142,31 +147,32 @@ export class GitHubService {
 
   private parseRepoInfo(remoteUrl: string): { owner: string; repo: string } | null {
     try {
-      let url = remoteUrl.trim();
-      // Remove .git suffix
-      if (url.endsWith(".git")) {
-        url = url.slice(0, -4);
-      }
+      const url = remoteUrl.trim();
+      
+      // 1. Handle HTTPS/Standard URLs
+      if (url.startsWith("http") || url.startsWith("git://") || url.startsWith("ssh://")) {
+        const urlObj = new URL(url.startsWith("git@") ? `ssh://${url}` : url);
+        if (urlObj.hostname !== "github.com") return null;
 
-      // Handle SSH: git@github.com:user/repo OR ssh://git@github.com/user/repo
-      if (url.includes("@github.com")) {
-        const parts = url.split("github.com")[1];
-        // parts will be ":user/repo" or "/user/repo"
-        const cleanPath = parts.startsWith(":") || parts.startsWith("/") ? parts.substring(1) : parts;
-        const [owner, repo] = cleanPath.split("/");
-        if (owner && repo) return { owner, repo };
-      }
-
-      // Handle HTTPS: https://github.com/user/repo
-      if (url.startsWith("http")) {
-        const urlObj = new URL(url);
         const parts = urlObj.pathname.split("/").filter(Boolean);
         if (parts.length >= 2) {
-          return { owner: parts[parts.length - 2], repo: parts[parts.length - 1] };
+          const owner = parts[parts.length - 2];
+          const repo = parts[parts.length - 1].replace(/\.git$/, "");
+          return { owner, repo };
+        }
+      }
+
+      // 2. Handle SSH short format: git@github.com:owner/repo.git
+      if (url.startsWith("git@github.com:")) {
+        const pathPart = url.substring("git@github.com:".length);
+        const [owner, repoWithGit] = pathPart.split("/");
+        if (owner && repoWithGit) {
+          const repo = repoWithGit.replace(/\.git$/, "");
+          return { owner, repo };
         }
       }
     } catch (e) {
-      console.error("Failed to parse remote URL:", remoteUrl);
+      logError("GitHubService", `Failed to parse remote URL: ${remoteUrl}`);
     }
     return null;
   }
