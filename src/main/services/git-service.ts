@@ -490,13 +490,14 @@ export class GitService {
     const name = repoPath.split("/").pop() || "Unknown";
     
     // Parallel detection of states and data
-    const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached] = await Promise.all([
+    const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached, totalCommits] = await Promise.all([
       this.getCurrentBranch(repoPath),
       this.getCurrentHead(repoPath),
       this.getBranches(repoPath),
       this.checkIsRebasing(repoPath),
       this.checkIsMerging(repoPath),
-      this.checkIsDetached(repoPath)
+      this.checkIsDetached(repoPath),
+      this.getTotalCommits(repoPath)
     ]);
 
     return {
@@ -506,11 +507,20 @@ export class GitService {
       currentBranch,
       headCommit,
       branches,
-      totalCommits: 0, // Will be calculated later
+      totalCommits,
       isRebasing,
       isMerging,
       isDetached
     };
+  }
+
+  private async getTotalCommits(repoPath: string): Promise<number> {
+    try {
+      const output = await this.run(["rev-list", "--all", "--count"], repoPath);
+      return parseInt(output.trim(), 10) || 0;
+    } catch {
+      return 0;
+    }
   }
 
   private async checkIsRebasing(repoPath: string): Promise<boolean> {

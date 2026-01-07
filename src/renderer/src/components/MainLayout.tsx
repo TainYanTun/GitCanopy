@@ -307,6 +307,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           <CommitHistory
             repoPath={repository.path}
             commits={commits}
+            totalCommits={repository.totalCommits}
             branches={branches}
             headCommitHash={repository.headCommit}
             onCommitSelect={handleCommitSelect}

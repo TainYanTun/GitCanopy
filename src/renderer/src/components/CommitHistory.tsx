@@ -7,6 +7,7 @@ import { AutoSizer } from "react-virtualized-auto-sizer";
 interface CommitHistoryProps {
   repoPath: string;
   commits: Commit[];
+  totalCommits?: number;
   branches: Branch[];
   headCommitHash?: string;
   onCommitSelect: (commit: Commit) => void;
@@ -44,6 +45,7 @@ const typeColorMap: Record<string, string> = {
 
 export const CommitHistory: React.FC<CommitHistoryProps> = ({
   commits,
+  totalCommits,
   branches: _branches,
   headCommitHash: _headCommitHash,
   onCommitSelect,
@@ -174,7 +176,9 @@ export const CommitHistory: React.FC<CommitHistoryProps> = ({
           </div>
           
           <div className="text-[10px] font-mono text-zed-muted opacity-40">
-            {commits.length} COMMITS
+            {Object.values(filters).some((v) => !!v)
+              ? `${commits.length} MATCHES`
+              : `${totalCommits || commits.length} COMMITS`}
           </div>
         </div>
 
