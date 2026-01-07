@@ -6,7 +6,7 @@
 
 Transform complex commit histories into stable, readable graphs with a hyper-minimalist, lightning-fast workflow.
 
-[![Version](https://img.shields.io/badge/version-1.0.0_Stable-1f2937?style=flat&logo=git)](https://github.com/TainYanTun/GitCanopy/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0_Stable-1f2937?style=flat&logo=git)](https://github.com/TainYanTun/GitCanopy/releases)
 [![Build](https://img.shields.io/badge/build-passing-success?style=flat)](https://github.com/TainYanTun/GitCanopy/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-red?style=flat)](https://github.com/TainYanTun/GitCanopy)
@@ -25,9 +25,10 @@ Transform complex commit histories into stable, readable graphs with a hyper-min
 ## ✨ Features
 
 - **Visualization Engine:** Lane-persistent commit graphs with semantic coloring and lineage tracing.
+- **Actions Explorer:** Real-time GitHub Actions monitoring with instant sync and branch filtering.
 - **Professional Performance:** 60FPS virtualized rendering and background worker-powered layouts.
 - **Seamless Workflow:** Atomic staging, high-fidelity diffs, and integrated remote synchronization.
-- **Deep Insights:** Contributor metrics, file hotspot analysis, and a visual stash gallery.
+- **Deep Insights:** Contributor metrics, file hotspots, and a visual stash gallery with file previews.
 
 ---
 

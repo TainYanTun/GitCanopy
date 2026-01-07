@@ -17,10 +17,11 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 - **Stage & Commit:** Seamless GUI workflow for staging files and creating new commits.
 - **Push to Remote:** One-click synchronization with your remote server when your local branch is ahead.
 
-### 3. Repository Insights
+### 3. CI/CD & Insights
+- **GitHub Actions Explorer:** Live monitoring of CI/CD pipelines with real-time status updates and manual refresh capability.
+- **Stash Gallery:** A visual interface for managing git stashes, featuring an **Expandable Preview** to inspect affected files before applying.
 - **Team Metrics:** Analyze contributor impact, commit frequency, and activity over time.
 - **Hotspots:** Identify high-churn files that are frequently modified.
-- **Stash Gallery:** A visual interface for managing and reviewing your git stashes.
 
 ---
 
@@ -36,8 +37,9 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
   - **Graph View:** The primary visual DAG.
   - **Commit History:** A searchable, virtualized list of all commits.
   - **Changes:** Your current working directory status.
+  - **Actions:** Live GitHub Actions monitoring (requires Personal Access Token).
   - **Insights:** Contributor and file hotspots.
-  - **Checkout:** Safe branch switching interface.
+  - **Checkout (Cmd+B):** Safe branch switching with spotlight search.
 
 ### Committing Changes
 1. Go to the **Changes** tab.
@@ -52,6 +54,7 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 | Shortcut | Action |
 | :--- | :--- |
 | `⌘ + O` | Open Repository |
+| `⌘ + B` | Spotlight Branch Switcher |
 | `⌘ + R` | Refresh / Sync Data |
 | `Esc` | Close Panels / Clear Selection |
 | `⌘ + Enter` | Execute Commit (when in Changes view) |
@@ -61,13 +64,15 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 ## 🛡 Security & Performance
 
 ### Security Boundaries
-- **Anti-Injection:** All Git commands are executed using safe argument arrays, protecting against shell injection.
+- **Anti-Injection:** All Git commands are executed using safe argument arrays and the `--` separator to prevent flag injection.
+- **Encrypted Storage:** GitHub Personal Access Tokens are encrypted using OS-level safe storage (Keychain/DPAPI).
+- **Hardened URL Parsing:** Strict hostname verification for GitHub remotes to prevent SSRF and malicious redirection.
 - **Electron Hardening:** Strict `contextIsolation` and `webSecurity` settings. External navigation is disabled by default.
-- **Protocol Validation:** External links are validated against a strict protocol whitelist (HTTPS only).
 
 ### Performance Architecture
 - **Web Worker Layout:** Graph layout calculations are performed off-thread to ensure zero-stutter navigation.
-- **Memory Safety:** A 10MB safety buffer is applied to all Git output streams to prevent memory exhaustion on massive diffs.
+- **Memory Safety:** A 20MB safety buffer is applied to all Git output streams to prevent memory exhaustion on massive diffs.
+- **Read-Write Locking:** Custom concurrency system that allows parallel read operations while safely serializing writes.
 - **List Virtualization:** Uses `react-window` to ensure only visible rows are rendered in the DOM, maintaining 60FPS scrolling.
 
 ---
@@ -75,5 +80,5 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 ## 🎨 Philosophy
 GitCanopy is built on the principle of **"Developer First"**. We prioritize speed and data density over decorative UI elements. Every pixel should serve a functional purpose.
 
-**Build Version:** 1.0.0 Stable
+**Build Version:** 1.1.0 Stable
 **Platform:** macOS / Windows / Linux
