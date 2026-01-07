@@ -64,10 +64,12 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Spotlight Branch Switcher
+                  Stash Content Preview
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Navigate branches instantly with the new searchable Spotlight view. Just hit <kbd className="px-1 rounded bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border">Cmd/Ctrl + B</kbd> to find and switch.
+                  No more &quot;blind applies.&quot; Inspect exactly which files
+                  are inside a stash entry with the new expandable preview in
+                  the Stash Gallery.
                 </p>
               </div>
             </div>
@@ -79,10 +81,12 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Concurrent Git Engine
+                  Instant CI/CD Sync
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  A new Read-Write Lock system allows parallel read operations. Your diffs and history load instantly even during heavy fetch or pull operations.
+                  Experience real-time responsiveness. Successful pushes now
+                  trigger an immediate refresh of GitHub Actions, eliminating
+                  the wait for polling cycles.
                 </p>
               </div>
             </div>
@@ -94,10 +98,12 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  High-Performance Watcher
+                  Integrated UI Dialogs
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Upgraded to Chokidar with smart ignore patterns. Enjoy massive CPU savings in large repositories while maintaining real-time working tree sync.
+                  Replaced all native browser popups with themed custom dialogs
+                  for a cohesive, professional experience that matches the Zed
+                  aesthetic.
                 </p>
               </div>
             </div>
@@ -108,9 +114,13 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                 <SafetyCertificateOutlined className="text-base" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">Safe-Checkout & Robust Diffing</h3>
+                <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
+                  Concurrent Engine & Safe Checkout
+                </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Protect your work with validation-checked checkouts. Plus, an increased 20MB buffer ensures complex diffs for massive projects never fail.
+                  A new Read-Write Lock system allows parallel operations, while
+                  safe checkouts prevent data loss by validating your working
+                  tree state.
                 </p>
               </div>
             </div>

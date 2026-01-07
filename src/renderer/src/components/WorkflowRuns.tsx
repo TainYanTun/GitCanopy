@@ -145,19 +145,26 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
       await fetchRuns();
     };
 
-    // Fast polling (5s) if there are active runs, otherwise 15s
+    // Fast polling (3s) if there are active runs, otherwise 10s
     const isRunning = runs.some(
       (r) => r.status === "in_progress" || r.status === "queued",
     );
-    const syncInterval = setInterval(poll, isRunning ? 5000 : 15000);
+    const syncInterval = setInterval(poll, isRunning ? 3000 : 10000);
     const tokenInterval = setInterval(checkTokenStatus, 5000);
 
-    const unlisten = window.gitcanopyAPI.onRepositoryChanged(() => {
-      fetchRuns(); // Fetch immediately on change
+    const unlistenRepo = window.gitcanopyAPI.onRepositoryChanged(() => fetchRuns());
+    const unlistenBranches = window.gitcanopyAPI.onBranchesUpdated(() => fetchRuns());
+    const unlistenCommits = window.gitcanopyAPI.onCommitsUpdated(() => fetchRuns());
+    const unlistenPush = window.gitcanopyAPI.onPushCompleted(() => {
+      showToast("Push detected, syncing GitHub Actions...", "info");
+      fetchRuns();
     });
 
     return () => {
-      unlisten();
+      unlistenRepo();
+      unlistenBranches();
+      unlistenCommits();
+      unlistenPush();
       clearInterval(tokenInterval);
       clearInterval(syncInterval);
     };
@@ -167,7 +174,7 @@ export const WorkflowRuns: React.FC<WorkflowRunsProps> = ({
     hasToken,
     isAuthError,
     filterByBranch,
-    runs.some((r) => r.status === "in_progress"),
+    runs.some((r) => r.status === "in_progress" || r.status === "queued"),
   ]);
 
   const getStatusIcon = (status: string, conclusion: string | null) => {

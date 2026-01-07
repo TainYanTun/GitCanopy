@@ -11,5 +11,4 @@ export { Contributors } from "./Contributors";
 export { StashGallery } from "./StashGallery";
 export { HelpView } from "./HelpView";
 export { GitConsole } from "./GitConsole";
-export { BranchCheckout } from "./BranchCheckout";
 export { BranchExplorer } from "./BranchExplorer";

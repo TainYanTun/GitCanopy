@@ -400,9 +400,10 @@ class GitCanopyApp {
         this.repositoryWatcher.resume();
       }
     });
-    ipcMain.handle("push", (_, repoPath: string) =>
-      this.gitService.push(repoPath),
-    );
+    ipcMain.handle("push", async (_, repoPath: string) => {
+      await this.gitService.push(repoPath);
+      this.mainWindow?.webContents.send("push-completed");
+    });
 
     // Git data operations
     ipcMain.handle(
@@ -438,6 +439,9 @@ class GitCanopyApp {
     );
     ipcMain.handle("get-stash-list", (_, repoPath: string) =>
       this.gitService.getStashList(repoPath),
+    );
+    ipcMain.handle("git:get-stash-files", (_, repoPath: string, index: string) =>
+      this.gitService.getStashFiles(repoPath, index),
     );
     ipcMain.handle("git:stash", async (_, repoPath: string) => {
       this.repositoryWatcher.pause();

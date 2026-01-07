@@ -655,6 +655,36 @@ export class GitService {
     }
   }
 
+  async getStashFiles(repoPath: string, index: string): Promise<string[]> {
+    try {
+      // 1. Try modern command (includes tracked + untracked)
+      try {
+        const output = await this.run(["stash", "show", "--include-untracked", "--name-only", index], repoPath);
+        const files = output.trim().split("\n").filter(Boolean);
+        if (files.length > 0) return Array.from(new Set(files));
+      } catch (e) {
+        // Fallback if --include-untracked is not supported
+      }
+
+      // 2. Fallback: Combine tracked and untracked manually
+      const [trackedOutput, untrackedOutput] = await Promise.all([
+        this.run(["stash", "show", "--name-only", index], repoPath).catch(() => ""),
+        // The 3rd parent (index^3) of a stash commit contains untracked files
+        this.run(["ls-tree", "-r", `${index}^3`, "--name-only"], repoPath).catch(() => "")
+      ]);
+
+      const combined = [
+        ...trackedOutput.trim().split("\n"),
+        ...untrackedOutput.trim().split("\n")
+      ].filter(Boolean);
+
+      return Array.from(new Set(combined));
+    } catch (error) {
+      logError("GitService", `Failed to get stash files for ${index}: ${error}`);
+      return [];
+    }
+  }
+
   async stash(repoPath: string): Promise<void> {
     await this.runWithRetry(["stash", "push", "-m", `Auto-stash before checkout: ${new Date().toLocaleString()}`], repoPath);
   }

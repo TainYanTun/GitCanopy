@@ -62,6 +62,9 @@ const gitcanopyAPI: GitCanopyAPI = {
   getStashList: (repoPath: string): Promise<StashEntry[]> =>
     ipcRenderer.invoke("get-stash-list", repoPath),
 
+  getStashFiles: (repoPath: string, index: string): Promise<string[]> =>
+    ipcRenderer.invoke("git:get-stash-files", repoPath, index),
+
   stash: (repoPath: string): Promise<void> =>
     ipcRenderer.invoke("git:stash", repoPath),
 
@@ -171,6 +174,14 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.on("menu:sync-repository", wrappedCallback);
     return () => {
       ipcRenderer.removeListener("menu:sync-repository", wrappedCallback);
+    };
+  },
+
+  onPushCompleted: (callback: () => void): (() => void) => {
+    const wrappedCallback = () => callback();
+    ipcRenderer.on("push-completed", wrappedCallback);
+    return () => {
+      ipcRenderer.removeListener("push-completed", wrappedCallback);
     };
   },
 

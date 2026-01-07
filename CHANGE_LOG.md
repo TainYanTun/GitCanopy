@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **Large Repo Support:** Doubled the internal Git output buffer to 20MB to prevent crashes when processing large diffs or extensive histories.
 
 ### New Features & UX Improvements
+- **Stash Content Preview:** Added the ability to inspect files within a stash before applying it, preventing "blind applies."
+- **Instant CI/CD Sync:** Successful push operations now trigger an immediate refresh of GitHub Actions, eliminating polling delays.
+- **Integrated UI Dialogs:** Replaced native browser popups with themed custom confirmation dialogs for a cohesive "Zed" aesthetic.
 - **Spotlight Branch Switcher:** Added a fast, searchable branch switcher accessible via `CmdOrCtrl+B`.
 - **Safe-Checkout Flow:** Implemented a robust checkout process that validates working tree state before switching, preventing accidental data loss.
 - **Intelligent Redirects:** Added automatic UI redirection to the "Changes" view when stash/pop operations encounter conflicts.

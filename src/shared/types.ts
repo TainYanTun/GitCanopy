@@ -335,6 +335,7 @@ export interface GitCanopyAPI {
   getCurrentHead: (repoPath: string) => Promise<string>;
   checkoutBranch: (repoPath: string, branchName: string) => Promise<void>;
   getStashList: (repoPath: string) => Promise<StashEntry[]>;
+  getStashFiles: (repoPath: string, index: string) => Promise<string[]>;
   stash: (repoPath: string) => Promise<void>;
   applyStash: (repoPath: string, index: string) => Promise<void>;
   dropStash: (repoPath: string, index: string) => Promise<void>;
@@ -380,6 +381,7 @@ export interface GitCanopyAPI {
   onMenuOpenRepository: (callback: () => void) => () => void;
   onMenuOpenBranchSwitcher: (callback: () => void) => () => void;
   onMenuSyncRepository: (callback: () => void) => () => void;
+  onPushCompleted: (callback: () => void) => () => void;
 
   // Utility
   showItemInFolder: (path: string) => Promise<void>;
