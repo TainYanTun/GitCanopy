@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useToast } from "./ToastContext";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface StashGalleryProps {
   repoPath: string;
@@ -10,6 +11,22 @@ export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath, onViewChan
   const { showToast } = useToast();
   const [stashes, setStashes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    type: "info" | "warning" | "danger";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info"
+  });
 
   const fetchStashes = async () => {
     setLoading(true);
@@ -27,44 +44,57 @@ export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath, onViewChan
     fetchStashes();
   }, [repoPath]);
 
-  const handleApply = async (index: string) => {
-    if (window.confirm("Are you sure you want to apply this stash?")) {
-      try {
-        await window.gitcanopyAPI.applyStash(repoPath, index);
-        showToast("Stash applied successfully", "success");
-        fetchStashes();
-      } catch (error: any) {
-        const errorMessage = error.message || "";
-        if (errorMessage.includes("STASH_CONFLICT")) {
-          showToast("Conflicts detected. Redirecting to Changes view...", "warning");
-          // Give the user a moment to read the toast then switch
-          setTimeout(() => {
-            onViewChanges?.();
-          }, 1500);
-        } else {
-          showToast("Failed to apply stash", "error");
+  const closeDialog = () => setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+
+  const handleApply = (index: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Apply Stash",
+      message: "Are you sure you want to apply this stash to your working directory?",
+      confirmText: "Apply Stash",
+      type: "info",
+      onConfirm: async () => {
+        closeDialog();
+        try {
+          await window.gitcanopyAPI.applyStash(repoPath, index);
+          showToast("Stash applied successfully", "success");
+          fetchStashes();
+        } catch (error: any) {
+          const errorMessage = error.message || "";
+          if (errorMessage.includes("STASH_CONFLICT")) {
+            showToast("Conflicts detected. Redirecting to Changes view...", "warning");
+            setTimeout(() => {
+              onViewChanges?.();
+            }, 1500);
+          } else {
+            showToast("Failed to apply stash", "error");
+          }
+          console.error(error);
+          fetchStashes();
         }
-        console.error(error);
-        fetchStashes();
       }
-    }
+    });
   };
 
-  const handleDrop = async (index: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to drop this stash? This cannot be undone.",
-      )
-    ) {
-      try {
-        await window.gitcanopyAPI.dropStash(repoPath, index);
-        showToast("Stash dropped successfully", "success");
-        fetchStashes();
-      } catch (error) {
-        showToast("Failed to drop stash", "error");
-        console.error(error);
+  const handleDrop = (index: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Drop Stash",
+      message: "Are you sure you want to drop this stash? This cannot be undone.",
+      confirmText: "Drop Permanently",
+      type: "danger",
+      onConfirm: async () => {
+        closeDialog();
+        try {
+          await window.gitcanopyAPI.dropStash(repoPath, index);
+          showToast("Stash dropped successfully", "success");
+          fetchStashes();
+        } catch (error) {
+          showToast("Failed to drop stash", "error");
+          console.error(error);
+        }
       }
-    }
+    });
   };
 
   if (loading) {
@@ -165,6 +195,16 @@ export const StashGallery: React.FC<StashGalleryProps> = ({ repoPath, onViewChan
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeDialog}
+        type={confirmDialog.type}
+      />
     </div>
   );
 };

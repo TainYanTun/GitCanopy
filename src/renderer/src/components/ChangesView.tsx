@@ -18,6 +18,7 @@ import {
 } from "@ant-design/icons";
 import { DiffModal } from "./DiffModal";
 import { useToast } from "./ToastContext";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface ChangesViewProps {
   repoPath: string;
@@ -39,6 +40,19 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   const [isCommitting, setIsCommitting] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["."]));
+  
+  // Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -155,13 +169,20 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
 
   const handleDiscard = async (file: StatusFile, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`Discard changes to ${file.path}?`)) return;
-    try {
-      await window.gitcanopyAPI.discardChanges(repoPath, file.path);
-      fetchStatus();
-    } catch (_err) {
-      showToast("Failed to discard changes", "error");
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Discard Changes",
+      message: `Are you sure you want to discard all changes to ${file.path}? This action cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        try {
+          await window.gitcanopyAPI.discardChanges(repoPath, file.path);
+          fetchStatus();
+        } catch (_err) {
+          showToast("Failed to discard changes", "error");
+        }
+      }
+    });
   };
 
   const handleCommit = async () => {
@@ -397,6 +418,16 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
           diffContent={diffContent}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        type="danger"
+        confirmText="Discard Changes"
+      />
     </div>
   );
 };
