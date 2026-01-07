@@ -78,7 +78,7 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 ---
 
 ## 🎨 Philosophy
-GitCanopy is built on the principle of **"Developer First"**. We prioritize speed and data density over decorative UI elements. Every pixel should serve a functional purpose.
+GitCanopy is built on the principle of **"Developer First"** and prioritize speed and data density over decorative UI elements. Every pixel should serve a functional purpose.
 
 **Build Version:** 1.1.0 Stable
-**Platform:** macOS / Windows / Linux
+**Platform:** macOS (not recommended) / Windows / Linux
