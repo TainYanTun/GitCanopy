@@ -13,7 +13,7 @@ interface GitObjectsGalleryProps {
   onRefreshRepo?: () => void;
 }
 
-type Tab = "stashes" | "tags" | "reflog";
+type Tab = "reflog" | "tags" | "stashes";
 
 export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({ 
   repoPath, 
@@ -22,7 +22,7 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
   onRefreshRepo
 }) => {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<Tab>("stashes");
+  const [activeTab, setActiveTab] = useState<Tab>("reflog");
   
   // Stash State
   const [stashes, setStashes] = useState<string[]>([]);
@@ -99,9 +99,9 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
   };
 
   useEffect(() => {
-    if (activeTab === "stashes") fetchStashes();
+    if (activeTab === "reflog") fetchReflog();
     else if (activeTab === "tags") fetchTags();
-    else fetchReflog();
+    else fetchStashes();
   }, [repoPath, activeTab]);
 
   const closeDialog = () => setConfirmDialog(prev => ({ ...prev, isOpen: false }));
@@ -255,25 +255,25 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
           </div>
           <div className="flex items-center gap-1 h-full">
             <button
-              onClick={() => setActiveTab("stashes")}
-              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "stashes" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text"}`}
+              onClick={() => setActiveTab("reflog")}
+              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "reflog" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text dark:hover:text-zed-dark-text"}`}
             >
-              Stashes
-              {activeTab === "stashes" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
+              Reflog
+              {activeTab === "reflog" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
             </button>
             <button
               onClick={() => setActiveTab("tags")}
-              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "tags" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text"}`}
+              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "tags" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text dark:hover:text-zed-dark-text"}`}
             >
               Tags
               {activeTab === "tags" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
             </button>
             <button
-              onClick={() => setActiveTab("reflog")}
-              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "reflog" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text"}`}
+              onClick={() => setActiveTab("stashes")}
+              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "stashes" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text dark:hover:text-zed-dark-text"}`}
             >
-              Reflog
-              {activeTab === "reflog" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
+              Stashes
+              {activeTab === "stashes" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
             </button>
           </div>
         </div>
@@ -289,7 +289,98 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-zed-bg dark:bg-zed-dark-bg">
-        {activeTab === "stashes" ? (
+        {activeTab === "reflog" ? (
+          /* --- REFLOG MINIMALIST LIST --- */
+          <div className="flex flex-col h-full">
+            {loadingReflog ? (
+              <div className="p-8 flex items-center gap-3 text-[11px] text-zed-muted uppercase font-mono tracking-widest">
+                <div className="w-3 h-3 border border-zed-accent border-t-transparent rounded-full animate-spin"></div>
+                Replaying history...
+              </div>
+            ) : reflog.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-zed-muted/20">
+                 <div className="text-[10px] font-bold uppercase tracking-[0.3em]">No Reflog</div>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <div className="px-6 py-2 bg-[#f8f8f8] dark:bg-zed-dark-surface/30 text-[10px] font-bold text-zed-muted/60 dark:text-zed-dark-muted/40 uppercase tracking-widest border-b border-zed-border/10 flex items-center sticky top-0 z-10 backdrop-blur-sm">
+                   <div className="w-20">Hash</div>
+                   <div className="w-32">Action</div>
+                   <div className="flex-1">Description</div>
+                   <div className="w-32 text-right">Time</div>
+                </div>
+                {reflog.map((entry, idx) => (
+                  <div key={idx} className="group flex items-center px-6 py-3 border-b border-zed-border/5 dark:border-zed-dark-border/5 hover:bg-zed-element/10 dark:hover:bg-zed-dark-element/10 transition-colors">
+                    <div className="w-20 text-[11px] font-mono text-zed-accent opacity-60">{entry.shortHash}</div>
+                    <div className="w-32 text-[11px] font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-tighter truncate pr-4">{entry.action}</div>
+                    <div className="flex-1 text-[12px] text-zed-text dark:text-zed-dark-text truncate opacity-80">{entry.subject}</div>
+                    <div className="w-32 flex items-center justify-end gap-3">
+                       <span className="text-[10px] text-zed-muted dark:text-zed-dark-muted opacity-40">{moment.unix(entry.timestamp).fromNow()}</span>
+                       <button 
+                          onClick={() => handleRestoreReflog(entry)}
+                          className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter bg-red-500 text-white rounded-none hover:opacity-90 transition-all"
+                       >
+                          Restore
+                       </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : activeTab === "tags" ? (
+          /* --- TAGS MINIMALIST LIST --- */
+          <div className="flex flex-col h-full">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-zed-border/10 dark:border-zed-dark-border/5 bg-zed-surface/50 dark:bg-zed-dark-surface/30">
+                <input
+                  type="text"
+                  placeholder="FILTER TAGS..."
+                  value={tagSearchTerm}
+                  onChange={(e) => setTagSearchTerm(e.target.value)}
+                  className="bg-transparent border-none text-[10px] font-mono focus:outline-none w-full placeholder:text-zed-muted/30 text-zed-text dark:text-zed-dark-text tracking-widest uppercase"
+                />
+            </div>
+
+            {loadingTags ? (
+              <div className="p-8 flex items-center gap-3 text-[11px] text-zed-muted uppercase font-mono tracking-widest">
+                <div className="w-3 h-3 border border-zed-accent border-t-transparent rounded-full animate-spin"></div>
+                Resolving refs...
+              </div>
+            ) : filteredTags.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-zed-muted/20">
+                 <div className="text-[10px] font-bold uppercase tracking-[0.3em]">No Tags</div>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-zed-border/10 dark:divide-zed-dark-border/5">
+                {filteredTags.map(tag => (
+                  <div key={tag} className="group flex items-center justify-between px-6 py-3 hover:bg-zed-element/10 dark:hover:bg-zed-dark-element/10 transition-colors">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-2 h-2 rounded-full border border-yellow-500/50" />
+                      <span className="text-[13px] font-mono text-zed-text dark:text-zed-dark-text tracking-tight">{tag}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handlePushTag(tag)}
+                        className="text-[9px] font-bold uppercase tracking-widest text-zed-muted hover:text-zed-accent flex items-center gap-1.5"
+                      >
+                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                         Push
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTag(tag)}
+                        disabled={deletingTag === tag}
+                        className={`text-[9px] font-bold uppercase tracking-widest text-zed-muted hover:text-red-500 ${deletingTag === tag ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                         {deletingTag === tag ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
           /* --- STASHES MINIMALIST LIST --- */
           loadingStashes ? (
             <div className="p-8 flex items-center gap-3 text-[11px] text-zed-muted uppercase font-mono tracking-widest">
@@ -372,97 +463,6 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
               })}
             </div>
           )
-        ) : activeTab === "tags" ? (
-          /* --- TAGS MINIMALIST LIST --- */
-          <div className="flex flex-col h-full">
-            <div className="px-6 py-4 flex items-center justify-between border-b border-zed-border/10 dark:border-zed-dark-border/5 bg-zed-surface/50 dark:bg-zed-dark-surface/30">
-                <input
-                  type="text"
-                  placeholder="FILTER TAGS..."
-                  value={tagSearchTerm}
-                  onChange={(e) => setTagSearchTerm(e.target.value)}
-                  className="bg-transparent border-none text-[10px] font-mono focus:outline-none w-full placeholder:text-zed-muted/30 text-zed-text dark:text-zed-dark-text tracking-widest uppercase"
-                />
-            </div>
-
-            {loadingTags ? (
-              <div className="p-8 flex items-center gap-3 text-[11px] text-zed-muted uppercase font-mono tracking-widest">
-                <div className="w-3 h-3 border border-zed-accent border-t-transparent rounded-full animate-spin"></div>
-                Resolving refs...
-              </div>
-            ) : filteredTags.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-zed-muted/20">
-                 <div className="text-[10px] font-bold uppercase tracking-[0.3em]">No Tags</div>
-              </div>
-            ) : (
-              <div className="flex flex-col divide-y divide-zed-border/10 dark:divide-zed-dark-border/5">
-                {filteredTags.map(tag => (
-                  <div key={tag} className="group flex items-center justify-between px-6 py-3 hover:bg-zed-element/10 transition-colors">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-2 h-2 rounded-full border border-yellow-500/50" />
-                      <span className="text-[13px] font-mono text-zed-text dark:text-zed-dark-text tracking-tight">{tag}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handlePushTag(tag)}
-                        className="text-[9px] font-bold uppercase tracking-widest text-zed-muted hover:text-zed-accent flex items-center gap-1.5"
-                      >
-                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                         Push
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteTag(tag)}
-                        disabled={deletingTag === tag}
-                        className={`text-[9px] font-bold uppercase tracking-widest text-zed-muted hover:text-red-500 ${deletingTag === tag ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                         {deletingTag === tag ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* --- REFLOG MINIMALIST LIST --- */
-          <div className="flex flex-col h-full">
-            {loadingReflog ? (
-              <div className="p-8 flex items-center gap-3 text-[11px] text-zed-muted uppercase font-mono tracking-widest">
-                <div className="w-3 h-3 border border-zed-accent border-t-transparent rounded-full animate-spin"></div>
-                Replaying history...
-              </div>
-            ) : reflog.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-zed-muted/20">
-                 <div className="text-[10px] font-bold uppercase tracking-[0.3em]">No Reflog</div>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                <div className="px-6 py-2 bg-zed-surface/50 text-[10px] font-bold text-zed-muted/40 uppercase tracking-widest border-b border-zed-border/10 flex items-center">
-                   <div className="w-20">Hash</div>
-                   <div className="w-32">Action</div>
-                   <div className="flex-1">Description</div>
-                   <div className="w-32 text-right">Time</div>
-                </div>
-                {reflog.map((entry, idx) => (
-                  <div key={idx} className="group flex items-center px-6 py-3 border-b border-zed-border/5 hover:bg-zed-element/10 transition-colors">
-                    <div className="w-20 text-[11px] font-mono text-zed-accent opacity-60">{entry.shortHash}</div>
-                    <div className="w-32 text-[11px] font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-tighter truncate pr-4">{entry.action}</div>
-                    <div className="flex-1 text-[12px] text-zed-text dark:text-zed-dark-text truncate opacity-80">{entry.subject}</div>
-                    <div className="w-32 flex items-center justify-end gap-3">
-                       <span className="text-[10px] text-zed-muted opacity-40">{moment.unix(entry.timestamp).fromNow()}</span>
-                       <button 
-                          onClick={() => handleRestoreReflog(entry)}
-                          className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter bg-red-500 text-white rounded-none hover:opacity-90 transition-all"
-                       >
-                          Restore
-                       </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         )}
       </div>
 
