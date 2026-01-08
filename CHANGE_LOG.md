@@ -5,13 +5,20 @@ All notable changes to this project will be documented in this file.
 ## [1.1.1] - 2026-01-08
 
 ### New Features
-- **Integrated Conflict Resolver:** Added a native, 3-pane conflict resolution interface. Users can now resolve merge conflicts directly within GitCanopy by choosing between "Current", "Incoming", or "Both" changes, with support for manual editing.
-- **Auto-Staging Resolution:** Successfully resolved conflicts are automatically staged, streamlining the merge/rebase workflow.
-- **Smart Status Redirection:** Sidebar badges for "Rebase in progress" and "Merge Conflicts" are now clickable, providing a direct shortcut to the Source Control view.
-- **Auto-Expansion & Tactical Highlighting:** Conflicted files are now automatically exposed by auto-expanding their parent directories and are highlighted with a pulsing tactical red background for immediate identification.
+- **Visual Conflict Resolver:** Added a native, 3-pane conflict resolution interface. Users can now resolve merge conflicts directly within GitCanopy by choosing between "Current", "Incoming", or "Both" changes, with support for manual editing.
+- **Git Reflog Explorer:** Implemented a visual "Time Machine" for the repository. View historical actions (commits, checkouts, resets) and perform hard resets to any point in the reflog to recover lost work.
+- **Stash Diff Viewer:** You can now inspect exact code changes inside a stash before applying it, with support for both tracked and untracked files.
+- **Smart Status Redirection:** Sidebar badges for "Rebase in progress" and "Merge Conflicts" are now clickable, providing a tactical shortcut to the Source Control view.
+- **Auto-Expansion & Tactical Highlighting:** Conflicted files are automatically exposed by auto-expanding their parent directories and are highlighted with a pulsing tactical red background.
+
+### Security & Performance
+- **Secure Path Resolution:** Hardened the Git service with a strict path validation helper, preventing path traversal attacks in file read/write operations.
+- **Memory Safeguards:** Added a 5MB limit for text-based file previews to prevent UI lag or crashes when handling massive data blobs.
+- **Optimized Conflict Detection:** Replaced full status polling with a targeted unmerged-file check, significantly improving performance in large repositories.
 
 ### Bug Fixes
-- **Status Refresh Race Condition:** Fixed a bug where the sidebar would still show a "Conflicted" status briefly after a resolution was completed.
+- **Live Rebase Monitoring:** Fixed a bug where the "Rebase in progress" badge would get stuck. The watcher now explicitly monitors rebase/merge metadata files.
+- **Status Refresh Race Condition:** Resolved an issue where the sidebar would briefly show a stale "Conflicted" status after a resolution was completed.
 
 ## [1.1.0] - 2026-01-07
 

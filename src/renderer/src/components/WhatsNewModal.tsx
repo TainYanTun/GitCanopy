@@ -3,7 +3,7 @@ import { Modal } from "antd";
 import {
   RocketOutlined,
   SearchOutlined,
-  DashboardOutlined,
+  HistoryOutlined,
   ThunderboltOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
@@ -59,34 +59,34 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
           <div className="space-y-6">
             {/* Feature 1 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <SearchOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-red-500/10 flex items-center justify-center text-red-500">
+                <SafetyCertificateOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Stash Content Preview
+                  Visual Conflict Resolver
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  No more &quot;blind applies.&quot; Inspect exactly which files
-                  are inside a stash entry with the new expandable preview in
-                  the Stash Gallery.
+                  Resolve merge conflicts without leaving the app. A new 3-pane
+                  interface allows you to pick current, incoming, or both changes
+                  with a single click.
                 </p>
               </div>
             </div>
 
             {/* Feature 2 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <ThunderboltOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <HistoryOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Instant CI/CD Sync
+                  Git Reflog Explorer
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Experience real-time responsiveness. Successful pushes now
-                  trigger an immediate refresh of GitHub Actions, eliminating
-                  the wait for polling cycles.
+                  The ultimate safety net. View every action taken in your repo
+                  and perform a hard reset to any point in time to recover
+                  lost work or undo mistakes.
                 </p>
               </div>
             </div>
@@ -94,16 +94,16 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 3 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
-                <DashboardOutlined className="text-base" />
+                <SearchOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Integrated UI Dialogs
+                  Stash Diff Viewer
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Replaced all native browser popups with themed custom dialogs
-                  for a cohesive, professional experience that matches the Zed
-                  aesthetic.
+                  Inspect exact code changes inside a stash before applying it.
+                  Now supports previews for both tracked and untracked files
+                  directly in the Objects Gallery.
                 </p>
               </div>
             </div>
@@ -111,16 +111,16 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 4 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-purple-500/10 flex items-center justify-center text-purple-500">
-                <SafetyCertificateOutlined className="text-base" />
+                <ThunderboltOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Concurrent Engine & Safe Checkout
+                  Security & Live Monitoring
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  A new Read-Write Lock system allows parallel operations, while
-                  safe checkouts prevent data loss by validating your working
-                  tree state.
+                  Hardened path resolution prevents unauthorized file access,
+                  while the updated watcher provides real-time status updates
+                  for rebase and merge states.
                 </p>
               </div>
             </div>
