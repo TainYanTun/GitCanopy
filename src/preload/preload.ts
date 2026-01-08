@@ -37,6 +37,8 @@ const gitcanopyAPI: GitCanopyAPI = {
   commit: (repoPath: string, message: string) =>
     ipcRenderer.invoke("commit", repoPath, message),
   push: (repoPath: string) => ipcRenderer.invoke("push", repoPath),
+  resetHard: (repoPath: string, target: string) =>
+    ipcRenderer.invoke("reset-hard", repoPath, target),
 
   // Git data operations
   getCommits: (
@@ -65,6 +67,9 @@ const gitcanopyAPI: GitCanopyAPI = {
   getStashFiles: (repoPath: string, index: string): Promise<string[]> =>
     ipcRenderer.invoke("git:get-stash-files", repoPath, index),
 
+  getStashFileDiff: (repoPath: string, index: string, filePath: string): Promise<string> =>
+    ipcRenderer.invoke("git:get-stash-file-diff", repoPath, index, filePath),
+
   stash: (repoPath: string): Promise<void> =>
     ipcRenderer.invoke("git:stash", repoPath),
 
@@ -86,6 +91,9 @@ const gitcanopyAPI: GitCanopyAPI = {
 
   getTags: (repoPath: string): Promise<string[]> =>
     ipcRenderer.invoke("git:get-tags", repoPath),
+
+  getReflog: (repoPath: string, limit?: number): Promise<any[]> =>
+    ipcRenderer.invoke("get-reflog", repoPath, limit),
 
   getCommitDetails: (repoPath: string, commitHash: string): Promise<Commit> =>
     ipcRenderer.invoke("get-commit-details", repoPath, commitHash),

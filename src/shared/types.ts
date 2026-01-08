@@ -330,6 +330,15 @@ export interface WorkingTreeStatus {
   behind: number;
 }
 
+export interface ReflogEntry {
+  selector: string;
+  hash: string;
+  shortHash: string;
+  action: string;
+  subject: string;
+  timestamp: number;
+}
+
 export interface GitCanopyAPI {
   // Repository operations
   selectRepository: () => Promise<Repository | null>;
@@ -345,6 +354,7 @@ export interface GitCanopyAPI {
   unstageAll: (repoPath: string) => Promise<void>;
   commit: (repoPath: string, message: string) => Promise<void>;
   push: (repoPath: string) => Promise<void>;
+  resetHard: (repoPath: string, target: string) => Promise<void>;
 
   // Git data operations
   getCommits: (
@@ -359,6 +369,11 @@ export interface GitCanopyAPI {
   checkoutBranch: (repoPath: string, branchName: string) => Promise<void>;
   getStashList: (repoPath: string) => Promise<StashEntry[]>;
   getStashFiles: (repoPath: string, index: string) => Promise<string[]>;
+  getStashFileDiff: (
+    repoPath: string,
+    index: string,
+    filePath: string,
+  ) => Promise<string>;
   stash: (repoPath: string) => Promise<void>;
   applyStash: (repoPath: string, index: string) => Promise<void>;
   dropStash: (repoPath: string, index: string) => Promise<void>;
@@ -374,6 +389,7 @@ export interface GitCanopyAPI {
   pushTag: (repoPath: string, tagName: string) => Promise<void>;
   getTags: (repoPath: string) => Promise<string[]>;
 
+  getReflog: (repoPath: string, limit?: number) => Promise<ReflogEntry[]>;
   getCommitDetails: (repoPath: string, commitHash: string) => Promise<Commit>;
   getDiff: (
     repoPath: string,

@@ -114,7 +114,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
         .then((url) => {
           setImageDataUrl(url);
         })
-        .catch(() => {});
+        .catch(() => {
+          // Ignore errors if image data URL cannot be fetched
+        });
     } else {
       setImageDataUrl(null);
     }

@@ -473,6 +473,10 @@ export class GitService {
     await this.run(["push"], repoPath);
   }
 
+  async resetHard(repoPath: string, target: string): Promise<void> {
+    await this.run(["reset", "--hard", target], repoPath);
+  }
+
   async getRepository(repoPath: string): Promise<Repository> {
     // 0. Check if directory exists
     if (!fs.existsSync(repoPath)) {
@@ -696,6 +700,63 @@ export class GitService {
       return Array.from(new Set(combined));
     } catch (error) {
       logError("GitService", `Failed to get stash files for ${index}: ${error}`);
+      return [];
+    }
+  }
+
+  async getStashFileDiff(repoPath: string, index: string, filePath: string): Promise<string> {
+    try {
+      // Stash is a commit with potentially 3 parents:
+      // Parent 1 (index^1): Original commit
+      // Parent 2 (index^2): Staged changes
+      // Parent 3 (index^3): Untracked changes
+      
+      // Try to get diff from the tracked changes first (standard stash show)
+      try {
+        const diff = await this.run(["stash", "show", "-p", index, "--", filePath], repoPath);
+        if (diff.trim()) return diff;
+      } catch (e) {
+        // Fallback if standard stash show fails (e.g. untracked file)
+      }
+
+      // If no tracked diff, check if it's in the untracked parent (index^3)
+      try {
+         // To see untracked files in a stash, we diff index^3 against its first parent (index^1)
+         const diff = await this.run(["diff", `${index}^1`, `${index}^3`, "--", filePath], repoPath);
+         return diff;
+      } catch (e) {
+         return "Could not load diff for this stashed file.";
+      }
+    } catch (error) {
+      return `Error loading stash diff: ${error}`;
+    }
+  }
+
+  async getReflog(repoPath: string, limit = 100): Promise<any[]> {
+    try {
+      const output = await this.run(
+        ["reflog", `-n`, `${limit}`, "--pretty=format:%gD|%H|%gs|%ct"],
+        repoPath
+      );
+      
+      return output.trim().split("\n").filter(Boolean).map(line => {
+        const [selector, hash, actionSubject, timestamp] = line.split("|");
+        // Split action and subject (e.g. "checkout: moving from main to dev")
+        const colonIndex = actionSubject.indexOf(":");
+        const action = colonIndex !== -1 ? actionSubject.substring(0, colonIndex) : actionSubject;
+        const subject = colonIndex !== -1 ? actionSubject.substring(colonIndex + 1).trim() : "";
+        
+        return {
+          selector,
+          hash,
+          shortHash: hash.substring(0, 7),
+          action,
+          subject,
+          timestamp: parseInt(timestamp, 10)
+        };
+      });
+    } catch (error) {
+      logError("GitService", `Failed to get reflog: ${error}`);
       return [];
     }
   }

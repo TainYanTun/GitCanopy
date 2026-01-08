@@ -53,7 +53,9 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => {
+      // Default empty handler
+    },
   });
 
   const fetchStatus = useCallback(async () => {

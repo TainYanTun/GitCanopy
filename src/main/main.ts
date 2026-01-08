@@ -404,6 +404,9 @@ class GitCanopyApp {
       await this.gitService.push(repoPath);
       this.mainWindow?.webContents.send("push-completed");
     });
+    ipcMain.handle("reset-hard", (_, repoPath: string, target: string) =>
+      this.gitService.resetHard(repoPath, target),
+    );
 
     // Git data operations
     ipcMain.handle(
@@ -440,8 +443,11 @@ class GitCanopyApp {
     ipcMain.handle("get-stash-list", (_, repoPath: string) =>
       this.gitService.getStashList(repoPath),
     );
-    ipcMain.handle("git:get-stash-files", (_, repoPath: string, index: string) =>
+    ipcMain.handle("git:get-stash-files", (_, repoPath, index: string) =>
       this.gitService.getStashFiles(repoPath, index),
+    );
+    ipcMain.handle("git:get-stash-file-diff", (_, repoPath, index: string, filePath: string) =>
+      this.gitService.getStashFileDiff(repoPath, index, filePath),
     );
     ipcMain.handle("git:stash", async (_, repoPath: string) => {
       this.repositoryWatcher.pause();
@@ -475,6 +481,9 @@ class GitCanopyApp {
     );
     ipcMain.handle("git:get-tags", (_, repoPath: string) =>
       this.gitService.getTagsList(repoPath),
+    );
+    ipcMain.handle("get-reflog", (_, repoPath: string, limit?: number) =>
+      this.gitService.getReflog(repoPath, limit),
     );
 
     // Initial Path Handling

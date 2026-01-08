@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useToast } from "./ToastContext";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateTagModal } from "./CreateTagModal";
+import { DiffModal } from "./DiffModal";
+import { ReflogEntry } from "../../shared/types";
+import moment from "moment";
 
 interface GitObjectsGalleryProps {
   repoPath: string;
@@ -10,7 +13,7 @@ interface GitObjectsGalleryProps {
   onRefreshRepo?: () => void;
 }
 
-type Tab = "stashes" | "tags";
+type Tab = "stashes" | "tags" | "reflog";
 
 export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({ 
   repoPath, 
@@ -27,6 +30,8 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
   const [expandedStash, setExpandedStash] = useState<string | null>(null);
   const [stashFiles, setStashFiles] = useState<Record<string, string[]>>({});
   const [loadingFiles, setLoadingFiles] = useState<Record<string, boolean>>({});
+  const [selectedStashFile, setSelectedStashFile] = useState<{ id: string, path: string } | null>(null);
+  const [stashDiffContent, setStashDiffContent] = useState("");
   
   // Tag State
   const [tags, setTags] = useState<string[]>([]);
@@ -34,6 +39,10 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
   const [showCreateTagModal, setShowCreateTagModal] = useState(false);
   const [tagSearchTerm, setTagSearchTerm] = useState("");
   const [deletingTag, setDeletingTag] = useState<string | null>(null);
+
+  // Reflog State
+  const [reflog, setReflog] = useState<ReflogEntry[]>([]);
+  const [loadingReflog, setLoadingReflog] = useState(false);
 
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -47,7 +56,9 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => {
+      // Default empty handler
+    },
     type: "info"
   });
 
@@ -75,9 +86,22 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
     }
   };
 
+  const fetchReflog = async () => {
+    setLoadingReflog(true);
+    try {
+      const entries = await window.gitcanopyAPI.getReflog(repoPath);
+      setReflog(entries);
+    } catch (error) {
+      console.error("Failed to fetch reflog:", error);
+    } finally {
+      setLoadingReflog(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === "stashes") fetchStashes();
-    else fetchTags();
+    else if (activeTab === "tags") fetchTags();
+    else fetchReflog();
   }, [repoPath, activeTab]);
 
   const closeDialog = () => setConfirmDialog(prev => ({ ...prev, isOpen: false }));
@@ -100,6 +124,17 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
       } finally {
         setLoadingFiles(prev => ({ ...prev, [id]: false }));
       }
+    }
+  };
+
+  const handleStashFileClick = async (id: string, path: string) => {
+    setSelectedStashFile({ id, path });
+    setStashDiffContent("Loading stash diff...");
+    try {
+      const diff = await window.gitcanopyAPI.getStashFileDiff(repoPath, id, path);
+      setStashDiffContent(diff);
+    } catch (err) {
+      setStashDiffContent("Failed to load stash diff.");
     }
   };
 
@@ -186,6 +221,28 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
     }
   };
 
+  // --- Reflog Handlers ---
+  const handleRestoreReflog = (entry: ReflogEntry) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Restore to Point",
+      message: `Warning: This will perform a HARD reset to ${entry.shortHash} (${entry.selector}). Any uncommitted changes will be lost.`,
+      confirmText: "Hard Reset",
+      type: "danger",
+      onConfirm: async () => {
+        closeDialog();
+        try {
+          await window.gitcanopyAPI.resetHard(repoPath, entry.hash);
+          showToast(`Repository restored to ${entry.shortHash}`, "success");
+          fetchReflog();
+          onRefreshRepo?.();
+        } catch (error) {
+          showToast("Restoration failed", "error");
+        }
+      }
+    });
+  };
+
   const filteredTags = tags.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()));
 
   return (
@@ -210,6 +267,13 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
             >
               Tags
               {activeTab === "tags" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
+            </button>
+            <button
+              onClick={() => setActiveTab("reflog")}
+              className={`px-3 h-full text-[11px] font-medium transition-all relative flex items-center ${activeTab === "reflog" ? "text-zed-accent" : "text-zed-muted hover:text-zed-text"}`}
+            >
+              Reflog
+              {activeTab === "reflog" && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-zed-accent" />}
             </button>
           </div>
         </div>
@@ -288,9 +352,13 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
                             <div className="text-[9px] font-mono text-zed-muted uppercase animate-pulse">Scanning changes...</div>
                          ) : (
                             <div className="space-y-1">
-                               <div className="text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest mb-2 border-b border-zed-border/10 pb-1">Modified paths</div>
+                               <div className="text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest mb-2 border-b border-zed-border/10 pb-1">Modified paths (click to preview)</div>
                                {stashFiles[id]?.map(file => (
-                                 <div key={file} className="text-[11px] font-mono text-zed-text dark:text-zed-dark-text opacity-60 hover:opacity-100 flex items-center gap-2">
+                                 <div 
+                                    key={file} 
+                                    onClick={() => handleStashFileClick(id, file)}
+                                    className="text-[11px] font-mono text-zed-text dark:text-zed-dark-text opacity-60 hover:opacity-100 hover:text-zed-accent cursor-pointer flex items-center gap-2"
+                                 >
                                     <div className="w-1 h-1 bg-zed-accent/30" />
                                     {file}
                                  </div>
@@ -304,7 +372,7 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
               })}
             </div>
           )
-        ) : (
+        ) : activeTab === "tags" ? (
           /* --- TAGS MINIMALIST LIST --- */
           <div className="flex flex-col h-full">
             <div className="px-6 py-4 flex items-center justify-between border-b border-zed-border/10 dark:border-zed-dark-border/5 bg-zed-surface/50 dark:bg-zed-dark-surface/30">
@@ -345,10 +413,50 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
                       </button>
                       <button 
                         onClick={() => handleDeleteTag(tag)}
-                        className="text-[9px] font-bold uppercase tracking-widest text-zed-muted hover:text-red-500"
+                        disabled={deletingTag === tag}
+                        className={`text-[9px] font-bold uppercase tracking-widest text-zed-muted hover:text-red-500 ${deletingTag === tag ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                         Delete
+                         {deletingTag === tag ? "Deleting..." : "Delete"}
                       </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* --- REFLOG MINIMALIST LIST --- */
+          <div className="flex flex-col h-full">
+            {loadingReflog ? (
+              <div className="p-8 flex items-center gap-3 text-[11px] text-zed-muted uppercase font-mono tracking-widest">
+                <div className="w-3 h-3 border border-zed-accent border-t-transparent rounded-full animate-spin"></div>
+                Replaying history...
+              </div>
+            ) : reflog.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-zed-muted/20">
+                 <div className="text-[10px] font-bold uppercase tracking-[0.3em]">No Reflog</div>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <div className="px-6 py-2 bg-zed-surface/50 text-[10px] font-bold text-zed-muted/40 uppercase tracking-widest border-b border-zed-border/10 flex items-center">
+                   <div className="w-20">Hash</div>
+                   <div className="w-32">Action</div>
+                   <div className="flex-1">Description</div>
+                   <div className="w-32 text-right">Time</div>
+                </div>
+                {reflog.map((entry, idx) => (
+                  <div key={idx} className="group flex items-center px-6 py-3 border-b border-zed-border/5 hover:bg-zed-element/10 transition-colors">
+                    <div className="w-20 text-[11px] font-mono text-zed-accent opacity-60">{entry.shortHash}</div>
+                    <div className="w-32 text-[11px] font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-tighter truncate pr-4">{entry.action}</div>
+                    <div className="flex-1 text-[12px] text-zed-text dark:text-zed-dark-text truncate opacity-80">{entry.subject}</div>
+                    <div className="w-32 flex items-center justify-end gap-3">
+                       <span className="text-[10px] text-zed-muted opacity-40">{moment.unix(entry.timestamp).fromNow()}</span>
+                       <button 
+                          onClick={() => handleRestoreReflog(entry)}
+                          className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter bg-red-500 text-white rounded-none hover:opacity-90 transition-all"
+                       >
+                          Restore
+                       </button>
                     </div>
                   </div>
                 ))}
@@ -365,6 +473,16 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
         repoPath={repoPath}
         headCommit={headCommit}
       />
+
+      {selectedStashFile && (
+        <DiffModal
+          repoPath={repoPath}
+          visible={!!selectedStashFile}
+          onClose={() => setSelectedStashFile(null)}
+          filePath={selectedStashFile.path}
+          diffContent={stashDiffContent}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}

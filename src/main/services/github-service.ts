@@ -11,7 +11,9 @@ export class GitHubService {
   constructor(
     private gitService: GitService,
     private settingsService: SettingsService
-  ) {}
+  ) {
+    // Services are initialized via parameter properties
+  }
 
   async validateGitHubToken(token: string): Promise<boolean> {
     try {
