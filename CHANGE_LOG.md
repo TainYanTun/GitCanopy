@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### New Features
 - **Integrated Conflict Resolver:** Added a native, 3-pane conflict resolution interface. Users can now resolve merge conflicts directly within GitCanopy by choosing between "Current", "Incoming", or "Both" changes, with support for manual editing.
 - **Auto-Staging Resolution:** Successfully resolved conflicts are automatically staged, streamlining the merge/rebase workflow.
+- **Smart Status Redirection:** Sidebar badges for "Rebase in progress" and "Merge Conflicts" are now clickable, providing a direct shortcut to the Source Control view.
+- **Auto-Expansion & Tactical Highlighting:** Conflicted files are now automatically exposed by auto-expanding their parent directories and are highlighted with a pulsing tactical red background for immediate identification.
 
 ### Bug Fixes
 - **Status Refresh Race Condition:** Fixed a bug where the sidebar would still show a "Conflicted" status briefly after a resolution was completed.

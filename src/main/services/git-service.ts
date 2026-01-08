@@ -490,7 +490,7 @@ export class GitService {
     const name = repoPath.split("/").pop() || "Unknown";
     
     // Parallel detection of states and data
-    const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached, totalCommits, status] = await Promise.all([
+    const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached, totalCommits, conflictOutput] = await Promise.all([
       this.getCurrentBranch(repoPath),
       this.getCurrentHead(repoPath),
       this.getBranches(repoPath),
@@ -498,10 +498,11 @@ export class GitService {
       this.checkIsMerging(repoPath),
       this.checkIsDetached(repoPath),
       this.getTotalCommits(repoPath),
-      this.getStatus(repoPath)
+      // Optimization: Only check for unmerged files instead of full status
+      this.run(["diff", "--name-only", "--diff-filter=U"], repoPath).catch(() => "")
     ]);
 
-    const hasConflicts = status.files.some(f => f.status === 'conflicted');
+    const hasConflicts = conflictOutput.trim().length > 0;
 
     return {
       path: repoPath,
@@ -915,10 +916,11 @@ export class GitService {
         if (status.startsWith("??")) {
           // Untracked: Show as all additions
           try {
-            const isBinary = await this.isBinaryFile(path.join(repoPath, filePath));
+            const fullPath = this.validatePath(repoPath, filePath);
+            const isBinary = await this.isBinaryFile(fullPath);
             if (isBinary) return "BINARY_FILE";
             
-            const content = await fs.promises.readFile(path.join(repoPath, filePath), 'utf8');
+            const content = await fs.promises.readFile(fullPath, 'utf8');
             return content.split('\n').map(line => `+${line}`).join('\n');
           } catch (e) {
             return "Error reading untracked file.";
@@ -988,7 +990,15 @@ export class GitService {
 
   async getFileContent(repoPath: string, filePath: string): Promise<string> {
     try {
-      const fullPath = path.join(repoPath, filePath);
+      const fullPath = this.validatePath(repoPath, filePath);
+      
+      // Performance: Prevent reading massive files into memory
+      const stats = await fs.promises.stat(fullPath);
+      const MAX_SIZE = 5 * 1024 * 1024; // 5MB limit for text content
+      if (stats.size > MAX_SIZE) {
+        throw new Error(`File is too large (${(stats.size / 1024 / 1024).toFixed(2)}MB). Manual resolution required.`);
+      }
+
       const content = await fs.promises.readFile(fullPath, "utf8");
       return content;
     } catch (error) {
@@ -999,13 +1009,23 @@ export class GitService {
 
   async resolveConflict(repoPath: string, filePath: string, content: string): Promise<void> {
     try {
-      const fullPath = path.join(repoPath, filePath);
+      const fullPath = this.validatePath(repoPath, filePath);
       await fs.promises.writeFile(fullPath, content, "utf8");
       await this.stageFile(repoPath, filePath);
     } catch (error) {
       logError("GitService", `Failed to resolve conflict for ${filePath}: ${error}`);
       throw error;
     }
+  }
+
+  private validatePath(repoPath: string, filePath: string): string {
+    const absoluteRepoPath = path.resolve(repoPath);
+    const absoluteFilePath = path.resolve(repoPath, filePath);
+
+    if (!absoluteFilePath.startsWith(absoluteRepoPath)) {
+      throw new Error("Security Violation: Path traversal attempt detected.");
+    }
+    return absoluteFilePath;
   }
 
   private async isBinaryFile(fullPath: string): Promise<boolean> {
