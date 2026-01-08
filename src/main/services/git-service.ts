@@ -533,14 +533,28 @@ export class GitService {
   }
 
   private async checkIsRebasing(repoPath: string): Promise<boolean> {
-    const gitPath = path.join(repoPath, '.git');
-    return fs.existsSync(path.join(gitPath, 'rebase-merge')) || 
-           fs.existsSync(path.join(gitPath, 'rebase-apply'));
+    try {
+      const [mergePath, applyPath] = await Promise.all([
+        this.run(["rev-parse", "--git-path", "rebase-merge"], repoPath),
+        this.run(["rev-parse", "--git-path", "rebase-apply"], repoPath)
+      ]);
+      return fs.existsSync(mergePath.trim()) || fs.existsSync(applyPath.trim());
+    } catch {
+      // Fallback to manual check if git command fails
+      const gitPath = path.join(repoPath, '.git');
+      return fs.existsSync(path.join(gitPath, 'rebase-merge')) || 
+             fs.existsSync(path.join(gitPath, 'rebase-apply'));
+    }
   }
 
   private async checkIsMerging(repoPath: string): Promise<boolean> {
-    const gitPath = path.join(repoPath, '.git');
-    return fs.existsSync(path.join(gitPath, 'MERGE_HEAD'));
+    try {
+      const mergeHeadPath = await this.run(["rev-parse", "--git-path", "MERGE_HEAD"], repoPath);
+      return fs.existsSync(mergeHeadPath.trim());
+    } catch {
+      const gitPath = path.join(repoPath, '.git');
+      return fs.existsSync(path.join(gitPath, 'MERGE_HEAD'));
+    }
   }
 
   private async checkIsDetached(repoPath: string): Promise<boolean> {

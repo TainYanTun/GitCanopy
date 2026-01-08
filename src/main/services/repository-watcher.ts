@@ -67,6 +67,9 @@ export class RepositoryWatcher {
             if (path.includes(".git/index")) return false;
             if (path.includes(".git/packed-refs")) return false;
             if (path.includes(".git/refs")) return false;
+            if (path.includes(".git/rebase-merge")) return false;
+            if (path.includes(".git/rebase-apply")) return false;
+            if (path.includes(".git/MERGE_HEAD")) return false;
 
             // For other .git files, default to allow (e.g. config, description)
             return false;
@@ -110,6 +113,16 @@ export class RepositoryWatcher {
             debounceCallback({
               type: "commits-updated",
               commits: [],
+            });
+          } else if (
+            path.includes("rebase-merge") || 
+            path.includes("rebase-apply") || 
+            path.endsWith("MERGE_HEAD")
+          ) {
+            logInfo("Watcher", `Rebase/Merge state change detected: ${path}`);
+            debounceCallback({
+              type: "repository-changed",
+              repository: { path: repoPath } as any,
             });
           } else if (path.endsWith("index")) {
             logInfo("Watcher", `Index change detected`);
