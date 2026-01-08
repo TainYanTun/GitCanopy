@@ -982,6 +982,28 @@ export class GitService {
     }
   }
 
+  async getFileContent(repoPath: string, filePath: string): Promise<string> {
+    try {
+      const fullPath = path.join(repoPath, filePath);
+      const content = await fs.promises.readFile(fullPath, "utf8");
+      return content;
+    } catch (error) {
+      logError("GitService", `Failed to read file ${filePath}: ${error}`);
+      throw error;
+    }
+  }
+
+  async resolveConflict(repoPath: string, filePath: string, content: string): Promise<void> {
+    try {
+      const fullPath = path.join(repoPath, filePath);
+      await fs.promises.writeFile(fullPath, content, "utf8");
+      await this.stageFile(repoPath, filePath);
+    } catch (error) {
+      logError("GitService", `Failed to resolve conflict for ${filePath}: ${error}`);
+      throw error;
+    }
+  }
+
   private async isBinaryFile(fullPath: string): Promise<boolean> {
     try {
       const buffer = Buffer.alloc(8000);

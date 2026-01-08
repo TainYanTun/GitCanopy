@@ -92,6 +92,10 @@ const gitcanopyAPI: GitCanopyAPI = {
 
   getDiff: (repoPath: string, commitHash: string, filePath: string) =>
     ipcRenderer.invoke("git:get-diff", repoPath, commitHash, filePath),
+  getFileContent: (repoPath: string, filePath: string) =>
+    ipcRenderer.invoke("git:get-file-content", repoPath, filePath),
+  resolveConflict: (repoPath: string, filePath: string, content: string) =>
+    ipcRenderer.invoke("git:resolve-conflict", repoPath, filePath, content),
   getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) =>
     ipcRenderer.invoke("git:get-hot-files", repoPath, limit, options),
   getContributors: (repoPath: string) =>

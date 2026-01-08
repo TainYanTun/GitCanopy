@@ -17,6 +17,7 @@ import {
   FileOutlined,
 } from "@ant-design/icons";
 import { DiffModal } from "./DiffModal";
+import { ConflictResolver } from "./ConflictResolver";
 import { useToast } from "./ToastContext";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -40,6 +41,7 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   const [isCommitting, setIsCommitting] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["."]));
+  const [conflictFile, setConflictFile] = useState<StatusFile | null>(null);
   
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -106,6 +108,11 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   };
 
   const handleFileClick = async (file: StatusFile) => {
+    if (file.status === "conflicted") {
+      setConflictFile(file);
+      return;
+    }
+    
     setSelectedFile(file);
     setIsDiffVisible(true);
     setDiffContent("Loading diff...");
@@ -416,6 +423,21 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
           onClose={() => setIsDiffVisible(false)}
           filePath={selectedFile.path}
           diffContent={diffContent}
+        />
+      )}
+
+      {conflictFile && (
+        <ConflictResolver
+          repoPath={repoPath}
+          filePath={conflictFile.path}
+          visible={!!conflictFile}
+          onClose={() => setConflictFile(null)}
+          onResolved={async () => {
+            // Small delay to ensure FS/Git is ready
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await fetchStatus();
+            showToast("Conflict resolved and staged", "success");
+          }}
         />
       )}
 

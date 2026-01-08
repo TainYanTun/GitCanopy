@@ -518,6 +518,12 @@ class GitCanopyApp {
     ipcMain.handle("git:get-diff", (_, repoPath, commitHash, filePath) =>
       this.gitService.getDiff(repoPath, commitHash, filePath),
     );
+    ipcMain.handle("git:get-file-content", (_, repoPath, filePath) =>
+      this.gitService.getFileContent(repoPath, filePath),
+    );
+    ipcMain.handle("git:resolve-conflict", (_, repoPath, filePath, content) =>
+      this.gitService.resolveConflict(repoPath, filePath, content),
+    );
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>
       this.gitService.getHotFiles(repoPath, limit, options),
     );

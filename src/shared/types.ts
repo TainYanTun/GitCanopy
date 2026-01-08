@@ -394,6 +394,12 @@ export interface GitCanopyAPI {
     repoPath: string,
     filePath: string,
   ) => Promise<string | null>;
+  getFileContent: (repoPath: string, filePath: string) => Promise<string>;
+  resolveConflict: (
+    repoPath: string,
+    filePath: string,
+    content: string,
+  ) => Promise<void>;
 
   // GitHub Integration
   getWorkflowRuns: (
