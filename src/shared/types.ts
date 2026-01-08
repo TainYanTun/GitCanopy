@@ -93,6 +93,7 @@ export interface Repository {
   totalCommits: number;
   isRebasing: boolean;
   isMerging: boolean;
+  hasConflicts: boolean;
   isDetached: boolean;
 }
 

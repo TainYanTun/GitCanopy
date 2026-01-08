@@ -544,40 +544,58 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   </div>
 
                   {repository.isRebasing && (
-                    <div className="flex items-center gap-2 text-[10px] text-commit-refactor font-bold uppercase tracking-tight bg-commit-refactor/10 px-2 py-1 rounded border border-commit-refactor/20">
-                      <svg
-                        className="w-3 h-3 animate-spin-slow"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
+                    <div 
+                      onClick={() => setCurrentView("changes")}
+                      className="flex items-center justify-between gap-2 text-[10px] text-commit-refactor font-bold uppercase tracking-tight bg-commit-refactor/15 px-2.5 py-1.5 rounded border border-commit-refactor/30 cursor-pointer hover:bg-commit-refactor/25 transition-all shadow-sm active:scale-[0.98] group/badge"
+                      title="Click to view changes"
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg
+                          className="w-3 h-3 animate-spin-slow"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                        Rebase in progress
+                      </div>
+                      <svg className="w-2.5 h-2.5 opacity-40 group-hover/badge:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                       </svg>
-                      Rebase in progress
                     </div>
                   )}
 
-                  {repository.isMerging && (
-                    <div className="flex items-center gap-2 text-[10px] text-commit-fix font-bold uppercase tracking-tight bg-commit-fix/10 px-2 py-1 rounded border border-commit-fix/20">
-                      <svg
-                        className="w-3 h-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                        />
+                  {repository.hasConflicts && (
+                    <div 
+                      onClick={() => setCurrentView("changes")}
+                      className="flex items-center justify-between gap-2 text-[10px] text-commit-fix font-bold uppercase tracking-tight bg-commit-fix/15 px-2.5 py-1.5 rounded border border-commit-fix/30 cursor-pointer hover:bg-commit-fix/25 transition-all shadow-sm active:scale-[0.98] group/badge"
+                      title="Click to resolve conflicts"
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                          />
+                        </svg>
+                        Merge Conflicts
+                      </div>
+                      <svg className="w-2.5 h-2.5 opacity-40 group-hover/badge:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                       </svg>
-                      Merge Conflicts
                     </div>
                   )}
 

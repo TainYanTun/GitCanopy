@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-01-08
+
+### New Features
+- **Integrated Conflict Resolver:** Added a native, 3-pane conflict resolution interface. Users can now resolve merge conflicts directly within GitCanopy by choosing between "Current", "Incoming", or "Both" changes, with support for manual editing.
+- **Auto-Staging Resolution:** Successfully resolved conflicts are automatically staged, streamlining the merge/rebase workflow.
+
+### Bug Fixes
+- **Status Refresh Race Condition:** Fixed a bug where the sidebar would still show a "Conflicted" status briefly after a resolution was completed.
+
 ## [1.1.0] - 2026-01-07
 
 ### Performance & Engine Optimization

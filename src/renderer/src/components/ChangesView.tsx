@@ -81,6 +81,30 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
     };
   }, [fetchStatus]);
 
+  useEffect(() => {
+    if (status) {
+      const newExpanded = new Set(expandedDirs);
+      let changed = false;
+      
+      status.files.forEach(file => {
+        if (file.status === "conflicted") {
+          const parts = file.path.split("/");
+          if (parts.length > 1) {
+            const dir = parts.slice(0, -1).join("/");
+            if (!newExpanded.has(dir)) {
+              newExpanded.add(dir);
+              changed = true;
+            }
+          }
+        }
+      });
+
+      if (changed) {
+        setExpandedDirs(newExpanded);
+      }
+    }
+  }, [status]);
+
   const groupFiles = (files: StatusFile[]): GroupedFiles => {
     return files.reduce((acc, file) => {
       const parts = file.path.split("/");
@@ -559,7 +583,11 @@ const FileRow: React.FC<{
   return (
     <div
       onClick={onClick}
-      className="group flex items-center gap-3 py-1.5 px-2 hover:bg-zed-element/60 dark:hover:bg-zed-dark-element/60 rounded cursor-pointer transition-all border border-transparent hover:border-zed-border/30 dark:hover:border-zed-dark-border/30"
+      className={`group flex items-center gap-3 py-1.5 px-2 rounded cursor-pointer transition-all border border-transparent 
+        ${file.status === 'conflicted' 
+          ? 'bg-red-500/10 dark:bg-red-500/20 border-red-500/30 animate-pulse-slow' 
+          : 'hover:bg-zed-element/60 dark:hover:bg-zed-dark-element/60 hover:border-zed-border/30 dark:hover:border-zed-dark-border/30'
+        }`}
     >
       <span
         className={`w-4 text-[10px] font-mono font-bold text-center ${config.color}`}

@@ -490,15 +490,18 @@ export class GitService {
     const name = repoPath.split("/").pop() || "Unknown";
     
     // Parallel detection of states and data
-    const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached, totalCommits] = await Promise.all([
+    const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached, totalCommits, status] = await Promise.all([
       this.getCurrentBranch(repoPath),
       this.getCurrentHead(repoPath),
       this.getBranches(repoPath),
       this.checkIsRebasing(repoPath),
       this.checkIsMerging(repoPath),
       this.checkIsDetached(repoPath),
-      this.getTotalCommits(repoPath)
+      this.getTotalCommits(repoPath),
+      this.getStatus(repoPath)
     ]);
+
+    const hasConflicts = status.files.some(f => f.status === 'conflicted');
 
     return {
       path: repoPath,
@@ -510,7 +513,8 @@ export class GitService {
       totalCommits,
       isRebasing,
       isMerging,
-      isDetached
+      isDetached,
+      hasConflicts
     };
   }
 

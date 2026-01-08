@@ -2,6 +2,22 @@
 
 This document tracks the features and fixes implemented in the GitCanopy codebase.
 
+## [2026-01-08] - Integrated Conflict Resolution
+
+### Features
+- **Conflict Resolution UI:** Designed and implemented a dedicated modal for resolving merge conflicts.
+    - **Visual Markers:** Parses standard git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+    - **3-Pane Interface:** Displays "Current (HEAD)", "Incoming", and the "Result" side-by-side (or stacked).
+    - **Action Buttons:** "Accept Current", "Accept Incoming", "Keep Both", and "Undo" for each conflict chunk.
+    - **Manual Editing:** Allows users to manually refine the resolved text before saving.
+- **Workflow Integration:**
+    - Integrated directly into the `ChangesView`. Files with "conflicted" status now open the Resolver instead of the standard Diff view.
+    - **Auto-Stage:** Automatically stages the file (`git add`) upon successful resolution.
+
+### Technical Improvements
+- **Backend Services:** Added `getFileContent` and `resolveConflict` to `GitService` to handle raw file I/O safely.
+- **Race Condition Fix:** Implemented an asynchronous delay in the UI refresh logic to ensure the file system and Git status are synchronized after a resolution operation.
+
 ## [2026-01-07] - Feature & UI Overhaul
 
 ### Fixes
