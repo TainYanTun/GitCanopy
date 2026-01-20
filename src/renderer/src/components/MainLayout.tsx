@@ -22,7 +22,8 @@ import { HelpView } from "./HelpView";
 import { GitConsole } from "./GitConsole";
 import { GitHubStatus } from "./GitHubStatus";
 import { WorkflowRuns } from "./WorkflowRuns";
-import { SyncOutlined } from "@ant-design/icons";
+import { SettingsModal } from "./SettingsModal";
+import { SyncOutlined, SettingOutlined } from "@ant-design/icons";
 
 interface MainLayoutProps {
   repository: Repository;
@@ -38,6 +39,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const { toggleTheme } = useTheme();
   const { showToast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [commits, setCommits] = useState<Commit[]>([]);
   const [stashes, setStashes] = useState<string[]>([]);
@@ -402,6 +404,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           onSelectBranch={handleBranchSelect}
         />
       )}
+      
+      <SettingsModal 
+        visible={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
+
       <ConfirmDialog
         isOpen={showStashConfirm}
         title="Uncommitted Changes Detected"
@@ -453,6 +461,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                       currentBranch={repository.currentBranch} 
                       onOpenActions={() => setCurrentView("actions")}
                     />
+
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"
+            title="Settings"
+          >
+             <SettingOutlined />
+          </button>
           
                     <button
                       onClick={toggleTheme}            className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"

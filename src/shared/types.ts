@@ -193,6 +193,8 @@ export interface AppSettings {
   githubToken?: string;
   githubTokenCreated?: number;
   lastSeenVersion?: string;
+  aiProvider?: "gemini" | "openai";
+  aiApiKey?: string;
 }
 
 export interface WorkflowRunStep {
@@ -417,6 +419,10 @@ export interface GitCanopyAPI {
     filePath: string,
     content: string,
   ) => Promise<void>;
+
+  // AI
+  generateCommitMessage: (repoPath: string) => Promise<{ summary: string; description: string }>;
+  resolveConflictWithAi: (current: string, incoming: string, context?: string) => Promise<string>;
 
   // GitHub Integration
   getWorkflowRuns: (

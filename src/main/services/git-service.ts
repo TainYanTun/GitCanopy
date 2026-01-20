@@ -1063,6 +1063,18 @@ export class GitService {
     }
   }
 
+  async getStagedDiff(repoPath: string): Promise<string> {
+    try {
+      // --no-color to get raw text for AI
+      // --diff-algorithm=minimal to make it slightly more compact
+      const diff = await this.run(["diff", "--cached", "--no-color", "--diff-algorithm=minimal"], repoPath);
+      return diff;
+    } catch (error) {
+      logError("GitService", `Failed to get staged diff: ${error}`);
+      return "";
+    }
+  }
+
   async getFileContent(repoPath: string, filePath: string): Promise<string> {
     try {
       const fullPath = this.validatePath(repoPath, filePath);

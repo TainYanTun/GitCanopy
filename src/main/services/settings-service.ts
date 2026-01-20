@@ -36,9 +36,12 @@ export class SettingsService {
       // Merge with defaults to ensure all properties exist
       const mergedSettings = { ...this.defaultSettings, ...settings };
 
-      // Decrypt GitHub token if it exists and is encrypted
+      // Decrypt tokens if they exist and are encrypted
       if (mergedSettings.githubToken && typeof mergedSettings.githubToken === 'string') {
         mergedSettings.githubToken = this.decryptToken(mergedSettings.githubToken);
+      }
+      if (mergedSettings.aiApiKey && typeof mergedSettings.aiApiKey === 'string') {
+        mergedSettings.aiApiKey = this.decryptToken(mergedSettings.aiApiKey);
       }
 
       return mergedSettings;
@@ -59,9 +62,12 @@ export class SettingsService {
       // Clone settings to avoid mutating the original object
       const settingsToSave = { ...settings };
 
-      // Encrypt GitHub token before saving
+      // Encrypt tokens before saving
       if (settingsToSave.githubToken && typeof settingsToSave.githubToken === 'string') {
         settingsToSave.githubToken = this.encryptToken(settingsToSave.githubToken);
+      }
+      if (settingsToSave.aiApiKey && typeof settingsToSave.aiApiKey === 'string') {
+        settingsToSave.aiApiKey = this.encryptToken(settingsToSave.aiApiKey);
       }
 
       // Validate settings before saving
@@ -127,6 +133,14 @@ export class SettingsService {
     }
     if (settings.lastSeenVersion && typeof settings.lastSeenVersion === 'string') {
         validated.lastSeenVersion = settings.lastSeenVersion;
+    }
+
+    if (settings.aiProvider && ['gemini', 'openai'].includes(settings.aiProvider)) {
+        validated.aiProvider = settings.aiProvider;
+    }
+
+    if (settings.aiApiKey && typeof settings.aiApiKey === 'string') {
+        validated.aiApiKey = settings.aiApiKey;
     }
 
     return validated;

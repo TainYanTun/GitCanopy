@@ -16,6 +16,7 @@ import { SettingsService } from "./services/settings-service";
 import { AuthService } from "./services/auth-service";
 import { UpdateService } from "./services/update-service";
 import { GitHubService } from "./services/github-service";
+import { AiService } from "./services/ai-service";
 import { logInfo, logError, logWarn } from "./services/logger-service";
 import { CommitFilterOptions } from "../shared/types";
 
@@ -27,6 +28,7 @@ class GitCanopyApp {
   private authService: AuthService;
   private updateService: UpdateService;
   private githubService: GitHubService;
+  private aiService: AiService;
 
   constructor() {
     this.authService = new AuthService();
@@ -35,6 +37,7 @@ class GitCanopyApp {
     this.settingsService = new SettingsService();
     this.updateService = new UpdateService();
     this.githubService = new GitHubService(this.gitService, this.settingsService);
+    this.aiService = new AiService();
     this.initializeApp();
   }
 
@@ -533,6 +536,31 @@ class GitCanopyApp {
     ipcMain.handle("git:resolve-conflict", (_, repoPath, filePath, content) =>
       this.gitService.resolveConflict(repoPath, filePath, content),
     );
+
+    // AI Operations
+    ipcMain.handle("generate-commit-message", async (_, repoPath: string) => {
+      const diff = await this.gitService.getStagedDiff(repoPath);
+      if (!diff || !diff.trim()) {
+        throw new Error("No staged changes found. Please stage your changes first.");
+      }
+
+      const settings = await this.settingsService.getSettings();
+      if (!settings.aiApiKey) {
+        throw new Error("AI API Key not found. Please configure it in Settings.");
+      }
+
+      // Default to gemini if not set
+      return this.aiService.generateCommitMessage(diff, settings.aiApiKey, settings.aiProvider || 'gemini');
+    });
+
+    ipcMain.handle("resolve-conflict-with-ai", async (_, current: string, incoming: string) => {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.aiApiKey) {
+        throw new Error("AI API Key not found. Please configure it in Settings.");
+      }
+      return this.aiService.resolveConflictWithAi(current, incoming, settings.aiApiKey, settings.aiProvider || 'gemini');
+    });
+
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>
       this.gitService.getHotFiles(repoPath, limit, options),
     );

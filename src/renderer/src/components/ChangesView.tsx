@@ -15,6 +15,7 @@ import {
   FileMarkdownOutlined,
   CodeOutlined,
   FileOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 import { DiffModal } from "./DiffModal";
 import { ConflictResolver } from "./ConflictResolver";
@@ -39,6 +40,7 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   const [commitSummary, setCommitSummary] = useState("");
   const [commitDescription, setCommitDescription] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["."]));
   const [conflictFile, setConflictFile] = useState<StatusFile | null>(null);
@@ -251,6 +253,30 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
     }
   };
 
+  const handleAiGenerate = async () => {
+    if (!hasStaged) {
+      showToast("Please stage changes first.", "warning");
+      return;
+    }
+    setGeneratingAi(true);
+    try {
+      const { summary, description } = await window.gitcanopyAPI.generateCommitMessage(repoPath);
+      setCommitSummary(summary);
+      setCommitDescription(description);
+      showToast("Commit message generated!", "success");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || "Unknown error";
+      if (msg.includes("API Key")) {
+         showToast("Please set your AI API Key in Settings.", "error");
+      } else {
+         showToast(msg, "error");
+      }
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
   if (loading && !status) {
     return (
       <div className="flex items-center justify-center h-full bg-zed-bg dark:bg-zed-dark-bg">
@@ -406,6 +432,20 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
                 }}
                 className="flex-1 bg-white dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border px-3 py-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-zed-accent/50 dark:focus:ring-zed-dark-accent/50 placeholder:opacity-30 text-zed-text dark:text-zed-dark-text rounded shadow-sm"
               />
+              <button
+                onClick={handleAiGenerate}
+                disabled={generatingAi}
+                className={`h-8 w-8 flex items-center justify-center rounded transition-colors ${
+                  generatingAi
+                    ? "bg-purple-500/5 text-purple-400 opacity-50 cursor-not-allowed" 
+                    : !hasStaged
+                      ? "bg-purple-500/5 text-purple-400/50 hover:bg-purple-500/10 cursor-pointer"
+                      : "bg-purple-500/10 text-purple-600 hover:bg-purple-500/20"
+                }`}
+                title={!hasStaged ? "Stage changes to generate message" : "Generate Commit Message with AI"}
+              >
+                <RobotOutlined className={generatingAi ? "animate-spin" : ""} />
+              </button>
               <button
                 onClick={handleCommit}
                 disabled={isCommitting || !hasStaged || !commitSummary.trim()}

@@ -104,6 +104,13 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("git:get-file-content", repoPath, filePath),
   resolveConflict: (repoPath: string, filePath: string, content: string) =>
     ipcRenderer.invoke("git:resolve-conflict", repoPath, filePath, content),
+
+  // AI
+  generateCommitMessage: (repoPath: string) =>
+    ipcRenderer.invoke("generate-commit-message", repoPath),
+  resolveConflictWithAi: (current: string, incoming: string, context?: string) =>
+    ipcRenderer.invoke("resolve-conflict-with-ai", current, incoming, context),
+
   getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) =>
     ipcRenderer.invoke("git:get-hot-files", repoPath, limit, options),
   getContributors: (repoPath: string) =>
