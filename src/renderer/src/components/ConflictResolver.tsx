@@ -188,7 +188,11 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
       handleResolve(chunk.id, "manual", resolved);
       showToast("Resolved with AI", "success");
     } catch (err: any) {
-      showToast(err.message || "AI Resolution failed", "error");
+      let msg = err.message || "AI Resolution failed";
+      if (msg.includes("quota") || msg.includes("429")) {
+        msg = "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
+      }
+      showToast(msg, "error");
     } finally {
       setChunks((prev) =>
         prev.map((c) =>

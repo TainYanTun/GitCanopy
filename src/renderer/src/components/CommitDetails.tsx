@@ -3,6 +3,8 @@ import { Commit, FileChange } from "@shared/types";
 import moment from "moment";
 import { DiffModal } from "./DiffModal";
 import { FileTree } from "./FileTree";
+import { RobotOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import ReactMarkdown from 'react-markdown';
 
 const CopyIcon = () => (
   <svg
@@ -42,6 +44,31 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [isDiffModalVisible, setDiffModalVisible] = useState(false);
+  
+  // AI Insight State
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
+
+  const handleExplain = async () => {
+    if (!fullCommitDetails) return;
+    setIsExplaining(true);
+    setAiInsight(null);
+    try {
+      // We get the full diff for the whole commit for the AI to analyze
+      const diff = await window.gitcanopyAPI.getDiff(repoPath, commit.hash, "");
+      const explanation = await window.gitcanopyAPI.explainDiff(diff);
+      setAiInsight(explanation);
+    } catch (err: any) {
+      console.error(err);
+      let msg = err.message || "Unknown error";
+      if (msg.includes("quota") || msg.includes("429")) {
+        msg = "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
+      }
+      setAiInsight(`Error: ${msg}`);
+    } finally {
+      setIsExplaining(false);
+    }
+  };
 
   const handleCopy = async (text: string, hash: string) => {
     try {
@@ -180,6 +207,51 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
               .substring(displayCommit.shortMessage.length)
               .trim()}
           </pre>
+        )}
+      </div>
+
+      {/* AI Insight Section */}
+      <div className="space-y-2 pt-2 border-t border-zed-border/30 dark:border-zed-dark-border/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] text-zed-muted dark:text-zed-dark-muted uppercase font-bold flex items-center gap-1.5 shrink-0">
+            <RobotOutlined className="text-green-500" /> AI Insight
+          </div>
+          <div className="flex items-center gap-1">
+            {aiInsight && (
+              <button
+                onClick={() => handleCopy(aiInsight, "ai-insight")}
+                className="text-[9px] px-1.5 py-0.5 bg-zed-element dark:bg-zed-dark-element hover:bg-zed-border dark:hover:bg-zed-dark-border border border-zed-border dark:border-zed-dark-border rounded flex items-center gap-1 transition-colors shrink-0"
+                title="Copy to clipboard"
+              >
+                {copiedHash === "ai-insight" ? <span className="text-green-500">Copied</span> : <><CopyIcon /> Copy</>}
+              </button>
+            )}
+            <button 
+              onClick={handleExplain} 
+              disabled={isExplaining}
+              className="text-[9px] px-1.5 py-0.5 bg-zed-element dark:bg-zed-dark-element hover:bg-zed-border dark:hover:bg-zed-dark-border border border-zed-border dark:border-zed-dark-border rounded flex items-center gap-1 transition-colors disabled:opacity-50 shrink-0 font-medium"
+            >
+              {isExplaining ? <RobotOutlined className="animate-spin" /> : <InfoCircleOutlined />}
+              {isExplaining ? "Analyzing" : "Analyze"}
+            </button>
+          </div>
+        </div>
+        {aiInsight && (
+          <div className="bg-green-500/[0.03] dark:bg-green-500/[0.02] border border-green-500/10 rounded p-3 text-xs leading-relaxed text-zed-text dark:text-zed-dark-text max-h-[400px] overflow-y-auto custom-scrollbar">
+            <ReactMarkdown 
+              components={{
+                h3: ({node: _node, ...props}) => <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400 mt-4 mb-2 first:mt-0" {...props} />,
+                p: ({node: _node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                ul: ({node: _node, ...props}) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                ol: ({node: _node, ...props}) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
+                li: ({node: _node, ...props}) => <li className="pl-1" {...props} />,
+                strong: ({node: _node, ...props}) => <strong className="font-bold text-zed-text dark:text-white" {...props} />,
+                code: ({node: _node, ...props}) => <code className="bg-zed-element dark:bg-zed-dark-element px-1 rounded font-mono text-[10px]" {...props} />
+              }}
+            >
+              {aiInsight}
+            </ReactMarkdown>
+          </div>
         )}
       </div>
 

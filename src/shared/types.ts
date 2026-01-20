@@ -423,6 +423,7 @@ export interface GitCanopyAPI {
   // AI
   generateCommitMessage: (repoPath: string) => Promise<{ summary: string; description: string }>;
   resolveConflictWithAi: (current: string, incoming: string, context?: string) => Promise<string>;
+  explainDiff: (diff: string) => Promise<string>;
 
   // GitHub Integration
   getWorkflowRuns: (
@@ -438,6 +439,8 @@ export interface GitCanopyAPI {
   // Settings
   getSettings: () => Promise<AppSettings>;
   saveSettings: (settings: AppSettings) => Promise<void>;
+  getGlobalConfig: (key: string) => Promise<string>;
+  setGlobalConfig: (key: string, value: string) => Promise<void>;
   clearRecentRepositories: () => Promise<void>;
 
   getInitialRepo: () => Promise<string | null>;

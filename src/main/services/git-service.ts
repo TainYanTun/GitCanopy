@@ -406,11 +406,27 @@ export class GitService {
   }
 
   async stageFile(repoPath: string, filePath: string): Promise<void> {
+    if (this.isEnvFile(filePath)) {
+      throw new Error(`SECURITY: Pushing .env files is blocked to prevent accidental leakage of secrets. Please add '${filePath}' to your .gitignore.`);
+    }
     await this.run(["add", "--", filePath], repoPath);
   }
 
   async stageAll(repoPath: string): Promise<void> {
+    // Check if any files to be staged are .env files
+    const status = await this.getStatus(repoPath);
+    const envFiles = status.files.filter(f => !f.staged && this.isEnvFile(f.path));
+    
+    if (envFiles.length > 0) {
+      throw new Error(`SECURITY: .env files detected (${envFiles.map(f => f.path).join(", ")}). 'Stage All' is blocked to prevent accidental leakage. Please stage files individually or update your .gitignore.`);
+    }
+    
     await this.run(["add", "."], repoPath);
+  }
+
+  private isEnvFile(filePath: string): boolean {
+    const filename = path.basename(filePath).toLowerCase();
+    return filename === ".env" || filename.startsWith(".env.");
   }
 
   async clone(url: string, targetPath: string): Promise<void> {
@@ -868,6 +884,19 @@ export class GitService {
     }
   }
 
+  async getGlobalConfig(key: string): Promise<string> {
+    try {
+      const output = await this.run(["config", "--global", "--get", key], process.cwd());
+      return output.trim();
+    } catch {
+      return "";
+    }
+  }
+
+  async setGlobalConfig(key: string, value: string): Promise<void> {
+    await this.run(["config", "--global", key, value], process.cwd());
+  }
+
 
   async getCommitDetails(repoPath: string, commitHash: string): Promise<Commit> {
     const args = ["show", "--pretty=format:%H|%P|%an|%ae|%ad|%s", "--numstat", "--date=raw", commitHash];
@@ -985,10 +1014,13 @@ export class GitService {
       let args: string[] = [];
       const EMPTY_TREE_HASH = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
       
+      // Normalize path: empty string becomes '.' for Git
+      const targetPath = filePath || ".";
+      
       if (!commitHash) {
         // Unstaged or Untracked
-        const status = await this.run(["status", "--porcelain", "--", filePath], repoPath);
-        if (status.startsWith("??")) {
+        const status = await this.run(["status", "--porcelain", "--", targetPath], repoPath);
+        if (status.startsWith("??") && filePath) { // Only handle as untracked if a specific file is targeted
           // Untracked: Show as all additions
           try {
             const fullPath = this.validatePath(repoPath, filePath);
@@ -1009,14 +1041,14 @@ export class GitService {
           }
         } else {
           // Tracked but unstaged
-          args = ["diff", "--", filePath];
+          args = ["diff", "--", targetPath];
         }
       } else if (commitHash === "HEAD") {
         // Staged changes
-        args = ["diff", "--cached", "--", filePath];
+        args = ["diff", "--cached", "--", targetPath];
       } else {
         // Commit changes: Diff between commit and its parent
-        args = ["diff", `${commitHash}^`, commitHash, "--", filePath];
+        args = ["diff", `${commitHash}^`, commitHash, "--", targetPath];
       }
 
       // 2. Helper to execute diff with binary check

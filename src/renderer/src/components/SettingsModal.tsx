@@ -9,6 +9,7 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined
 } from "@ant-design/icons";
+import { useTheme } from "./ThemeContext";
 
 interface SettingsModalProps {
   visible: boolean;
@@ -16,14 +17,26 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
+  const { setTheme: setAppTheme } = useTheme();
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'github'>('ai');
+  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'github'>('general');
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Identity state
+  const [identity, setIdentity] = useState({ name: '', email: '' });
 
   useEffect(() => {
     if (visible) {
       window.gitcanopyAPI.getSettings().then(setSettings);
+      
+      // Fetch git identity
+      Promise.all([
+        window.gitcanopyAPI.getGlobalConfig('user.name'),
+        window.gitcanopyAPI.getGlobalConfig('user.email')
+      ]).then(([name, email]) => {
+        setIdentity({ name, email });
+      });
     }
   }, [visible]);
 
@@ -32,6 +45,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
     setSaving(true);
     try {
       await window.gitcanopyAPI.saveSettings(settings);
+      
+      // Sync theme with context
+      if (settings.theme) {
+        setAppTheme(settings.theme);
+      }
+      
+      // Save git identity sequentially to avoid lock file conflicts
+      await window.gitcanopyAPI.setGlobalConfig('user.name', identity.name);
+      await window.gitcanopyAPI.setGlobalConfig('user.email', identity.email);
+      
       onClose();
     } catch (e) {
       console.error(e);
@@ -81,6 +104,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
           {/* Panel */}
           <div className="flex-1 p-6 overflow-y-auto">
+            {activeTab === 'general' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-bold mb-4">User Identity</h3>
+                  <p className="text-[10px] text-zed-muted mb-4 leading-relaxed">
+                    These settings are used for your commit authorship and are stored in your global Git configuration.
+                  </p>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold opacity-70">Full Name</label>
+                      <input
+                        type="text"
+                        value={identity.name}
+                        onChange={(e) => setIdentity({ ...identity, name: e.target.value })}
+                        placeholder="e.g. John Doe"
+                        className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold opacity-70">Email Address</label>
+                      <input
+                        type="email"
+                        value={identity.email}
+                        onChange={(e) => setIdentity({ ...identity, email: e.target.value })}
+                        placeholder="e.g. john@example.com"
+                        className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-zed-border dark:border-zed-dark-border">
+                  <h3 className="text-sm font-bold mb-4">Application</h3>
+                   <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <label className="text-xs font-bold opacity-70">Theme</label>
+                        <p className="text-[10px] text-zed-muted">Select your preferred interface style.</p>
+                      </div>
+                      <select
+                        value={settings.theme || 'system'}
+                        onChange={(e) => setSettings({ ...settings, theme: e.target.value as any })}
+                        className="bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="system">System</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeTab === 'ai' && (
               <div className="space-y-6">
                 <div>
@@ -93,7 +169,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         onChange={(e) => setSettings({ ...settings, aiProvider: e.target.value as any })}
                         className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
                       >
-                        <option value="gemini">Google Gemini</option>
+                        <option value="gemini">Google Gemini 2.5 Flash</option>
                         {/* <option value="openai">OpenAI (Coming Soon)</option> */}
                       </select>
                     </div>

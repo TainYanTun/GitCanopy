@@ -291,7 +291,11 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
       showToast("Commit message generated!", "success");
     } catch (error: any) {
       console.error(error);
-      const msg = error.message || "Unknown error";
+      let msg = error.message || "Unknown error";
+      if (msg.includes("quota") || msg.includes("429")) {
+        msg = "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
+      }
+      
       if (msg.includes("API Key")) {
          showToast("Please set your AI API Key in Settings.", "error");
       } else {

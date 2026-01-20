@@ -1,3 +1,4 @@
+import fetch from 'node-fetch';
 import { logError } from './logger-service';
 
 interface GeneratedMessage {
@@ -40,12 +41,12 @@ Return ONLY a raw JSON object (no markdown formatting, no backticks) with the fo
 Diff:
 ${diff.substring(0, 30000)} 
 `;
-// Truncate diff to 30k chars to avoid hitting token limits safely (Gemini 1.5 Flash has 1M context but good to be safe/fast)
+// Truncate diff to 30k chars to avoid hitting token limits safely (Gemini 2.5 Flash has high context but good to be safe/fast)
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,6 +92,27 @@ ${diff.substring(0, 30000)}
     }
   }
 
+  private async fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000): Promise<any> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.status === 503 || response.status === 429) {
+          logError("AiService", `Server busy (${response.status}), retrying in ${backoff}ms... (${i + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, backoff));
+          backoff *= 2; // Exponential backoff
+          continue;
+        }
+        return response;
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        logError("AiService", `Fetch attempt ${i + 1} failed: ${err}. Retrying...`);
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        backoff *= 2;
+      }
+    }
+    return fetch(url, options);
+  }
+
   async resolveConflictWithAi(
     current: string,
     incoming: string,
@@ -120,7 +142,7 @@ ${incoming}
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -139,6 +161,40 @@ ${incoming}
       return content.replace(/^```(?:\w+)?\n/, "").replace(/\n```$/, "").trim();
     } catch (error) {
       logError("AiService", `Conflict resolution failed: ${error}`);
+      throw error;
+    }
+  }
+
+  async explainDiff(
+    diff: string,
+    apiKey: string
+  ): Promise<string> {
+    const prompt = `
+You are an expert technical lead. 
+Analyze the following git diff and provide a high-level explanation of WHAT changed and WHY (if you can infer it from the code).
+Focus on architectural impact and potential risks. 
+Keep it concise but insightful. Use markdown formatting.
+
+Diff:
+${diff.substring(0, 30000)}
+`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Gemini API Error: ${response.status}`);
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "No explanation generated.";
+    } catch (error) {
+      logError("AiService", `Explain failed: ${error}`);
       throw error;
     }
   }

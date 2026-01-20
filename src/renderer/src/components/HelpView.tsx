@@ -448,11 +448,43 @@ export const HelpView: React.FC = () => {
           </div>
         </section>
 
-        {/* 08. Data Integrity & Security */}
-        <section className="space-y-8 pb-12">
+        {/* 08. AI Assistant */}
+        <section className="space-y-8">
           <div className="flex items-baseline gap-4">
             <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
               08
+            </span>
+            <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
+              AI Assistant
+            </h2>
+          </div>
+
+          <div className="space-y-8 pl-8 text-sm">
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                Commit Message Generation
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                Analyze staged changes to generate semantic commit messages. The engine follows the Conventional Commits spec, producing a concise summary and detailed bullet points automatically.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                Prompted Conflict Resolution
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                Beyond standard merging, you can provide instructions to the AI. Use the command bar in the Conflict Resolver to specify intent, such as <code className="text-green-500/80">&quot;prefer current logic but use incoming variable names&quot;</code>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* 09. Data Integrity & Security */}
+        <section className="space-y-8 pb-12">
+          <div className="flex items-baseline gap-4">
+            <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
+              09
             </span>
             <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
               Data Integrity & Security
@@ -479,7 +511,7 @@ export const HelpView: React.FC = () => {
                 <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed font-medium">
                   <strong>Offline First:</strong> Repository metadata never
                   leaves your machine. All calculations are performed against
-                  your local Git binary.
+                  your local Git binary. Identity settings and API keys are stored in your local application data or Git config.
                 </p>
               </li>
             </ul>

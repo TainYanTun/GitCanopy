@@ -561,6 +561,14 @@ class GitCanopyApp {
       return this.aiService.resolveConflictWithAi(current, incoming, settings.aiApiKey, settings.aiProvider || 'gemini', instruction);
     });
 
+    ipcMain.handle("git:explain-diff", async (_, diff: string) => {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.aiApiKey) {
+        throw new Error("AI API Key not found. Please configure it in Settings.");
+      }
+      return this.aiService.explainDiff(diff, settings.aiApiKey);
+    });
+
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>
       this.gitService.getHotFiles(repoPath, limit, options),
     );
@@ -630,6 +638,12 @@ class GitCanopyApp {
     ipcMain.handle("get-settings", () => this.settingsService.getSettings());
     ipcMain.handle("save-settings", (_, settings) =>
       this.settingsService.saveSettings(settings),
+    );
+    ipcMain.handle("git:get-global-config", (_, key: string) =>
+      this.gitService.getGlobalConfig(key),
+    );
+    ipcMain.handle("git:set-global-config", (_, key: string, value: string) =>
+      this.gitService.setGlobalConfig(key, value),
     );
     ipcMain.handle("clear-recent-repositories", () =>
       this.settingsService.clearRecentRepositories(),

@@ -110,6 +110,8 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("generate-commit-message", repoPath),
   resolveConflictWithAi: (current: string, incoming: string, context?: string) =>
     ipcRenderer.invoke("resolve-conflict-with-ai", current, incoming, context),
+  explainDiff: (diff: string) =>
+    ipcRenderer.invoke("git:explain-diff", diff),
 
   getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) =>
     ipcRenderer.invoke("git:get-hot-files", repoPath, limit, options),
@@ -143,6 +145,12 @@ const gitcanopyAPI: GitCanopyAPI = {
 
   saveSettings: (settings: AppSettings): Promise<void> =>
     ipcRenderer.invoke("save-settings", settings),
+
+  getGlobalConfig: (key: string): Promise<string> =>
+    ipcRenderer.invoke("git:get-global-config", key),
+
+  setGlobalConfig: (key: string, value: string): Promise<void> =>
+    ipcRenderer.invoke("git:set-global-config", key, value),
 
   clearRecentRepositories: (): Promise<void> =>
     ipcRenderer.invoke("clear-recent-repositories"),
