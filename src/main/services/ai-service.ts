@@ -97,6 +97,10 @@ ${diff.substring(0, 30000)}
     apiKey: string,
     provider: 'gemini' | 'openai' = 'gemini'
   ): Promise<string> {
+    if (provider !== 'gemini') {
+      throw new Error(`Provider ${provider} is not yet supported for conflict resolution.`);
+    }
+
     const prompt = `
 You are an expert developer resolving a merge conflict.
 Below are two versions of a code block. 

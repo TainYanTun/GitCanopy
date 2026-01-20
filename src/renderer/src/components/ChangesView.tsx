@@ -22,6 +22,9 @@ import { ConflictResolver } from "./ConflictResolver";
 import { useToast } from "./ToastContext";
 import { ConfirmDialog } from "./ConfirmDialog";
 
+import { List } from "react-window";
+import { AutoSizer } from "react-virtualized-auto-sizer";
+
 interface ChangesViewProps {
   repoPath: string;
 }
@@ -29,6 +32,10 @@ interface ChangesViewProps {
 interface GroupedFiles {
   [dir: string]: StatusFile[];
 }
+
+type FlatItem =
+  | { type: "directory"; dir: string; fileCount: number }
+  | { type: "file"; file: StatusFile; isStaged: boolean };
 
 export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   const { showToast } = useToast();
@@ -127,6 +134,24 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
     () => groupFiles(status?.files.filter((f) => !f.staged) || []),
     [status],
   );
+
+  const flattenGroups = useCallback((grouped: GroupedFiles, isStaged: boolean): FlatItem[] => {
+    const flat: FlatItem[] = [];
+    Object.entries(grouped)
+      .sort()
+      .forEach(([dir, files]) => {
+        flat.push({ type: "directory", dir, fileCount: files.length });
+        if (expandedDirs.has(dir)) {
+          files.forEach((file) => {
+            flat.push({ type: "file", file, isStaged });
+          });
+        }
+      });
+    return flat;
+  }, [expandedDirs]);
+
+  const flatUnstaged = useMemo(() => flattenGroups(unstagedGrouped, false), [unstagedGrouped, flattenGroups]);
+  const flatStaged = useMemo(() => flattenGroups(stagedGrouped, true), [stagedGrouped, flattenGroups]);
 
   const toggleDir = (dir: string) => {
     const newExpanded = new Set(expandedDirs);
@@ -341,24 +366,29 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+          <div className="flex-1 overflow-hidden relative">
             {hasUnstaged ? (
-              Object.entries(unstagedGrouped)
-                .sort()
-                .map(([dir, files]) => (
-                  <DirectoryGroup
-                    key={dir}
-                    dir={dir}
-                    files={files}
-                    isExpanded={expandedDirs.has(dir)}
-                    onToggle={() => toggleDir(dir)}
-                    onFileClick={handleFileClick}
-                    onAction={handleStage}
-                    onDiscard={handleDiscard}
-                    actionIcon={<PlusOutlined />}
-                    actionTitle="Stage"
+              <AutoSizer
+                Child={({ height, width }: any) => (
+                  <List<ChangesRowProps>
+                    key={repoPath}
+                    style={{ height: height || 0, width: width || 0 }}
+                    rowCount={flatUnstaged.length}
+                    rowHeight={(index) => (flatUnstaged[index].type === "directory" ? 28 : 34)}
+                    overscanCount={10}
+                    rowComponent={ChangesRow as any}
+                    rowProps={{
+                      items: flatUnstaged,
+                      onToggle: toggleDir,
+                      onFileClick: handleFileClick,
+                      onAction: handleStage,
+                      onDiscard: handleDiscard,
+                      expandedDirs,
+                    }}
+                    className="custom-scrollbar"
                   />
-                ))
+                )}
+              />
             ) : (
               <div className="h-full flex flex-col items-center justify-center opacity-30">
                 <CheckCircleOutlined className="text-2xl mb-2" />
@@ -385,25 +415,30 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+          <div className="flex-1 overflow-hidden relative">
             {hasStaged ? (
-              Object.entries(stagedGrouped)
-                .sort()
-                .map(([dir, files]) => (
-                  <DirectoryGroup
-                    key={dir}
-                    dir={dir}
-                    files={files}
-                    isExpanded={expandedDirs.has(dir)}
-                    onToggle={() => toggleDir(dir)}
-                    onFileClick={handleFileClick}
-                    onAction={handleUnstage}
-                    onDiscard={handleDiscard}
-                    actionIcon={<MinusOutlined />}
-                    actionTitle="Unstage"
-                    isStaged
+              <AutoSizer
+                Child={({ height, width }: any) => (
+                  <List<ChangesRowProps>
+                    key={repoPath}
+                    style={{ height: height || 0, width: width || 0 }}
+                    rowCount={flatStaged.length}
+                    rowHeight={(index) => (flatStaged[index].type === "directory" ? 28 : 34)}
+                    overscanCount={10}
+                    rowComponent={ChangesRow as any}
+                    rowProps={{
+                      items: flatStaged,
+                      onToggle: toggleDir,
+                      onFileClick: handleFileClick,
+                      onAction: handleUnstage,
+                      onDiscard: handleDiscard,
+                      expandedDirs,
+                      isStaged: true,
+                    }}
+                    className="custom-scrollbar"
                   />
-                ))
+                )}
+              />
             ) : (
               <div className="h-full flex flex-col items-center justify-center opacity-20">
                 <span className="text-[10px] uppercase font-bold tracking-widest italic">
@@ -520,64 +555,71 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   );
 };
 
-const DirectoryGroup: React.FC<{
-  dir: string;
-  files: StatusFile[];
-  isExpanded: boolean;
-  onToggle: () => void;
+interface ChangesRowProps {
+  items: FlatItem[];
+  onToggle: (dir: string) => void;
   onFileClick: (f: StatusFile) => void;
   onAction: (f: StatusFile, e: React.MouseEvent) => void;
   onDiscard: (f: StatusFile, e: React.MouseEvent) => void;
-  actionIcon: React.ReactNode;
-  actionTitle: string;
+  expandedDirs: Set<string>;
   isStaged?: boolean;
-}> = ({
-  dir,
-  files,
-  isExpanded,
+}
+
+const ChangesRow = ({
+  index,
+  style,
+  items,
   onToggle,
   onFileClick,
   onAction,
   onDiscard,
-  actionIcon,
-  actionTitle,
+  expandedDirs,
   isStaged,
-}) => (
-  <div className="mb-1">
-    <div
-      onClick={onToggle}
-      className="flex items-center gap-2 py-1 px-2 hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40 cursor-pointer rounded-sm group transition-colors"
-    >
-      <span className="text-zed-muted opacity-60 text-[10px]">
-        {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-      </span>
-      <FolderOpenOutlined className="text-[11px] text-zed-accent/70" />
-      <span className="text-[11px] font-bold opacity-70 truncate flex-1">
-        {dir}
-      </span>
-      <span className="text-[9px] font-mono opacity-40 px-1.5 bg-zed-element dark:bg-zed-dark-element rounded">
-        {files.length}
-      </span>
-    </div>
+}: {
+  index: number;
+  style: React.CSSProperties;
+  ariaAttributes: any;
+} & ChangesRowProps): React.ReactElement => {
+  const item = items[index];
+  if (!item) return <div style={style} />;
 
-    {isExpanded && (
-      <div className="ml-4 mt-0.5 space-y-0.5 border-l border-zed-border dark:border-zed-dark-border pl-1">
-        {files.map((file) => (
-          <FileRow
-            key={file.path}
-            file={file}
-            onClick={() => onFileClick(file)}
-            onAction={(e) => onAction(file, e)}
-            onDiscard={(e) => onDiscard(file, e)}
-            actionIcon={actionIcon}
-            actionTitle={actionTitle}
-            isStaged={isStaged}
-          />
-        ))}
+  if (item.type === "directory") {
+    const isExpanded = expandedDirs.has(item.dir);
+    return (
+      <div style={style} className="px-2">
+        <div
+          onClick={() => onToggle(item.dir)}
+          className="flex items-center gap-2 py-1 px-2 hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40 cursor-pointer rounded-sm group transition-colors"
+        >
+          <span className="text-zed-muted opacity-60 text-[10px]">
+            {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+          </span>
+          <FolderOpenOutlined className="text-[11px] text-zed-accent/70" />
+          <span className="text-[11px] font-bold opacity-70 truncate flex-1">
+            {item.dir}
+          </span>
+          <span className="text-[9px] font-mono opacity-40 px-1.5 bg-zed-element dark:bg-zed-dark-element rounded">
+            {item.fileCount}
+          </span>
+        </div>
       </div>
-    )}
-  </div>
-);
+    );
+  }
+
+  return (
+    <div style={style} className="pl-6 pr-2">
+      <FileRow
+        file={item.file}
+        onClick={() => onFileClick(item.file)}
+        onAction={(e) => onAction(item.file, e)}
+        onDiscard={(e) => onDiscard(item.file, e)}
+        actionIcon={isStaged ? <MinusOutlined /> : <PlusOutlined />}
+        actionTitle={isStaged ? "Unstage" : "Stage"}
+        isStaged={isStaged}
+      />
+    </div>
+  );
+};
 
 const FileRow: React.FC<{
   file: StatusFile;

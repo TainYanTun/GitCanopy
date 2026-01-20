@@ -17,6 +17,99 @@ interface DiffLine {
   originalLine: string;
 }
 
+interface DiffRowProps {
+  items: DiffLine[];
+}
+
+const Row = ({
+  index,
+  style,
+  items,
+}: {
+  index: number;
+  style: React.CSSProperties;
+} & DiffRowProps): React.ReactElement => {
+  const diffLine = items[index];
+
+  if (!diffLine) return <div style={style} />;
+
+  const isAddition = diffLine.type === "addition";
+  const isDeletion = diffLine.type === "deletion";
+  const isHunk = diffLine.type === "hunk";
+  const isInfo = diffLine.type === "info";
+
+  return (
+    <div
+      style={{ ...style, willChange: "transform" }}
+      className={`flex group border-b border-transparent transition-colors duration-75 ${ 
+        isAddition
+          ? "bg-green-500/10 dark:bg-green-900/20 hover:bg-green-500/20 dark:hover:bg-green-900/30"
+          : isDeletion
+          ? "bg-red-500/10 dark:bg-red-900/20 hover:bg-red-500/20 dark:hover:bg-red-900/30"
+          : isHunk
+          ? "bg-zed-accent/5 dark:bg-zed-accent/10 text-zed-accent/80 font-bold"
+          : isInfo
+          ? "bg-zed-element/30 dark:bg-zed-dark-element/30 text-zed-muted italic"
+          : "hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40"
+      }`}
+    >
+      {/* Gutter: Line Numbers */}
+      <div className="flex-shrink-0 flex select-none border-r border-zed-border/20 dark:border-zed-dark-border/20 bg-zed-bg/50 dark:bg-zed-dark-bg/50">
+        <div
+          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${ 
+            isAddition
+              ? "text-green-600 dark:text-green-400/50"
+              : isDeletion
+              ? "text-red-600 dark:text-red-400/50"
+              : "text-zed-muted/40"
+          }`}
+        >
+          {diffLine.oldLineNumber || ""}
+        </div>
+        <div
+          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${ 
+            isAddition
+              ? "text-green-600 dark:text-green-400/50"
+              : isDeletion
+              ? "text-red-600 dark:text-red-400/50"
+              : "text-zed-muted/40"
+          }`}
+        >
+          {diffLine.newLineNumber || ""}
+        </div>
+      </div>
+
+      {/* Indicator Column */}
+      <div
+        className={`flex-shrink-0 w-6 flex items-center justify-center font-mono text-sm select-none ${ 
+          isAddition
+            ? "text-green-500 dark:text-green-400"
+            : isDeletion
+            ? "text-red-500 dark:text-red-400"
+            : "text-zed-muted/30"
+        }`}
+      >
+        {isAddition ? "+" : isDeletion ? "-" : ""}
+      </div>
+
+      {/* Content */}
+      <pre
+        className={`flex-grow px-2 whitespace-pre font-mono text-[12px] leading-6 overflow-hidden ${ 
+          isAddition
+            ? "text-green-700 dark:text-green-300"
+            : isDeletion
+            ? "text-red-700 dark:text-red-300"
+            : isHunk
+            ? "text-zed-accent"
+            : "text-zed-text dark:text-zed-dark-text opacity-90"
+        }`}
+      >
+        {diffLine.content}
+      </pre>
+    </div>
+  );
+};
+
 interface DiffModalProps {
   repoPath: string;
   diffContent: string;
@@ -25,69 +118,6 @@ interface DiffModalProps {
   visible: boolean;
 }
 
-const parseDiff = (diffContent: string): DiffLine[] => {
-  if (!diffContent || diffContent === "BINARY_FILE") {
-    return [];
-  }
-
-  const lines = diffContent.split("\n");
-  const parsedLines: DiffLine[] = [];
-  let oldLineCounter = 0;
-  let newLineCounter = 0;
-
-  lines.forEach((line, index) => {
-    let type: DiffLine["type"] = "context";
-    let currentOldLine = null;
-    let currentNewLine = null;
-    let content = line;
-
-    if (
-      line.startsWith("--- a/") ||
-      line.startsWith("+++ b/") ||
-      line.startsWith("diff --git")
-    ) {
-      type = "info";
-    } else if (line.startsWith("@@")) {
-      type = "hunk";
-      const match = line.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
-      if (match) {
-        oldLineCounter = parseInt(match[1], 10) - 1;
-        newLineCounter = parseInt(match[3], 10) - 1;
-      }
-    } else if (line.startsWith("+")) {
-      type = "addition";
-      newLineCounter++;
-      currentNewLine = newLineCounter;
-      content = line.substring(1);
-    } else if (line.startsWith("-")) {
-      type = "deletion";
-      oldLineCounter++;
-      currentOldLine = oldLineCounter;
-      content = line.substring(1);
-    } else if (line.startsWith(" ")) {
-      type = "context";
-      oldLineCounter++;
-      newLineCounter++;
-      currentOldLine = oldLineCounter;
-      currentNewLine = newLineCounter;
-      content = line.substring(1);
-    } else {
-      type = "info";
-    }
-
-    parsedLines.push({
-      oldLineNumber: currentOldLine,
-      newLineNumber: currentNewLine,
-      type,
-      content,
-      key: index,
-      originalLine: line,
-    });
-  });
-
-  return parsedLines;
-};
-
 export const DiffModal: React.FC<DiffModalProps> = ({
   repoPath,
   diffContent,
@@ -95,11 +125,45 @@ export const DiffModal: React.FC<DiffModalProps> = ({
   onClose,
   visible,
 }) => {
-  const diffLines = useMemo(() => parseDiff(diffContent), [diffContent]);
+  const [diffLines, setDiffLines] = React.useState<DiffLine[]>([]);
+  const [parsing, setParsing] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [imageDataUrl, setImageDataUrl] = React.useState<string | null>(null);
 
   const isBinary = diffContent === "BINARY_FILE";
+
+  useEffect(() => {
+    if (visible && !isBinary && diffContent && diffContent !== "Loading diff...") {
+      setParsing(true);
+      const worker = new Worker(new URL("../utils/diff.worker.ts", import.meta.url), {
+        type: "module",
+      });
+
+      worker.onmessage = (e) => {
+        if (e.data.type === "SUCCESS") {
+          setDiffLines(e.data.result);
+        }
+        setParsing(false);
+        worker.terminate();
+      };
+
+      worker.onerror = () => {
+        setParsing(false);
+        worker.terminate();
+      };
+
+      worker.postMessage({ diffContent });
+      return () => worker.terminate();
+    } else {
+      setDiffLines([]);
+      if (diffContent !== "Loading diff...") {
+        setParsing(false);
+      } else {
+        setParsing(true);
+      }
+    }
+  }, [visible, diffContent, isBinary]);
+
   const isImage = useMemo(() => {
     const ext = filePath.split(".").pop()?.toLowerCase();
     return ["png", "jpg", "jpeg", "gif", "svg", "ico", "icns"].includes(
@@ -130,91 +194,6 @@ export const DiffModal: React.FC<DiffModalProps> = ({
       setCopied(false);
     }, 1500);
   };
-
-  const Row = useCallback(
-    ({ index, style }: any): React.ReactElement => {
-      const diffLine = diffLines[index];
-
-      if (!diffLine) return <div style={style} />;
-
-      const isAddition = diffLine.type === "addition";
-      const isDeletion = diffLine.type === "deletion";
-      const isHunk = diffLine.type === "hunk";
-      const isInfo = diffLine.type === "info";
-
-      return (
-        <div
-          style={style}
-          className={`flex group border-b border-transparent transition-colors duration-75 ${ 
-            isAddition
-              ? "bg-green-500/10 dark:bg-green-900/20 hover:bg-green-500/20 dark:hover:bg-green-900/30"
-              : isDeletion
-              ? "bg-red-500/10 dark:bg-red-900/20 hover:bg-red-500/20 dark:hover:bg-red-900/30"
-              : isHunk
-              ? "bg-zed-accent/5 dark:bg-zed-accent/10 text-zed-accent/80 font-bold"
-              : isInfo
-              ? "bg-zed-element/30 dark:bg-zed-dark-element/30 text-zed-muted italic"
-              : "hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40"
-          }`}
-        >
-          {/* Gutter: Line Numbers */}
-          <div className="flex-shrink-0 flex select-none border-r border-zed-border/20 dark:border-zed-dark-border/20 bg-zed-bg/50 dark:bg-zed-dark-bg/50">
-            <div
-              className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${ 
-                isAddition
-                  ? "text-green-600 dark:text-green-400/50"
-                  : isDeletion
-                  ? "text-red-600 dark:text-red-400/50"
-                  : "text-zed-muted/40"
-              }`}
-            >
-              {diffLine.oldLineNumber || ""}
-            </div>
-            <div
-              className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${ 
-                isAddition
-                  ? "text-green-600 dark:text-green-400/50"
-                  : isDeletion
-                  ? "text-red-600 dark:text-red-400/50"
-                  : "text-zed-muted/40"
-              }`}
-            >
-              {diffLine.newLineNumber || ""}
-            </div>
-          </div>
-
-          {/* Indicator Column */}
-          <div
-            className={`flex-shrink-0 w-6 flex items-center justify-center font-mono text-sm select-none ${ 
-              isAddition
-                ? "text-green-500 dark:text-green-400"
-                : isDeletion
-                ? "text-red-500 dark:text-red-400"
-                : "text-zed-muted/30"
-            }`}
-          >
-            {isAddition ? "+" : isDeletion ? "-" : ""}
-          </div>
-
-          {/* Content */}
-          <pre
-            className={`flex-grow px-2 whitespace-pre font-mono text-[12px] leading-6 overflow-hidden ${ 
-              isAddition
-                ? "text-green-700 dark:text-green-300"
-                : isDeletion
-                ? "text-red-700 dark:text-red-300"
-                : isHunk
-                ? "text-zed-accent"
-                : "text-zed-text dark:text-zed-dark-text opacity-90"
-            }`}
-          >
-            {diffLine.content}
-          </pre>
-        </div>
-      );
-    },
-    [diffLines]
-  );
 
   return (
     <Modal
@@ -349,20 +328,30 @@ export const DiffModal: React.FC<DiffModalProps> = ({
             </div>
           ) : (
             <>
+              {parsing && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-zed-bg/50 dark:bg-zed-dark-bg/50 backdrop-blur-[1px]">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-zed-accent border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Parsing Diff...</span>
+                  </div>
+                </div>
+              )}
               <AutoSizer
                 Child={({ height, width }: any) => (
-                  <List
+                  <List<DiffRowProps>
+                    key={filePath}
                     style={{ height: height || 0, width: width || 0 }}
                     rowCount={diffLines.length}
                     rowHeight={24}
-                    rowComponent={Row}
-                    rowProps={{} as any}
+                    overscanCount={15}
+                    rowComponent={Row as any}
+                    rowProps={{ items: diffLines }}
                     className="custom-scrollbar"
                   />
                 )}
               />
 
-              {diffLines.length === 0 && !isBinary && (
+              {diffLines.length === 0 && !isBinary && !parsing && (
                 <div className="absolute inset-0 flex items-center justify-center text-zed-muted dark:text-zed-dark-muted italic font-mono text-sm opacity-30">
                   No changes to display.
                 </div>

@@ -992,6 +992,13 @@ export class GitService {
           // Untracked: Show as all additions
           try {
             const fullPath = this.validatePath(repoPath, filePath);
+            const stats = await fs.promises.stat(fullPath);
+            const MAX_DIFF_SIZE = 1024 * 1024; // 1MB limit for untracked diff preview
+
+            if (stats.size > MAX_DIFF_SIZE) {
+                return `File is too large to display diff (${(stats.size / 1024 / 1024).toFixed(2)}MB).`;
+            }
+
             const isBinary = await this.isBinaryFile(fullPath);
             if (isBinary) return "BINARY_FILE";
             

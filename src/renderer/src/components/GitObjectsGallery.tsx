@@ -3,7 +3,7 @@ import { useToast } from "./ToastContext";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateTagModal } from "./CreateTagModal";
 import { DiffModal } from "./DiffModal";
-import { ReflogEntry } from "../../shared/types";
+import { ReflogEntry } from "@shared/types";
 import moment from "moment";
 
 interface GitObjectsGalleryProps {
