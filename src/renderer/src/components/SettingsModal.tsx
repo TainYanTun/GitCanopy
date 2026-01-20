@@ -131,7 +131,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                  <div className="text-xs text-zed-muted">General settings are managed in main configuration (placeholder).</div>
              )}
              {activeTab === 'github' && (
-                 <div className="text-xs text-zed-muted">GitHub token is managed in the status bar (placeholder).</div>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-bold mb-4">GitHub Integration</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold opacity-70">Personal Access Token</label>
+                        <div className="relative">
+                          <input
+                            type={showKey ? "text" : "password"}
+                            value={settings.githubToken || ''}
+                            onChange={(e) => setSettings({ ...settings, githubToken: e.target.value })}
+                            placeholder="ghp_... or github_pat_..."
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent pr-10 dark:text-zed-dark-text"
+                          />
+                          <button
+                            onClick={() => setShowKey(!showKey)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-zed-muted hover:text-zed-text"
+                          >
+                            {showKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-zed-muted mt-2 leading-relaxed">
+                          Required for private repositories, PRs, and workflow monitoring.
+                          Generate a token at <a href="#" onClick={() => window.gitcanopyAPI.openExternal("https://github.com/settings/tokens")} className="text-blue-500 hover:underline">GitHub Settings</a>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
              )}
           </div>
         </div>

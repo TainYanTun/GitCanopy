@@ -470,12 +470,12 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
               <button
                 onClick={handleAiGenerate}
                 disabled={generatingAi}
-                className={`h-8 w-8 flex items-center justify-center rounded transition-colors ${
+                className={`h-8 w-8 flex items-center justify-center rounded border border-zed-border dark:border-zed-dark-border transition-all ${
                   generatingAi
-                    ? "bg-purple-500/5 text-purple-400 opacity-50 cursor-not-allowed" 
+                    ? "bg-zed-surface dark:bg-zed-dark-surface opacity-50 text-green-400 cursor-not-allowed" 
                     : !hasStaged
-                      ? "bg-purple-500/5 text-purple-400/50 hover:bg-purple-500/10 cursor-pointer"
-                      : "bg-purple-500/10 text-purple-600 hover:bg-purple-500/20"
+                      ? "bg-zed-surface/50 dark:bg-zed-dark-surface/50 text-green-400/40 hover:bg-zed-surface cursor-pointer"
+                      : "bg-zed-surface dark:bg-zed-dark-surface text-green-600 hover:border-zed-accent/30 shadow-sm active:scale-95"
                 }`}
                 title={!hasStaged ? "Stage changes to generate message" : "Generate Commit Message with AI"}
               >

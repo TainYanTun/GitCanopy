@@ -95,7 +95,8 @@ ${diff.substring(0, 30000)}
     current: string,
     incoming: string,
     apiKey: string,
-    provider: 'gemini' | 'openai' = 'gemini'
+    provider: 'gemini' | 'openai' = 'gemini',
+    instruction?: string
   ): Promise<string> {
     if (provider !== 'gemini') {
       throw new Error(`Provider ${provider} is not yet supported for conflict resolution.`);
@@ -106,6 +107,7 @@ You are an expert developer resolving a merge conflict.
 Below are two versions of a code block. 
 Merge them intelligently, preserving logic from both where appropriate. 
 If the changes are mutually exclusive, prefer the one that seems more complete or bug-free.
+${instruction ? `\nSPECIAL USER INSTRUCTION: ${instruction}\n` : ""}
 Return ONLY the resolved code block. No markdown, no backticks, no explanations.
 
 <<< CURRENT (OURS) >>>

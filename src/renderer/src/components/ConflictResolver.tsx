@@ -39,6 +39,7 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiInstructions, setAiInstructions] = useState<Record<number, string>>({});
 
   const parseConflictContent = (text: string): ConflictChunk[] => {
     const lines = text.split("\n");
@@ -178,9 +179,11 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
       prev.map((c) => (c.id === chunk.id ? { ...c, isAiResolving: true } : c)),
     );
     try {
+      const instruction = aiInstructions[chunk.id];
       const resolved = await window.gitcanopyAPI.resolveConflictWithAi(
         chunk.current,
         chunk.incoming,
+        instruction,
       );
       handleResolve(chunk.id, "manual", resolved);
       showToast("Resolved with AI", "success");
@@ -312,10 +315,10 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
                       .getElementById(`chunk-${chunk.id}`)
                       ?.scrollIntoView({ behavior: "smooth" })
                   }
-                  className={`w-3 h-3 rounded-full transition-all ${
+                  className={`w-2 h-2 rounded-full transition-all ${
                     chunk.status === "resolved"
-                      ? "bg-green-500/40 hover:bg-green-500"
-                      : "bg-red-500 animate-pulse"
+                      ? "bg-green-500/30 hover:bg-green-500/60"
+                      : "bg-red-500/70 hover:bg-red-500"
                   }`}
                   title={`Jump to Conflict ${index + 1}`}
                 />
@@ -362,9 +365,9 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
                   <div
                     key={chunk.id}
                     id={`chunk-${chunk.id}`}
-                    className="group relative border-2 border-green-500/20 bg-green-500/5 rounded-lg p-6 transition-all shadow-sm"
+                    className="group relative border border-green-500/10 bg-green-500/[0.02] dark:bg-green-500/[0.01] rounded p-4 transition-all"
                   >
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() =>
                           setChunks((prev) =>
@@ -375,16 +378,16 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
                             ),
                           )
                         }
-                        className="text-[10px] bg-white dark:bg-zed-dark-bg border border-zed-border px-3 py-1.5 rounded-md shadow-sm hover:text-red-500 font-bold uppercase tracking-wider transition-all"
+                        className="text-[9px] bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border px-2 py-1 rounded text-zed-muted hover:text-red-500 font-medium uppercase tracking-wider transition-all"
                       >
-                        Modify Resolution
+                        Modify
                       </button>
                     </div>
-                    <div className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />{" "}
+                    <div className="text-[9px] font-medium text-green-600/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
                       Resolved
                     </div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs text-zed-text dark:text-zed-dark-text leading-relaxed">
+                    <pre className="whitespace-pre-wrap font-mono text-[11px] text-zed-text/70 dark:text-zed-dark-text/70 leading-relaxed">
                       {chunk.resolved}
                     </pre>
                   </div>
@@ -395,76 +398,86 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
                 <div
                   key={chunk.id}
                   id={`chunk-${chunk.id}`}
-                  className="border-2 border-red-500/30 rounded-xl overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200"
+                  className="border border-red-500/20 dark:border-red-400/10 rounded overflow-hidden transition-all duration-200 shadow-sm"
                 >
                   {/* Header */}
-                  <div className="bg-red-500/10 px-6 py-3 flex justify-between items-center border-b border-red-500/10 backdrop-blur-sm">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-[0.2em]">
-                        Conflict Block
-                      </span>
-                      <div className="h-1 w-8 bg-red-500/20 rounded-full" />
-                    </div>
+                  <div className="bg-red-500/[0.03] dark:bg-red-400/[0.02] px-4 py-1.5 flex justify-between items-center border-b border-red-500/10">
+                    <span className="text-[9px] font-medium text-red-500/70 uppercase tracking-widest">
+                      Merge Conflict
+                    </span>
+                  </div>
+
+                  {/* AI Command Bar */}
+                  <div className="bg-zed-surface dark:bg-zed-dark-surface px-4 py-1.5 border-b border-zed-border dark:border-zed-dark-border flex items-center gap-3 group/ai">
+                    <RobotOutlined className="text-green-500/60 text-[11px]" />
+                    <input
+                      type="text"
+                      placeholder="Prompt AI (e.g. 'prefer current logic but use incoming styling')..."
+                      value={aiInstructions[chunk.id] || ""}
+                      onChange={(e) => setAiInstructions(prev => ({ ...prev, [chunk.id]: e.target.value }))}
+                      className="flex-1 bg-transparent border-none text-[11px] text-zed-text/80 dark:text-zed-dark-text/80 focus:ring-0 placeholder:text-zed-muted/30 p-0"
+                    />
                     <button
                       onClick={() => handleAiResolve(chunk)}
                       disabled={chunk.isAiResolving}
-                      className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50 transition-all shadow-lg shadow-purple-500/20"
+                      className="flex items-center gap-2 px-3 py-1 bg-zed-element dark:bg-zed-dark-element hover:bg-zed-border dark:hover:bg-zed-dark-border text-green-600 dark:text-green-400 rounded text-[10px] font-medium transition-all disabled:opacity-30 border border-zed-border dark:border-zed-dark-border"
                     >
-                      <RobotOutlined
-                        className={chunk.isAiResolving ? "animate-spin" : ""}
-                      />
-                      {chunk.isAiResolving
-                        ? "Thinking..."
-                        : "✨ Resolve with AI"}
+                      {chunk.isAiResolving ? (
+                        <span className="flex items-center gap-2">
+                          <RobotOutlined className="animate-spin" /> Resolving...
+                        </span>
+                      ) : (
+                        "Resolve"
+                      )}
                     </button>
                   </div>
 
                   {/* Split View */}
-                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-red-500/20 bg-zed-surface dark:bg-zed-dark-surface min-h-[300px]">
+                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-zed-border dark:divide-zed-dark-border bg-zed-bg dark:bg-zed-dark-bg min-h-[200px]">
                     {/* Current (Ours) */}
-                    <div className="flex-1 flex flex-col min-w-0 group/ours">
-                      <div className="px-5 py-3 bg-green-500/5 flex justify-between items-center border-b border-green-500/10">
-                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">
-                          Current Change (HEAD)
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <div className="px-4 py-1.5 flex justify-between items-center border-b border-zed-border/30 dark:border-zed-dark-border/20">
+                        <span className="text-[9px] font-medium text-zed-muted uppercase tracking-wider">
+                          Current
                         </span>
                         <button
                           onClick={() => handleResolve(chunk.id, "current")}
-                          className="text-[9px] font-bold uppercase tracking-widest text-green-600 hover:text-green-700 bg-green-500/10 px-3 py-1 rounded"
+                          className="text-[9px] font-medium text-green-500/80 hover:text-green-500 px-2 py-0.5 transition-colors"
                         >
                           Accept
                         </button>
                       </div>
-                      <div className="flex-1 overflow-auto p-5 custom-scrollbar bg-green-500/[0.02] font-mono text-[11px] leading-relaxed">
+                      <div className="flex-1 overflow-auto p-4 custom-scrollbar font-mono text-[11px] leading-relaxed text-zed-text/80 dark:text-zed-dark-text/80">
                         {chunk.current}
                       </div>
                     </div>
 
                     {/* Incoming (Theirs) */}
-                    <div className="flex-1 flex flex-col min-w-0 group/theirs">
-                      <div className="px-5 py-3 bg-blue-500/5 flex justify-between items-center border-b border-blue-500/10">
-                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
-                          Incoming Change
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <div className="px-4 py-1.5 flex justify-between items-center border-b border-zed-border/30 dark:border-zed-dark-border/20">
+                        <span className="text-[9px] font-medium text-zed-muted uppercase tracking-wider">
+                          Incoming
                         </span>
                         <button
                           onClick={() => handleResolve(chunk.id, "incoming")}
-                          className="text-[9px] font-bold uppercase tracking-widest text-blue-600 hover:text-blue-700 bg-blue-500/10 px-3 py-1 rounded"
+                          className="text-[9px] font-medium text-blue-500/80 hover:text-blue-500 px-2 py-0.5 transition-colors"
                         >
                           Accept
                         </button>
                       </div>
-                      <div className="flex-1 overflow-auto p-5 custom-scrollbar bg-blue-500/[0.02] font-mono text-[11px] leading-relaxed">
+                      <div className="flex-1 overflow-auto p-4 custom-scrollbar font-mono text-[11px] leading-relaxed text-zed-text/80 dark:text-zed-dark-text/80">
                         {chunk.incoming}
                       </div>
                     </div>
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="bg-zed-bg dark:bg-zed-dark-bg px-6 py-4 flex justify-center gap-6 border-t border-red-500/10">
+                  <div className="bg-zed-surface/30 dark:bg-zed-dark-surface/10 px-4 py-2 flex justify-center gap-4 border-t border-zed-border/30 dark:border-zed-dark-border/20">
                     <button
                       onClick={() => handleResolve(chunk.id, "both")}
-                      className="text-[9px] font-bold uppercase tracking-[0.15em] text-zed-muted hover:text-zed-text transition-colors"
+                      className="text-[9px] font-medium text-zed-muted hover:text-zed-text transition-colors uppercase tracking-wider"
                     >
-                      Keep Both Changes
+                      Keep Both
                     </button>
                   </div>
                 </div>

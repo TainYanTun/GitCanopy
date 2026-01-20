@@ -553,12 +553,12 @@ class GitCanopyApp {
       return this.aiService.generateCommitMessage(diff, settings.aiApiKey, settings.aiProvider || 'gemini');
     });
 
-    ipcMain.handle("resolve-conflict-with-ai", async (_, current: string, incoming: string) => {
+    ipcMain.handle("resolve-conflict-with-ai", async (_, current: string, incoming: string, instruction?: string) => {
       const settings = await this.settingsService.getSettings();
       if (!settings.aiApiKey) {
         throw new Error("AI API Key not found. Please configure it in Settings.");
       }
-      return this.aiService.resolveConflictWithAi(current, incoming, settings.aiApiKey, settings.aiProvider || 'gemini');
+      return this.aiService.resolveConflictWithAi(current, incoming, settings.aiApiKey, settings.aiProvider || 'gemini', instruction);
     });
 
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>

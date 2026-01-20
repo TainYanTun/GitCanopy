@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect } from "react";
+import React, { useMemo, useEffect } from "react";
 import { Modal } from "antd";
 import {
   CopyOutlined,
@@ -41,38 +41,38 @@ const Row = ({
   return (
     <div
       style={{ ...style, willChange: "transform" }}
-      className={`flex group border-b border-transparent transition-colors duration-75 ${ 
+      className={`flex group border-b border-transparent transition-colors duration-75 ${
         isAddition
           ? "bg-green-500/10 dark:bg-green-900/20 hover:bg-green-500/20 dark:hover:bg-green-900/30"
           : isDeletion
-          ? "bg-red-500/10 dark:bg-red-900/20 hover:bg-red-500/20 dark:hover:bg-red-900/30"
-          : isHunk
-          ? "bg-zed-accent/5 dark:bg-zed-accent/10 text-zed-accent/80 font-bold"
-          : isInfo
-          ? "bg-zed-element/30 dark:bg-zed-dark-element/30 text-zed-muted italic"
-          : "hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40"
+            ? "bg-red-500/10 dark:bg-red-900/20 hover:bg-red-500/20 dark:hover:bg-red-900/30"
+            : isHunk
+              ? "bg-zed-accent/5 dark:bg-zed-accent/10 text-zed-accent/80 font-bold"
+              : isInfo
+                ? "bg-zed-element/30 dark:bg-zed-dark-element/30 text-zed-muted italic"
+                : "hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40"
       }`}
     >
       {/* Gutter: Line Numbers */}
       <div className="flex-shrink-0 flex select-none border-r border-zed-border/20 dark:border-zed-dark-border/20 bg-zed-bg/50 dark:bg-zed-dark-bg/50">
         <div
-          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${ 
+          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${
             isAddition
               ? "text-green-600 dark:text-green-400/50"
               : isDeletion
-              ? "text-red-600 dark:text-red-400/50"
-              : "text-zed-muted/40"
+                ? "text-red-600 dark:text-red-400/50"
+                : "text-zed-muted/40"
           }`}
         >
           {diffLine.oldLineNumber || ""}
         </div>
         <div
-          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${ 
+          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${
             isAddition
               ? "text-green-600 dark:text-green-400/50"
               : isDeletion
-              ? "text-red-600 dark:text-red-400/50"
-              : "text-zed-muted/40"
+                ? "text-red-600 dark:text-red-400/50"
+                : "text-zed-muted/40"
           }`}
         >
           {diffLine.newLineNumber || ""}
@@ -81,12 +81,12 @@ const Row = ({
 
       {/* Indicator Column */}
       <div
-        className={`flex-shrink-0 w-6 flex items-center justify-center font-mono text-sm select-none ${ 
+        className={`flex-shrink-0 w-6 flex items-center justify-center font-mono text-sm select-none ${
           isAddition
             ? "text-green-500 dark:text-green-400"
             : isDeletion
-            ? "text-red-500 dark:text-red-400"
-            : "text-zed-muted/30"
+              ? "text-red-500 dark:text-red-400"
+              : "text-zed-muted/30"
         }`}
       >
         {isAddition ? "+" : isDeletion ? "-" : ""}
@@ -94,14 +94,14 @@ const Row = ({
 
       {/* Content */}
       <pre
-        className={`flex-grow px-2 whitespace-pre font-mono text-[12px] leading-6 overflow-hidden ${ 
+        className={`flex-grow px-2 whitespace-pre font-mono text-[12px] leading-6 overflow-hidden ${
           isAddition
             ? "text-green-700 dark:text-green-300"
             : isDeletion
-            ? "text-red-700 dark:text-red-300"
-            : isHunk
-            ? "text-zed-accent"
-            : "text-zed-text dark:text-zed-dark-text opacity-90"
+              ? "text-red-700 dark:text-red-300"
+              : isHunk
+                ? "text-zed-accent"
+                : "text-zed-text dark:text-zed-dark-text opacity-90"
         }`}
       >
         {diffLine.content}
@@ -133,11 +133,19 @@ export const DiffModal: React.FC<DiffModalProps> = ({
   const isBinary = diffContent === "BINARY_FILE";
 
   useEffect(() => {
-    if (visible && !isBinary && diffContent && diffContent !== "Loading diff...") {
+    if (
+      visible &&
+      !isBinary &&
+      diffContent &&
+      diffContent !== "Loading diff..."
+    ) {
       setParsing(true);
-      const worker = new Worker(new URL("../utils/diff.worker.ts", import.meta.url), {
-        type: "module",
-      });
+      const worker = new Worker(
+        new URL("../utils/diff.worker.ts", import.meta.url),
+        {
+          type: "module",
+        },
+      );
 
       worker.onmessage = (e) => {
         if (e.data.type === "SUCCESS") {
@@ -235,7 +243,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
             {!isBinary && (
               <button
                 onClick={handleCopyDiff}
-                className={`flex items-center gap-2 text-[10px] uppercase font-bold tracking-wider px-4 py-2 rounded transition-all duration-200 border ${ 
+                className={`flex items-center gap-2 text-[10px] uppercase font-bold tracking-wider px-4 py-2 rounded transition-all duration-200 border ${
                   copied
                     ? "bg-green-500/10 dark:bg-green-900/20 border-green-500/50 text-green-500"
                     : "bg-zed-bg/50 dark:bg-zed-dark-bg/50 border-zed-border dark:border-zed-dark-border text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text hover:border-zed-accent"
@@ -332,7 +340,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-zed-bg/50 dark:bg-zed-dark-bg/50 backdrop-blur-[1px]">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-6 h-6 border-2 border-zed-accent border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Parsing Diff...</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+                      Parsing Diff...
+                    </span>
                   </div>
                 </div>
               )}
