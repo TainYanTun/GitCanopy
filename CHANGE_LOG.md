@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-01-21
+
+### AI & Automation
+- **AI Code Review:** Added an intelligent pre-commit reviewer. Gemini analyzes staged changes and provides a quality score (0-100) with categorized feedback on security, bugs, and performance.
+- **AI-Powered Commit Generation:** Introduced `AiService` to automatically generate semantic commit messages based on staged changes using Gemini, OpenAI, or Claude.
+- **Smart Conflict Resolution:** Added AI-assisted merge conflict resolution with a dedicated UI. Users can now provide specific instructions to guide the AI's merging decisions.
+- **Secure Key Management:** Implemented secure storage for AI API keys (Gemini, OpenAI, Claude) and GitHub Personal Access Tokens in the application settings.
+
+### Performance
+- **Virtualized Changes View:** Implemented `react-window` virtualization for unstaged and staged file lists, significantly improving responsiveness for repositories with thousands of changes.
+- **Large File Protection:** Added a 1MB limit for untracked file diff previews to prevent UI freezes.
+- **Optimized Conflict Parser:** Improved the conflict parser in `ConflictResolver` to correctly handle trailing newlines and complex chunks.
+
+### UI/UX Improvements
+- **Markdown Rendering:** Integrated `react-markdown` to properly parse and render Markdown content within the application (e.g., in commit descriptions or help views).
+- **Refined Conflict UI:** Comprehensive visual polish across the `ConflictResolver`, `ChangesView`, and `DiffModal` components for a more consistent "Zed-like" aesthetic.
+- **GitHub Integration Settings:** Added a dedicated configuration section for GitHub Personal Access Tokens to enable private repository features.
+
 ## [1.1.1] - 2026-01-08
 
 ### New Features

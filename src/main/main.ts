@@ -545,28 +545,72 @@ class GitCanopyApp {
       }
 
       const settings = await this.settingsService.getSettings();
-      if (!settings.aiApiKey) {
-        throw new Error("AI API Key not found. Please configure it in Settings.");
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
       }
 
-      // Default to gemini if not set
-      return this.aiService.generateCommitMessage(diff, settings.aiApiKey, settings.aiProvider || 'gemini');
+      return this.aiService.generateCommitMessage(diff, apiKey, provider, model);
     });
 
     ipcMain.handle("resolve-conflict-with-ai", async (_, current: string, incoming: string, instruction?: string) => {
       const settings = await this.settingsService.getSettings();
-      if (!settings.aiApiKey) {
-        throw new Error("AI API Key not found. Please configure it in Settings.");
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
       }
-      return this.aiService.resolveConflictWithAi(current, incoming, settings.aiApiKey, settings.aiProvider || 'gemini', instruction);
+      return this.aiService.resolveConflictWithAi(current, incoming, apiKey, provider, instruction, model);
     });
 
     ipcMain.handle("git:explain-diff", async (_, diff: string) => {
       const settings = await this.settingsService.getSettings();
-      if (!settings.aiApiKey) {
-        throw new Error("AI API Key not found. Please configure it in Settings.");
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
       }
-      return this.aiService.explainDiff(diff, settings.aiApiKey);
+      return this.aiService.explainDiff(diff, apiKey, provider, model);
+    });
+
+    ipcMain.handle("git:review-code", async (_, repoPath: string) => {
+      const diff = await this.gitService.getStagedDiff(repoPath);
+      if (!diff || !diff.trim()) {
+        throw new Error("No staged changes found to review.");
+      }
+
+      const settings = await this.settingsService.getSettings();
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
+      }
+      return this.aiService.reviewCode(diff, apiKey, provider, model);
     });
 
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>

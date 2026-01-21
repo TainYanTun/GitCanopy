@@ -66,23 +66,59 @@ For developers looking to build from source or contribute, please refer to the [
 
 ---
 
-## 🏗️ Technical Architecture
+## 🏗️ System Architecture
 
-GitCanopy leverages a modern, type-safe stack designed for security, performance, and maintainability.
+GitCanopy leverages a modern, type-safe stack designed for security, performance, and AI-enhanced productivity.
 
 ```mermaid
 graph TD
-    A[Electron Main Process] -->|Secure IPC| B(Preload Script)
-    B -->|Context Bridge| C[React Renderer]
-    C -->|Worker Thread| D[D3.js Graph Engine]
-    A -->|Safe Spawn| E[Git Binary]
-    A -->|File Watch| F[File System]
-    
-    style A fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#fff
-    style C fill:#0891b2,stroke:#06b6d4,stroke-width:2px,color:#fff
-    style D fill:#7c3aed,stroke:#a78bfa,stroke-width:2px,color:#fff
-    style E fill:#059669,stroke:#10b981,stroke-width:2px,color:#fff
+    subgraph "Electron Application"
+        Renderer["🖼️ React Renderer<br/>(UI Layer)"]
+        Main["⚙️ Main Process<br/>(Node.js Environment)"]
+        Preload["🌉 Preload Script<br/>(Secure IPC Bridge)"]
+        
+        Renderer <--> Preload <--> Main
+    end
+
+    subgraph "Core Services (Main)"
+        GitService["📂 Git Service"]
+        AiService["🧠 AI Service"]
+        Settings["🔧 Settings"]
+        Watcher["👀 Repo Watcher"]
+        
+        Main --> GitService
+        Main --> AiService
+        Main --> Settings
+        Main --> Watcher
+    end
+
+    subgraph "External Integrations"
+        GitCLI["Build-in Git Binary"]
+        GeminiAPI["✨ Google Gemini API<br/>(v1beta/v1)"]
+        OpenAI_API["OpenAI API"]
+        Claude_API["Anthropic Claude API"]
+        GitHubAPI["GitHub API"]
+        
+        GitService <--> GitCLI
+        AiService <--> GeminiAPI
+        AiService <--> OpenAI_API
+        AiService <--> Claude_API
+        Main <--> GitHubAPI
+    end
+
+    style Renderer fill:#0891b2,stroke:#06b6d4,stroke-width:2px,color:#fff
+    style Main fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style AiService fill:#7c3aed,stroke:#a78bfa,stroke-width:2px,color:#fff
+    style GeminiAPI fill:#ea4335,stroke:#fca5a5,stroke-width:2px,color:#fff
 ```
+
+### 🧠 AI Integration Flow
+
+1.  **Renderer** sends a request (e.g., "Generate Commit Message") via IPC.
+2.  **Main Process** captures the current context (staged diffs, conflict markers).
+3.  **AI Service** constructs a prompt and selects the provider (Gemini 2.5/2.0, OpenAI, or Claude) based on user settings.
+4.  **External API** processes the request and returns semantic text or code.
+5.  **Response** flows back to the UI for user review.
 
 ### Technology Stack
 
@@ -96,12 +132,12 @@ graph TD
 <td>React + TypeScript + Tailwind CSS (Zed-inspired theme)</td>
 </tr>
 <tr>
-<td><strong>Visualization</strong></td>
-<td>D3.js with Web Worker computation</td>
+<td><strong>AI Engine</strong></td>
+<td>Google Gemini 2.5 Flash / 2.0 Flash (Primary), OpenAI, Claude</td>
 </tr>
 <tr>
-<td><strong>State Management</strong></td>
-<td>Event-driven architecture with React Hooks</td>
+<td><strong>Visualization</strong></td>
+<td>D3.js with Web Worker computation</td>
 </tr>
 <tr>
 <td><strong>Git Integration</strong></td>

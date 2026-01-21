@@ -6,89 +6,208 @@ interface GeneratedMessage {
   description: string;
 }
 
+interface CodeReviewResult {
+  score: number;
+  summary: string;
+  issues: Array<{
+    type: 'security' | 'bug' | 'optimization' | 'style';
+    file: string;
+    message: string;
+    severity: 'high' | 'medium' | 'low';
+  }>;
+}
+
 export class AiService {
-  async generateCommitMessage(
+  async reviewCode(
     diff: string,
     apiKey: string,
-    provider: 'gemini' | 'openai' = 'gemini'
-  ): Promise<GeneratedMessage> {
-    if (!diff || !diff.trim()) {
-      throw new Error("Diff is empty.");
-    }
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<CodeReviewResult> {
+    if (!diff || !diff.trim()) throw new Error("Diff is empty.");
+    
+    const prompt = `
+You are a strict Senior Software Engineer performing a code review.
+Analyze the following git diff for bugs, security vulnerabilities, performance issues, and code style.
 
-    if (!apiKey) {
-      throw new Error("AI API Key is missing. Please configure it in settings.");
+Return ONLY a raw JSON object (no markdown, no backticks) with this structure:
+{
+  "score": number, // 0-100 (100 is perfect)
+  "summary": "Short markdown summary of the changes quality",
+  "issues": [
+    {
+      "type": "security" | "bug" | "optimization" | "style",
+      "file": "filename (guess if unknown)",
+      "message": "concise explanation",
+      "severity": "high" | "medium" | "low"
     }
+  ]
+}
+
+Diff:
+${diff.substring(0, 50000)}
+`;
+
+    let content = "";
 
     if (provider === 'gemini') {
-      return this.generateWithGemini(diff, apiKey);
-    } else {
-        // Placeholder for OpenAI or others
-        throw new Error(`Provider ${provider} is not yet supported.`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        }),
+      });
+      const data = await response.json();
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: model || 'gpt-4o',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
+        }),
+      });
+      const data = await response.json();
+      content = data.choices[0].message.content;
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: model || 'claude-3-5-sonnet-latest',
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
+      const data = await response.json();
+      content = data.content[0].text;
+    }
+
+    try {
+      const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (e) {
+      throw new Error("Failed to parse AI Code Review response.");
     }
   }
 
-  private async generateWithGemini(diff: string, apiKey: string): Promise<GeneratedMessage> {
+  async generateCommitMessage(
+    diff: string,
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<GeneratedMessage> {
+    if (!diff || !diff.trim()) throw new Error("Diff is empty.");
+    if (!apiKey) throw new Error(`API Key for ${provider} is missing.`);
+
     const prompt = `
 You are an expert software engineer. 
 Analyze the following git diff and generate a semantic commit message following the Conventional Commits specification.
 Return ONLY a raw JSON object (no markdown formatting, no backticks) with the following structure:
 {
   "summary": "type(scope): concise description (max 72 chars)",
-  "description": "- bullet point explaining why\n- another bullet point explaining what changed"
+  "description": "- bullet point explaining why\\n- another bullet point explaining what changed"
 }
 
 Diff:
 ${diff.substring(0, 30000)} 
 `;
-// Truncate diff to 30k chars to avoid hitting token limits safely (Gemini 2.5 Flash has high context but good to be safe/fast)
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    if (provider === 'gemini') {
+      return this.generateWithGemini(prompt, apiKey, model || 'gemini-2.5-flash');
+    } else if (provider === 'openai') {
+      return this.generateWithOpenAI(prompt, apiKey, model || 'gpt-4o');
+    } else if (provider === 'claude') {
+      return this.generateWithClaude(prompt, apiKey, model || 'claude-3-5-sonnet-latest');
+    }
+    throw new Error(`Provider ${provider} not supported.`);
+  }
 
+  private async generateWithGemini(prompt: string, apiKey: string, model: string): Promise<GeneratedMessage> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     try {
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-              responseMimeType: "application/json"
-          }
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
         }),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
-      }
-
+      if (!response.ok) throw new Error(`Gemini API Error (${response.status}): ${await response.text()}`);
       const data = await response.json();
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!content) {
-        throw new Error("Received empty response from Gemini.");
-      }
-
-      try {
-        // Clean up markdown if present (e.g. ```json ... ```)
-        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleanJson);
-        return {
-          summary: parsed.summary || "chore: update code",
-          description: parsed.description || ""
-        };
-      } catch (parseError) {
-        logError("AiService", `Failed to parse AI response: ${content}`);
-        throw new Error("Failed to parse AI response. Please try again.");
-      }
-
+      return this.parseJsonMessage(content);
     } catch (error) {
-      logError("AiService", `Generate failed: ${error}`);
+      logError("AiService", `Gemini failed: ${error}`);
       throw error;
+    }
+  }
+
+  private async generateWithOpenAI(prompt: string, apiKey: string, model: string): Promise<GeneratedMessage> {
+    const url = 'https://api.openai.com/v1/chat/completions';
+    try {
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
+        }),
+      });
+      if (!response.ok) throw new Error(`OpenAI API Error (${response.status}): ${await response.text()}`);
+      const data = await response.json();
+      return this.parseJsonMessage(data.choices[0].message.content);
+    } catch (error) {
+      logError("AiService", `OpenAI failed: ${error}`);
+      throw error;
+    }
+  }
+
+  private async generateWithClaude(prompt: string, apiKey: string, model: string): Promise<GeneratedMessage> {
+    const url = 'https://api.anthropic.com/v1/messages';
+    try {
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
+      if (!response.ok) throw new Error(`Claude API Error (${response.status}): ${await response.text()}`);
+      const data = await response.json();
+      return this.parseJsonMessage(data.content[0].text);
+    } catch (error) {
+      logError("AiService", `Claude failed: ${error}`);
+      throw error;
+    }
+  }
+
+  private parseJsonMessage(content: string): GeneratedMessage {
+    try {
+      const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      return {
+        summary: parsed.summary || "chore: update code",
+        description: parsed.description || ""
+      };
+    } catch (e) {
+      throw new Error("Failed to parse AI response as JSON.");
     }
   }
 
@@ -97,15 +216,13 @@ ${diff.substring(0, 30000)}
       try {
         const response = await fetch(url, options);
         if (response.status === 503 || response.status === 429) {
-          logError("AiService", `Server busy (${response.status}), retrying in ${backoff}ms... (${i + 1}/${retries})`);
           await new Promise(resolve => setTimeout(resolve, backoff));
-          backoff *= 2; // Exponential backoff
+          backoff *= 2;
           continue;
         }
         return response;
       } catch (err) {
         if (i === retries - 1) throw err;
-        logError("AiService", `Fetch attempt ${i + 1} failed: ${err}. Retrying...`);
         await new Promise(resolve => setTimeout(resolve, backoff));
         backoff *= 2;
       }
@@ -117,13 +234,10 @@ ${diff.substring(0, 30000)}
     current: string,
     incoming: string,
     apiKey: string,
-    provider: 'gemini' | 'openai' = 'gemini',
-    instruction?: string
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    instruction?: string,
+    model?: string
   ): Promise<string> {
-    if (provider !== 'gemini') {
-      throw new Error(`Provider ${provider} is not yet supported for conflict resolution.`);
-    }
-
     const prompt = `
 You are an expert developer resolving a merge conflict.
 Below are two versions of a code block. 
@@ -139,39 +253,48 @@ ${current}
 ${incoming}
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-    try {
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       });
-
-      if (!response.ok) throw new Error(`AI API Error: ${response.status}`);
-
       const data = await response.json();
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (!content) throw new Error("AI returned empty resolution.");
-
-      // Strip potential markdown wrapping
-      return content.replace(/^```(?:\w+)?\n/, "").replace(/\n```$/, "").trim();
-    } catch (error) {
-      logError("AiService", `Conflict resolution failed: ${error}`);
-      throw error;
+      return this.cleanCode(data.candidates?.[0]?.content?.parts?.[0]?.text);
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return this.cleanCode(data.choices[0].message.content);
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return this.cleanCode(data.content[0].text);
     }
+    throw new Error("Provider not supported");
+  }
+
+  private cleanCode(content: string): string {
+    return content.replace(/^```(?:\w+)?\n/, "").replace(/\n```$/, "").trim();
   }
 
   async explainDiff(
     diff: string,
-    apiKey: string
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
   ): Promise<string> {
     const prompt = `
 You are an expert technical lead. 
-Analyze the following git diff and provide a high-level explanation of WHAT changed and WHY (if you can infer it from the code).
+Analyze the following git diff and provide a high-level explanation of WHAT changed and WHY.
 Focus on architectural impact and potential risks. 
 Keep it concise but insightful. Use markdown formatting.
 
@@ -179,23 +302,32 @@ Diff:
 ${diff.substring(0, 30000)}
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-    try {
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       });
-
-      if (!response.ok) throw new Error(`Gemini API Error: ${response.status}`);
       const data = await response.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || "No explanation generated.";
-    } catch (error) {
-      logError("AiService", `Explain failed: ${error}`);
-      throw error;
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "No explanation.";
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.content[0].text;
     }
+    throw new Error("Provider not supported");
   }
 }

@@ -2,9 +2,9 @@ import React from "react";
 import { Modal } from "antd";
 import {
   RocketOutlined,
-  SearchOutlined,
-  HistoryOutlined,
+  RobotOutlined,
   ThunderboltOutlined,
+  GithubOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
 
@@ -59,17 +59,15 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
           <div className="space-y-6">
             {/* Feature 1 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-red-500/10 flex items-center justify-center text-red-500">
-                <SafetyCertificateOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-purple-500/10 flex items-center justify-center text-purple-500">
+                <RobotOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Visual Conflict Resolver
+                  AI-Powered Workflow
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Resolve merge conflicts without leaving the app. A new 3-pane
-                  interface allows you to pick current, incoming, or both changes
-                  with a single click.
+                  Leverage Gemini, OpenAI, or Claude to generate semantic commit messages and resolve conflicts with specific natural language instructions.
                 </p>
               </div>
             </div>
@@ -77,16 +75,14 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 2 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <HistoryOutlined className="text-base" />
+                <ThunderboltOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Git Reflog Explorer
+                  High-Performance Rendering
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  The ultimate safety net. View every action taken in your repo
-                  and perform a hard reset to any point in time to recover
-                  lost work or undo mistakes.
+                  Changes View is now virtualized, allowing for buttery-smooth interaction even in repositories with thousands of modified files.
                 </p>
               </div>
             </div>
@@ -94,33 +90,29 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 3 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
-                <SearchOutlined className="text-base" />
+                <GithubOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Stash Diff Viewer
+                  GitHub Integration
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Inspect exact code changes inside a stash before applying it.
-                  Now supports previews for both tracked and untracked files
-                  directly in the Objects Gallery.
+                  Securely manage Personal Access Tokens to monitor private repository workflows and sync pull requests directly from the interface.
                 </p>
               </div>
             </div>
 
             {/* Feature 4 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-purple-500/10 flex items-center justify-center text-purple-500">
-                <ThunderboltOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-red-500/10 flex items-center justify-center text-red-500">
+                <SafetyCertificateOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Security & Live Monitoring
+                  AI Code Reviewer
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Hardened path resolution prevents unauthorized file access,
-                  while the updated watcher provides real-time status updates
-                  for rebase and merge states.
+                  Get a "Quality Score" on every commit. The AI analyzes your staged diffs for security risks, bugs, and style issues before you push.
                 </p>
               </div>
             </div>

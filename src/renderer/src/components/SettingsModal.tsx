@@ -163,49 +163,126 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                   <h3 className="text-sm font-bold mb-4">AI Configuration</h3>
                   <div className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-xs font-bold opacity-70">Provider</label>
+                      <label className="text-xs font-bold opacity-70">Primary Provider</label>
                       <select
                         value={settings.aiProvider || 'gemini'}
                         onChange={(e) => setSettings({ ...settings, aiProvider: e.target.value as any })}
                         className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
                       >
-                        <option value="gemini">Google Gemini 2.5 Flash</option>
-                        {/* <option value="openai">OpenAI (Coming Soon)</option> */}
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="claude">Anthropic Claude</option>
                       </select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold opacity-70">API Key</label>
-                      <div className="relative">
-                        <input
-                          type={showKey ? "text" : "password"}
-                          value={settings.aiApiKey || ''}
-                          onChange={(e) => setSettings({ ...settings, aiApiKey: e.target.value })}
-                          placeholder="Enter your API Key"
-                          className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent pr-10 dark:text-zed-dark-text"
-                        />
-                        <button
-                          onClick={() => setShowKey(!showKey)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zed-muted hover:text-zed-text"
-                        >
-                          {showKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                        </button>
+                    {/* Gemini Settings */}
+                    {settings.aiProvider === 'gemini' && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">Gemini Model</label>
+                          <select
+                            value={settings.geminiModel || 'gemini-1.5-flash'}
+                            onChange={(e) => setSettings({ ...settings, geminiModel: e.target.value })}
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                          >
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini-3-flash">Gemini 3 Flash</option>
+                            <option value="gemini-3-pro">Gemini 3 Pro</option>
+                            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">Gemini API Key</label>
+                          <div className="relative">
+                            <input
+                              type={showKey ? "text" : "password"}
+                              value={settings.aiApiKey || ''}
+                              onChange={(e) => setSettings({ ...settings, aiApiKey: e.target.value })}
+                              placeholder="Enter your Google API Key"
+                              className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent pr-10 dark:text-zed-dark-text"
+                            />
+                            <button onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zed-muted hover:text-zed-text">
+                              {showKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-zed-muted mt-1">Get a free key at <a href="#" onClick={() => window.gitcanopyAPI.openExternal("https://aistudio.google.com/app/apikey")} className="text-blue-500 hover:underline">Google AI Studio</a>.</p>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-zed-muted mt-1">
-                        Your key is stored locally and never sent to our servers.
-                        {(!settings.aiProvider || settings.aiProvider === 'gemini') && (
-                            <span> Get a free key at <a href="#" onClick={() => window.gitcanopyAPI.openExternal("https://aistudio.google.com/app/apikey")} className="text-blue-500 hover:underline">Google AI Studio</a>.</span>
-                        )}
-                      </p>
-                    </div>
+                    )}
+
+                    {/* OpenAI Settings */}
+                    {settings.aiProvider === 'openai' && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">OpenAI Model</label>
+                          <select
+                            value={settings.openaiModel || 'gpt-4o'}
+                            onChange={(e) => setSettings({ ...settings, openaiModel: e.target.value })}
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                          >
+                            <option value="gpt-4o">GPT-4o (Standard)</option>
+                            <option value="gpt-4o-mini">GPT-4o mini (Fast)</option>
+                            <option value="o1-preview">o1 Preview (Smartest)</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">OpenAI API Key</label>
+                          <div className="relative">
+                            <input
+                              type={showKey ? "text" : "password"}
+                              value={settings.openaiApiKey || ''}
+                              onChange={(e) => setSettings({ ...settings, openaiApiKey: e.target.value })}
+                              placeholder="sk-..."
+                              className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent pr-10 dark:text-zed-dark-text"
+                            />
+                            <button onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zed-muted hover:text-zed-text">
+                              {showKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Claude Settings */}
+                    {settings.aiProvider === 'claude' && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">Claude Model</label>
+                          <select
+                            value={settings.claudeModel || 'claude-3-5-sonnet-latest'}
+                            onChange={(e) => setSettings({ ...settings, claudeModel: e.target.value })}
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                          >
+                            <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Best)</option>
+                            <option value="claude-3-5-haiku-latest">Claude 3.5 Haiku (Fastest)</option>
+                            <option value="claude-3-opus-latest">Claude 3 Opus</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">Anthropic API Key</label>
+                          <div className="relative">
+                            <input
+                              type={showKey ? "text" : "password"}
+                              value={settings.claudeApiKey || ''}
+                              onChange={(e) => setSettings({ ...settings, claudeApiKey: e.target.value })}
+                              placeholder="sk-ant-..."
+                              className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent pr-10 dark:text-zed-dark-text"
+                            />
+                            <button onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zed-muted hover:text-zed-text">
+                              {showKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             )}
              {/* Other tabs can be empty placeholders or minimal implementations for now */}
-             {activeTab === 'general' && (
-                 <div className="text-xs text-zed-muted">General settings are managed in main configuration (placeholder).</div>
-             )}
              {activeTab === 'github' && (
                 <div className="space-y-6">
                   <div>

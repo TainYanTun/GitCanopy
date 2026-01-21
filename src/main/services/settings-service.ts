@@ -17,6 +17,7 @@ export class SettingsService {
     compactMode: false,
     colorBlindMode: false,
     recentRepositories: [],
+    geminiModel: 'gemini-2.5-flash',
   };
 
   constructor() {
@@ -43,6 +44,12 @@ export class SettingsService {
       if (mergedSettings.aiApiKey && typeof mergedSettings.aiApiKey === 'string') {
         mergedSettings.aiApiKey = this.decryptToken(mergedSettings.aiApiKey);
       }
+      if (mergedSettings.openaiApiKey && typeof mergedSettings.openaiApiKey === 'string') {
+        mergedSettings.openaiApiKey = this.decryptToken(mergedSettings.openaiApiKey);
+      }
+      if (mergedSettings.claudeApiKey && typeof mergedSettings.claudeApiKey === 'string') {
+        mergedSettings.claudeApiKey = this.decryptToken(mergedSettings.claudeApiKey);
+      }
 
       return mergedSettings;
     } catch (error) {
@@ -68,6 +75,12 @@ export class SettingsService {
       }
       if (settingsToSave.aiApiKey && typeof settingsToSave.aiApiKey === 'string') {
         settingsToSave.aiApiKey = this.encryptToken(settingsToSave.aiApiKey);
+      }
+      if (settingsToSave.openaiApiKey && typeof settingsToSave.openaiApiKey === 'string') {
+        settingsToSave.openaiApiKey = this.encryptToken(settingsToSave.openaiApiKey);
+      }
+      if (settingsToSave.claudeApiKey && typeof settingsToSave.claudeApiKey === 'string') {
+        settingsToSave.claudeApiKey = this.encryptToken(settingsToSave.claudeApiKey);
       }
 
       // Validate settings before saving
@@ -141,6 +154,23 @@ export class SettingsService {
 
     if (settings.aiApiKey && typeof settings.aiApiKey === 'string') {
         validated.aiApiKey = settings.aiApiKey;
+    }
+
+    // Preserve AI Model selections
+    if (settings.geminiModel && typeof settings.geminiModel === 'string') {
+        validated.geminiModel = settings.geminiModel;
+    }
+    if (settings.openaiModel && typeof settings.openaiModel === 'string') {
+        validated.openaiModel = settings.openaiModel;
+    }
+    if (settings.claudeModel && typeof settings.claudeModel === 'string') {
+        validated.claudeModel = settings.claudeModel;
+    }
+    if (settings.openaiApiKey && typeof settings.openaiApiKey === 'string') {
+        validated.openaiApiKey = settings.openaiApiKey;
+    }
+    if (settings.claudeApiKey && typeof settings.claudeApiKey === 'string') {
+        validated.claudeApiKey = settings.claudeApiKey;
     }
 
     return validated;

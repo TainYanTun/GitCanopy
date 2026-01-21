@@ -44,6 +44,7 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [isDiffModalVisible, setDiffModalVisible] = useState(false);
+  const [imgError, setImgError] = useState(false);
   
   // AI Insight State
   const [aiInsight, setAiInsight] = useState<string | null>(null);
@@ -149,15 +150,16 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
   return (
     <div className="p-4 space-y-4 text-zed-text dark:text-zed-dark-text text-sm">
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border flex items-center justify-center overflow-hidden shadow-sm">
-          {displayCommit.author.avatarUrl ? (
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zed-element dark:bg-zinc-800 border border-zed-border dark:border-zed-dark-border flex items-center justify-center overflow-hidden shadow-sm">
+          {displayCommit.author.avatarUrl && !imgError ? (
             <img
               src={displayCommit.author.avatarUrl}
               alt={displayCommit.author.name}
               className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
             />
           ) : (
-            <span className="text-xs text-zed-muted dark:text-zed-dark-muted font-bold">
+            <span className="text-xs text-zed-muted dark:text-zinc-400 font-bold">
               {getAuthorInitials(displayCommit.author.name)}
             </span>
           )}

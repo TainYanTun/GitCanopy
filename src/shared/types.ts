@@ -193,8 +193,13 @@ export interface AppSettings {
   githubToken?: string;
   githubTokenCreated?: number;
   lastSeenVersion?: string;
-  aiProvider?: "gemini" | "openai";
+  aiProvider?: "gemini" | "openai" | "claude";
   aiApiKey?: string;
+  openaiApiKey?: string;
+  claudeApiKey?: string;
+  geminiModel?: string;
+  openaiModel?: string;
+  claudeModel?: string;
 }
 
 export interface WorkflowRunStep {
@@ -471,6 +476,19 @@ export interface GitCanopyAPI {
   submitAuth: (answer: string) => Promise<void>;
   cancelAuth: () => Promise<void>;
   onAuthRequest: (callback: (event: { prompt: string }) => void) => () => void;
+  
+  reviewCode: (repoPath: string) => Promise<CodeReviewResult>;
+}
+
+export interface CodeReviewResult {
+  score: number;
+  summary: string;
+  issues: Array<{
+    type: 'security' | 'bug' | 'optimization' | 'style';
+    file: string;
+    message: string;
+    severity: 'high' | 'medium' | 'low';
+  }>;
 }
 
 // Extend Window interface for TypeScript

@@ -16,11 +16,14 @@ import {
   CodeOutlined,
   FileOutlined,
   RobotOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { DiffModal } from "./DiffModal";
 import { ConflictResolver } from "./ConflictResolver";
+import { CodeReviewModal } from "./CodeReviewModal";
 import { useToast } from "./ToastContext";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CodeReviewResult } from "@shared/types";
 
 import { List } from "react-window";
 import { AutoSizer } from "react-virtualized-auto-sizer";
@@ -51,6 +54,11 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   const [isPushing, setIsPushing] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["."]));
   const [conflictFile, setConflictFile] = useState<StatusFile | null>(null);
+
+  // AI Code Review State
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewResult, setReviewResult] = useState<CodeReviewResult | null>(null);
+  const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -278,6 +286,25 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
     }
   };
 
+  const handleCodeReview = async () => {
+    if (!hasStaged) {
+      showToast("Please stage changes before reviewing.", "warning");
+      return;
+    }
+    setIsReviewing(true);
+    setIsReviewModalVisible(true);
+    setReviewResult(null);
+    try {
+      const result = await window.gitcanopyAPI.reviewCode(repoPath);
+      setReviewResult(result);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Code review failed", "error");
+      setIsReviewModalVisible(false);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   const handleAiGenerate = async () => {
     if (!hasStaged) {
       showToast("Please stage changes first.", "warning");
@@ -342,15 +369,26 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
             </div>
           )}
         </div>
-        {status && status.ahead > 0 && (
-          <button
-            onClick={handlePush}
-            disabled={isPushing}
-            className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2"
-          >
-            <CloudUploadOutlined /> {isPushing ? "Pushing..." : "Sync Changes"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasStaged && (
+            <button
+              onClick={handleCodeReview}
+              disabled={isReviewing}
+              className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-purple-600 text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2 shadow-sm"
+            >
+              <SafetyCertificateOutlined /> {isReviewing ? "Reviewing..." : "Review Changes"}
+            </button>
+          )}
+          {status && status.ahead > 0 && (
+            <button
+              onClick={handlePush}
+              disabled={isPushing}
+              className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2"
+            >
+              <CloudUploadOutlined /> {isPushing ? "Pushing..." : "Sync Changes"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Split Pane Layout */}
@@ -545,6 +583,13 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
           }}
         />
       )}
+
+      <CodeReviewModal
+        visible={isReviewModalVisible}
+        onClose={() => setIsReviewModalVisible(false)}
+        result={reviewResult}
+        loading={isReviewing}
+      />
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}

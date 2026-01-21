@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ContributorStats } from "@shared/types";
 import moment from "moment";
+import * as d3 from "d3";
 
 interface ContributorsProps {
   repoPath: string;
@@ -9,6 +10,21 @@ interface ContributorsProps {
 export const Contributors: React.FC<ContributorsProps> = ({ repoPath }) => {
   const [contributors, setContributors] = useState<ContributorStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const chartRef = useRef<SVGSVGElement | null>(null);
+
+  // Calculate aggregated activity for the main graph
+  const aggregatedActivity = useMemo(() => {
+    if (contributors.length === 0) return [];
+    const buckets = contributors[0].activity.length;
+    const result = new Array(buckets).fill(0);
+    
+    contributors.forEach(c => {
+      c.activity.forEach((val, i) => {
+        result[i] += val;
+      });
+    });
+    return result;
+  }, [contributors]);
 
   useEffect(() => {
     const fetchContributors = async () => {
@@ -25,13 +41,112 @@ export const Contributors: React.FC<ContributorsProps> = ({ repoPath }) => {
     fetchContributors();
   }, [repoPath]);
 
+  // Render D3 Area Chart
+  useEffect(() => {
+    if (loading || aggregatedActivity.length === 0 || !chartRef.current) return;
+
+    const svg = d3.select(chartRef.current);
+    svg.selectAll("*").remove();
+
+    const width = chartRef.current.clientWidth;
+    const height = 120;
+    const margin = { top: 10, right: 0, bottom: 0, left: 0 };
+
+    const x = d3.scaleLinear()
+      .domain([0, aggregatedActivity.length - 1])
+      .range([0, width]);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(aggregatedActivity) || 1])
+      .range([height, 0]);
+
+    const area = d3.area<number>()
+      .x((_, i) => x(i))
+      .y0(height)
+      .y1(d => y(d))
+      .curve(d3.curveBasis);
+
+    const line = d3.line<number>()
+      .x((_, i) => x(i))
+      .y(d => y(d))
+      .curve(d3.curveBasis);
+
+    // Draw area
+    svg.append("path")
+      .datum(aggregatedActivity)
+      .attr("fill", "url(#velocity-gradient)")
+      .attr("d", area);
+
+    // Draw line
+    svg.append("path")
+      .datum(aggregatedActivity)
+      .attr("fill", "none")
+      .attr("stroke", "#3b82f6")
+      .attr("stroke-width", 2)
+      .attr("opacity", 0.8)
+      .attr("d", line);
+
+    // Add gradient
+    const defs = svg.append("defs");
+    const gradient = defs.append("linearGradient")
+      .attr("id", "velocity-gradient")
+      .attr("x1", "0%").attr("y1", "0%")
+      .attr("x2", "0%").attr("y2", "100%");
+
+    gradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#3b82f6")
+      .attr("stop-opacity", 0.2);
+
+    gradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#3b82f6")
+      .attr("stop-opacity", 0);
+
+  }, [aggregatedActivity, loading]);
+
   if (loading) {
     return <div className="p-8 text-[10px] font-mono text-zed-muted animate-pulse uppercase tracking-widest text-center">Analyzing team metrics...</div>;
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-12">
+      {/* Aggregated Velocity Chart */}
+      <div className="space-y-4">
+        <div className="flex items-baseline justify-between border-b border-zed-border dark:border-zed-dark-border pb-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zed-muted">Aggregated Project Velocity</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold text-blue-500 uppercase tracking-tighter">Peak:</span>
+              <span className="text-[10px] font-mono text-zed-text dark:text-zed-dark-text font-bold">
+                {Math.max(...aggregatedActivity, 0)} Commits
+              </span>
+            </div>
+            <div className="w-px h-3 bg-zed-border dark:border-zed-dark-border opacity-30" />
+            <div className="text-[10px] font-mono text-zed-muted opacity-40 uppercase tracking-tighter">
+              {contributors.reduce((acc, c) => acc + c.commitCount, 0)} Total
+            </div>
+          </div>
+        </div>
+        
+        <div className="relative w-full h-[120px] overflow-hidden group/chart">
+          <svg ref={chartRef} className="w-full h-full" preserveAspectRatio="none" />
+          
+          {/* Subtle Markers */}
+          <div className="absolute inset-0 flex items-end justify-between pointer-events-none pb-1 px-1">
+            <span className="text-[8px] font-mono font-bold uppercase tracking-tighter text-zed-muted/30">Launch</span>
+            <span className="text-[8px] font-mono font-bold uppercase tracking-tighter text-blue-500/40 animate-pulse">Active Now</span>
+          </div>
+        </div>
+      </div>
+
       <div className="divide-y divide-zed-border/20 dark:divide-zed-dark-border/20">
+        <div className="flex items-baseline justify-between border-b border-zed-border dark:border-zed-dark-border pb-2 mb-4">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-zed-muted">Top Contributors</h2>
+          <div className="text-[10px] font-mono text-zed-muted opacity-40">IMPACT RANKING</div>
+        </div>
         {contributors.map((author, index) => (
           <div 
             key={author.email} 

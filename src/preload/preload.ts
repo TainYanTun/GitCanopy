@@ -245,6 +245,8 @@ const gitcanopyAPI: GitCanopyAPI = {
       ipcRenderer.removeListener("auth-request", wrappedCallback);
     };
   },
+  
+  reviewCode: (repoPath: string) => ipcRenderer.invoke("git:review-code", repoPath),
 };
 
 // Expose the API to the renderer process

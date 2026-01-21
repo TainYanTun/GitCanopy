@@ -467,7 +467,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"
             title="Settings"
           >
-             <SettingOutlined />
+             <SettingOutlined className="text-[12px]" />
           </button>
           
                     <button
