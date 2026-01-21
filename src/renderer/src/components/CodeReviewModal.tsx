@@ -1,11 +1,13 @@
 import React from "react";
-import { Modal, Progress, Tag } from "antd";
+import { Modal, Tag } from "antd";
 import {
   SafetyCertificateOutlined,
   BugOutlined,
   ThunderboltOutlined,
   FormatPainterOutlined,
   CheckCircleOutlined,
+  CloseOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import { CodeReviewResult } from "@shared/types";
@@ -23,19 +25,33 @@ export const CodeReviewModal: React.FC<CodeReviewModalProps> = ({
   result,
   loading,
 }) => {
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return "#10b981"; // Emerald-500
-    if (score >= 70) return "#f59e0b"; // Amber-500
-    return "#ef4444"; // Red-500
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "high": return "red";
-      case "medium": return "orange";
-      case "low": return "blue";
-      default: return "default";
+  const [loadingStep, setLoadingStep] = React.useState(0);
+  
+  React.useEffect(() => {
+    if (!loading) {
+      setLoadingStep(0);
+      return;
     }
+    
+    const steps = [
+      "Parsing diff...",
+      "Auditing security...",
+      "Analyzing logic...",
+      "Checking performance...",
+      "Finalizing report..."
+    ];
+    
+    const interval = setInterval(() => {
+      setLoadingStep((prev) => (prev + 1) % steps.length);
+    }, 1200);
+    
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-emerald-500";
+    if (score >= 70) return "text-amber-500";
+    return "text-red-500";
   };
 
   const getTypeIcon = (type: string) => {
@@ -54,90 +70,114 @@ export const CodeReviewModal: React.FC<CodeReviewModalProps> = ({
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={650}
       centered
       classNames={{
-        content: "p-0 overflow-hidden bg-zed-bg dark:bg-zed-dark-bg rounded-lg border border-zed-border dark:border-zed-dark-border shadow-xl"
+        content: "p-0 overflow-hidden bg-zed-bg dark:bg-zed-dark-bg rounded-lg border border-zed-border dark:border-zed-dark-border shadow-2xl",
+        mask: "backdrop-blur-sm bg-black/40"
       }}
+      closeIcon={null}
     >
       {loading ? (
-        <div className="h-64 flex flex-col items-center justify-center p-8">
-          <div className="w-16 h-16 border-4 border-zed-accent border-t-transparent rounded-full animate-spin mb-6" />
-          <h3 className="text-lg font-bold animate-pulse text-zed-text dark:text-zed-dark-text">Analyzing Code Quality...</h3>
-          <p className="text-zed-muted dark:text-zed-dark-muted text-sm mt-2">Gemini is reviewing your changes for bugs and security risks.</p>
+        <div className="h-80 flex flex-col items-center justify-center relative">
+          <div className="w-12 h-12 border-[3px] border-zed-border dark:border-zed-dark-border border-t-zed-accent rounded-full animate-spin mb-8" />
+          <div className="space-y-2 text-center z-10">
+            <h3 className="text-sm font-mono uppercase tracking-widest text-zed-muted animate-pulse">
+              AI Audit in Progress
+            </h3>
+            <p className="text-xs font-medium text-zed-text dark:text-zed-dark-text transition-all duration-300 min-h-[1.5em]">
+              {
+                [
+                  "Parsing diff...",
+                  "Auditing security...",
+                  "Analyzing logic...",
+                  "Checking performance...",
+                  "Finalizing report..."
+                ][loadingStep]
+              }
+            </p>
+          </div>
         </div>
       ) : result ? (
-        <div className="flex flex-col max-h-[85vh]">
-          {/* Header with Score */}
-          <div className="bg-[#fcfcfc] dark:bg-zed-dark-surface border-b border-zed-border dark:border-zed-dark-border p-6 flex items-center gap-8">
-            <div className="flex flex-col items-center">
-              <Progress
-                type="circle"
-                percent={result.score}
-                strokeColor={getScoreColor(result.score)}
-                format={(percent) => (
-                  <div className="flex flex-col items-center mt-1">
-                    <span className="text-2xl font-black text-zed-text dark:text-zed-dark-text">{percent}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-zed-muted">Score</span>
-                  </div>
-                )}
-                width={80}
-                strokeWidth={8}
-              />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-zed-text dark:text-zed-dark-text mb-2">AI Code Review</h2>
-              <div className="text-sm text-zed-muted dark:text-zed-dark-muted prose dark:prose-invert max-w-none leading-snug">
+        <div className="flex flex-col max-h-[85vh] text-zed-text dark:text-zed-dark-text font-sans">
+          {/* Minimalist Header */}
+          <div className="px-6 py-5 border-b border-zed-border dark:border-zed-dark-border flex items-start justify-between bg-white/50 dark:bg-white/[0.02]">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`text-4xl font-mono font-bold tracking-tighter ${getScoreColor(result.score)}`}>
+                  {result.score}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-zed-muted opacity-60">Quality Score</span>
+                  <span className="text-xs font-medium opacity-80">
+                    {result.score >= 90 ? "Excellent" : result.score >= 70 ? "Needs Review" : "Critical Issues"}
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-zed-muted leading-relaxed max-w-md prose dark:prose-invert prose-p:my-0 prose-strong:font-medium prose-strong:text-zed-text dark:prose-strong:text-zed-dark-text">
                 <ReactMarkdown>{result.summary}</ReactMarkdown>
               </div>
             </div>
+            <button 
+              onClick={onClose} 
+              className="text-zed-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors p-1"
+            >
+              <CloseOutlined />
+            </button>
           </div>
 
-          {/* Issues List */}
-          <div className="flex-1 overflow-y-auto p-6 bg-zed-bg dark:bg-zed-dark-bg space-y-4">
+          {/* Flat Issue List */}
+          <div className="flex-1 overflow-y-auto bg-[#fafafa] dark:bg-[#111111]">
             {result.issues.length === 0 ? (
-              <div className="text-center py-12 opacity-50">
-                <CheckCircleOutlined className="text-4xl text-green-500 mb-4" />
-                <p className="text-lg font-bold">No issues found!</p>
-                <p className="text-sm">Great job, your code looks clean.</p>
+              <div className="flex flex-col items-center justify-center py-16 opacity-40">
+                <CheckCircleOutlined className="text-3xl mb-3" />
+                <span className="text-xs font-mono uppercase tracking-widest">Clean Audit</span>
               </div>
             ) : (
-              result.issues.map((issue, idx) => (
-                <div key={idx} className="bg-white dark:bg-zed-dark-element/30 border border-zed-border dark:border-zed-dark-border rounded-lg p-4 flex gap-4 hover:shadow-sm transition-shadow">
-                  <div className={`mt-1 text-lg ${
-                    issue.type === 'security' ? 'text-red-500' : 
-                    issue.type === 'bug' ? 'text-orange-500' : 'text-blue-500'
-                  }`}>
-                    {getTypeIcon(issue.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-bold text-sm text-zed-text dark:text-zed-dark-text capitalize">
-                        {issue.type} Issue
-                      </h4>
-                      <Tag color={getSeverityColor(issue.severity)} className="uppercase text-[9px] font-bold m-0">
-                        {issue.severity}
-                      </Tag>
+              <div className="divide-y divide-zed-border/50 dark:divide-zed-dark-border/50">
+                {result.issues.map((issue, idx) => (
+                  <div key={idx} className="group px-6 py-4 hover:bg-white dark:hover:bg-white/[0.03] transition-colors flex gap-4 items-start">
+                    {/* Icon Column */}
+                    <div className={`mt-0.5 text-sm shrink-0 w-6 h-6 flex items-center justify-center rounded bg-opacity-10 dark:bg-opacity-20 ${
+                      issue.type === 'security' ? 'text-red-500 bg-red-500' : 
+                      issue.type === 'bug' ? 'text-orange-500 bg-orange-500' : 'text-blue-500 bg-blue-500'
+                    }`}>
+                      {getTypeIcon(issue.type)}
                     </div>
-                    <p className="text-xs font-mono text-zed-muted dark:text-zed-dark-muted mb-2 bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded inline-block">
-                      {issue.file}
-                    </p>
-                    <p className="text-sm text-zed-text dark:text-zed-dark-text leading-relaxed">
-                      {issue.message}
-                    </p>
+
+                    {/* Content Column */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zed-muted">{issue.type}</span>
+                        {issue.severity === 'high' && (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">High Severity</span>
+                        )}
+                        <span className="text-[10px] font-mono text-zed-muted opacity-50 ml-auto truncate max-w-[200px]" title={issue.file}>
+                          {issue.file}
+                        </span>
+                      </div>
+                      <p className="text-xs leading-relaxed opacity-90 group-hover:opacity-100">
+                        {issue.message}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
           
-          <div className="p-4 border-t border-zed-border dark:border-zed-dark-border bg-[#fcfcfc] dark:bg-zed-dark-surface flex justify-end">
-            <button 
-              onClick={onClose}
-              className="px-6 py-2 bg-zed-text dark:bg-white text-zed-bg dark:text-black font-bold uppercase text-[10px] tracking-widest rounded hover:opacity-90 transition-opacity"
-            >
-              Close Report
-            </button>
+          {/* Minimalist Footer */}
+          <div className="px-6 py-3 border-t border-zed-border dark:border-zed-dark-border bg-white dark:bg-zed-dark-bg flex items-center justify-between">
+             <div className="flex items-center gap-2 text-[10px] text-zed-muted opacity-60">
+               <WarningOutlined />
+               <span>AI-generated report. Verify before committing.</span>
+             </div>
+             <button 
+               onClick={onClose}
+               className="text-[10px] font-bold uppercase tracking-widest hover:text-zed-accent transition-colors"
+             >
+               Dismiss
+             </button>
           </div>
         </div>
       ) : null}

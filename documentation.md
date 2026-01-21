@@ -1,18 +1,29 @@
 # GitCanopy Documentation
 
-GitCanopy is a hyper-minimalist, high-performance Git visualizer and client designed for professional engineers. Inspired by the ZED editor aesthetic, it focuses on architectural clarity, lightning-fast interactions, and robust security.
+GitCanopy is a hyper-minimalist, high-performance Git visualizer and client designed for professional engineers. It transforms the traditional Git client into an intelligent development partner by deeply integrating **Google Gemini** into the core version control lifecycle.
 
 ---
 
-## 🏆 Hackathon Submission: Gemini 2.5 Integration
+## 🧠 The Cognitive Engine
 
-**GitCanopy** transforms the traditional Git client into an intelligent development partner by deeply integrating **Gemini 2.5 Flash** into the core version control lifecycle. We leveraged three distinct Gemini features to solve common developer friction points:
+GitCanopy is built around the philosophy that **tools should understand code, not just text**. We leverage the Gemini 2.5 Flash model (and support OpenAI/Claude) to provide three distinct cognitive services:
 
-1.  **Semantic Context Extraction:** GitCanopy uses Gemini 2.5 to analyze staged diffs and generate semantic commit messages following the Conventional Commits specification. By processing raw code changes, the model extracts the "intent" behind the delta, ensuring high-quality, searchable project history without manual overhead.
-2.  **Instructional Conflict Resolution:** We innovated on standard auto-merging by implementing a "Prompted Resolver." Developers can provide natural language hints (e.g., *"preserve the new auth logic but keep the legacy variable naming for compatibility"*) which Gemini interprets to perform semantic merges that standard line-by-line diff engines cannot handle.
-3.  **Architectural Insights:** The **AI Insight** engine analyzes entire commit deltas to provide high-level summaries of architectural impact. It identifies potential risks and explains complex changes in plain English, serving as an automated "first pass" code reviewer.
+### 1. AI Code Reviewer (Pre-Commit Audit)
+Before you push code, GitCanopy acts as a virtual Senior Engineer. It scans your staged diffs and generates a comprehensive audit report.
 
-By utilizing Gemini 2.5 Flash’s high context window and low latency, GitCanopy delivers a hyper-responsive experience that makes AI an essential, rather than decorative, part of the engineering workflow.
+*   **Quality Score (0-100):** A heuristic metric based on security, stability, and maintainability.
+*   **Security Scanning:** Detects hardcoded secrets, API keys, and unsafe input handling patterns.
+*   **Bug Detection:** Identifies logical fallacies, potential null reference exceptions, and race conditions.
+*   **Performance:** Highlights suboptimal loops or heavy computations.
+
+### 2. Semantic Context Extraction
+GitCanopy parses raw code changes to extract the "intent" behind a delta. It ignores whitespace and trivial changes to focus on the architectural impact, generating semantic commit messages that adhere to the **Conventional Commits** specification.
+
+### 3. Instructional Conflict Resolution
+Standard merge tools are "dumb"—they force you to choose between *Line A* or *Line B*. GitCanopy's **Prompted Resolver** allows for semantic merging. You can provide natural language instructions like:
+> *"Combine these changes. Keep the error handling from the Incoming branch, but use the async/await pattern from the Current branch."*
+
+The AI synthesizes a new block of code that satisfies both requirements, turning complex logic conflicts into simple prompts.
 
 ---
 
@@ -29,7 +40,7 @@ graph TD
         IPC[IPC Bridge] --> GitS[Git Service]
         IPC --> AIS[AI Service]
         GitS --> Binary[Local Git Binary]
-        AIS --> Gemini[Google Gemini 2.5 API]
+        AIS --> Gemini[Google Gemini API]
         Watcher[chokidar Watcher] --> IPC
     end
 
@@ -37,12 +48,39 @@ graph TD
     Watcher -.-> FS
 ```
 
-### 🧠 How we use Gemini 2.5
-GitCanopy leverages the **Gemini 2.5 Flash** model for three critical developer workflows:
+---
 
-1.  **Semantic Context Extraction:** We feed Git diffs into Gemini to generate "Conventional Commits" messages. The model is tuned to respect the 72-character summary limit and provide meaningful bullet points.
-2.  **Prompted Conflict Resolution:** Unlike standard auto-mergers, we allow users to provide "Merge Hints." Gemini interprets these instructions to perform semantic merges that preserve logic from both branches based on developer intent.
-3.  **Security Filtering:** (Future) Pre-push analysis to detect potential secret leakages beyond simple filename checks.
+## 🤖 AI Assistant Guide
+
+GitCanopy supports **Gemini** (Primary), **OpenAI**, and **Claude** as backend providers.
+
+### 1. Configuration
+Go to **Settings (⌘,)** and navigate to the **AI Assistant** tab.
+- **Provider:** Select Google Gemini (Recommended).
+- **Model:** Choose `gemini-2.5-flash` or `gemini-2.0-flash-exp` for the best balance of speed and intelligence.
+- **API Key:** Enter your key (it will be encrypted on disk).
+
+### 2. AI Code Reviewer (New!)
+Before you commit, click the purple **"Review Changes"** button in the Source Control header.
+- **Score:** You will receive a score from 0-100. Aim for >90.
+- **Analysis:** Review the categorized issues.
+    - 🛡️ **Security:** Caught hardcoded secrets or unsafe inputs.
+    - 🐛 **Bugs:** Logic errors or potential crashes.
+    - ⚡ **Optimization:** Performance bottlenecks.
+    - 🎨 **Style:** Code consistency issues.
+
+### 3. Smart Commit Generation
+1. Stage your files.
+2. Click the **Robot Icon** next to the commit message input.
+3. The AI will generate a Summary and Description based on the *intent* of your changes, not just the file names.
+
+### 4. Smart Conflict Resolution
+When a merge conflict occurs:
+1. Click the conflicted file in the Changes view.
+2. You will see a 3-pane view: Current, Incoming, and Result.
+3. **The Magic:** In the "AI Instruction" box at the bottom, type naturally.
+    - *Example:* "Combine these. Keep the error handling from Incoming but use the async/await pattern from Current."
+4. Click **Resolve with AI**.
 
 ---
 
@@ -59,12 +97,7 @@ GitCanopy leverages the **Gemini 2.5 Flash** model for three critical developer 
 - **Stage & Commit:** Seamless GUI workflow for staging files and creating new commits.
 - **Push to Remote:** One-click synchronization with your remote server when your local branch is ahead.
 
-### 3. AI-Powered Workflow
-- **Semantic Commit Generation:** Automatically analyze staged changes and generate professional, Conventional Commit messages.
-- **Intelligent Conflict Resolver:** Solve merge conflicts using AI that understands your code logic. Provide custom instructions (e.g., "prefer their styling but my logic") for precise resolutions.
-- **Minimalist Prompt Bar:** A dedicated command area within conflict blocks for direct AI interaction.
-
-### 4. CI/CD & Insights
+### 3. CI/CD & Insights
 - **GitHub Actions Explorer:** Live monitoring of CI/CD pipelines with real-time status updates and manual refresh capability.
 - **Stash Gallery:** A visual interface for managing git stashes, featuring an **Expandable Preview** to inspect affected files before applying.
 - **Team Metrics:** Analyze contributor impact, commit frequency, and activity over time.
@@ -78,12 +111,6 @@ GitCanopy leverages the **Gemini 2.5 Flash** model for three critical developer 
 - Launch GitCanopy and click **Open Repository**.
 - Select any folder containing a `.git` directory.
 - Your most recent repositories will appear on the Welcome Screen for quick access.
-
-### Configuration
-Go to **Settings (⌘,)** to configure your environment:
-- **General:** Set your Git Identity (`user.name` and `user.email`) to ensure your commits are correctly attributed.
-- **AI Assistant:** Configure your Gemini API Key and provider settings.
-- **GitHub:** Securely store your Personal Access Token for private repo access and Actions monitoring.
 
 ### Navigation
 - Use the **Status Bar** (bottom) to switch between:
@@ -118,7 +145,7 @@ Go to **Settings (⌘,)** to configure your environment:
 
 ### Security Boundaries
 - **Anti-Injection:** All Git commands are executed using safe argument arrays and the `--` separator to prevent flag injection.
-- **Encrypted Storage:** GitHub Personal Access Tokens are encrypted using OS-level safe storage (Keychain/DPAPI).
+- **Encrypted Storage:** GitHub and AI API Keys are encrypted using OS-level safe storage (Keychain/DPAPI).
 - **Hardened URL Parsing:** Strict hostname verification for GitHub remotes to prevent SSRF and malicious redirection.
 - **Electron Hardening:** Strict `contextIsolation` and `webSecurity` settings. External navigation is disabled by default.
 
@@ -133,5 +160,5 @@ Go to **Settings (⌘,)** to configure your environment:
 ## 🎨 Philosophy
 GitCanopy is built on the principle of **"Developer First"** and prioritize speed and data density over decorative UI elements. Every pixel should serve a functional purpose.
 
-**Build Version:** 1.1.0 Stable
-**Platform:** macOS (not recommended) / Windows / Linux
+**Build Version:** 1.2.0 Stable
+**Platform:** macOS / Windows / Linux

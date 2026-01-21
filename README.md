@@ -2,19 +2,17 @@
 
 <img src="assets/logo.png" width="280" alt="GitCanopy Interface" />
 
-# GitCanopy: Git Visualization Client designed for Professional Engineers
+# GitCanopy: The Intelligent Git Client for Professional Engineers
 
-Transform complex commit histories into stable, readable graphs with a hyper-minimalist, lightning-fast workflow.
+**Stop managing Git. Start engineering.** 
+GitCanopy combines high-performance visualization with a cognitive AI engine to automate commit hygiene, resolve complex conflicts, and audit code quality in real-time.
 
-[![Version](https://img.shields.io/badge/version-1.1.0_Stable-1f2937?style=flat&logo=git)](https://github.com/TainYanTun/GitCanopy/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0_Stable-1f2937?style=flat&logo=git)](https://github.com/TainYanTun/GitCanopy/releases)
+[![AI Engine](https://img.shields.io/badge/AI-Gemini%20%7C%20OpenAI%20%7C%20Claude-7c3aed?style=flat)](documentation.md)
 [![Build](https://img.shields.io/badge/build-passing-success?style=flat)](https://github.com/TainYanTun/GitCanopy/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-red?style=flat)](https://github.com/TainYanTun/GitCanopy)
 
-**The Architectural Spine of the Repository**
-
-
-[Features](#-features) • [Download](#-download) • [Usage](#-usage) • [Roadmap](#-roadmap) • [Contributing](#-contributing)
+[Features](#-features) • [Download](#-download) • [Usage](#-usage) • [System Architecture](#-system-architecture)
 
 <img src="src/renderer/public/interface.png" width="850" alt="GitCanopy Interface" />
 
@@ -22,8 +20,27 @@ Transform complex commit histories into stable, readable graphs with a hyper-min
 
 ---
 
+## 🧠 Why GitCanopy is Smart
+
+GitCanopy isn't just a wrapper around `git`. It is an **active development partner** that understands your code.
+
+### 🛡️ Proactive Quality Control
+Most clients let you push bad code. GitCanopy's **AI Code Reviewer** analyzes your staged diffs against security best practices and performance standards, giving you a **Quality Score (0-100)** before you ever hit commit.
+
+### ⚡ Intent-Based Conflict Resolution
+Merge conflicts are logic problems, not text problems. GitCanopy's **Prompted Resolver** lets you use natural language (e.g., *"Keep the logging from branch A but the variable naming from branch B"*) to synthesize a syntactically correct merge.
+
+### 📝 Semantic Context Extraction
+Stop writing "fix bug" commits. The **Context Engine** reads your diffs, understands the architectural change, and generates semantic, Conventional Commits compliant messages automatically.
+
+---
+
 ## ✨ Features
 
+- **🤖 AI & Automation:**
+    - **Smart Commit Generator:** Generate semantic messages from diffs using Gemini, OpenAI, or Claude.
+    - **Intelligent Conflict Resolver:** Resolve complex merge conflicts with natural language instructions.
+    - **AI Code Reviewer:** Get a pre-commit quality score (0-100) and catch security bugs before you push.
 - **Visualization Engine:** Lane-persistent commit graphs with semantic coloring and lineage tracing.
 - **Actions Explorer:** Real-time GitHub Actions monitoring with instant sync and branch filtering.
 - **Professional Performance:** 60FPS virtualized rendering and background worker-powered layouts.
@@ -46,23 +63,9 @@ GitCanopy is an open-source project hosted on GitHub. You can find the latest in
     ```bash
     sudo xattr -cr /Applications/GitCanopy.app
     ```
-    *(Replace `/Applications/GitCanopy.app` with the actual path if you installed it elsewhere)*
-
-> **Note on Trust:** If you are uncomfortable running this command or do not trust the binary, we completely understand. As an open-source project, you are always free to audit the code and **build from source** by following our [Setup Guide](setup.md).
 
 ### 🛠️ Development Setup
 For developers looking to build from source or contribute, please refer to the [Setup Guide](setup.md).
-
----
-
-## 🎮 Usage
-
-- **Open Repository:** Click the button on the welcome screen or use `⌘ + O` / `Ctrl + O`.
-- **Explore History:** Navigate the interactive **Graph** or search through the **Commit History**.
-- **Manage Changes:** Stage, commit, and push your work from the **Changes View**.
-- **Analyze Activity:** Use **Team Insights** and **File Hotspots** to track contributor impact.
-
-> 💡 See [Full Documentation](documentation.md) for more advanced features.
 
 ---
 
@@ -119,31 +122,6 @@ graph TD
 3.  **AI Service** constructs a prompt and selects the provider (Gemini 2.5/2.0, OpenAI, or Claude) based on user settings.
 4.  **External API** processes the request and returns semantic text or code.
 5.  **Response** flows back to the UI for user review.
-
-### Technology Stack
-
-<table>
-<tr>
-<td><strong>Runtime</strong></td>
-<td>Electron with isolated renderer and secure IPC</td>
-</tr>
-<tr>
-<td><strong>Frontend</strong></td>
-<td>React + TypeScript + Tailwind CSS (Zed-inspired theme)</td>
-</tr>
-<tr>
-<td><strong>AI Engine</strong></td>
-<td>Google Gemini 2.5 Flash / 2.0 Flash (Primary), OpenAI, Claude</td>
-</tr>
-<tr>
-<td><strong>Visualization</strong></td>
-<td>D3.js with Web Worker computation</td>
-</tr>
-<tr>
-<td><strong>Git Integration</strong></td>
-<td>Native binary interaction with memory-safe buffers</td>
-</tr>
-</table>
 
 ---
 
