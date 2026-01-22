@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Commit } from '@shared/types';
 import { useToast } from './ToastContext';
 import moment from 'moment';
+import { Avatar } from './Avatar';
 
 interface CommitMiniLogProps {
   repoPath: string;
@@ -46,10 +47,6 @@ export const CommitMiniLog: React.FC<CommitMiniLogProps> = ({ repoPath, onCommit
     };
   }, [repoPath, showToast]);
 
-  const getAuthorInitials = (authorName: string) => {
-    return authorName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  };
-
   if (loading) {
     return (
       <div className="text-zed-muted dark:text-zed-dark-muted text-xs px-3 py-2">
@@ -77,17 +74,12 @@ export const CommitMiniLog: React.FC<CommitMiniLogProps> = ({ repoPath, onCommit
             onClick={() => onCommitSelect?.(commit)}
           >
             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border flex items-center justify-center overflow-hidden shadow-sm">
-              {commit.author.avatarUrl ? (
-                <img 
-                  src={commit.author.avatarUrl} 
-                  alt={commit.author.name} 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-[10px] font-bold text-zed-muted dark:text-zed-dark-muted">
-                  {getAuthorInitials(commit.author.name)}
-                </span>
-              )}
+              <Avatar 
+                src={commit.author.avatarUrl} 
+                name={commit.author.name}
+                className="w-full h-full object-cover"
+                placeholderClassName="w-full h-full flex items-center justify-center bg-zed-element dark:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted font-bold text-[10px]"
+              />
             </div>
             <div className="flex-1 overflow-hidden">
               <div className="text-sm truncate text-zed-text dark:text-zed-dark-text group-hover:text-zed-accent transition-colors">

@@ -247,13 +247,6 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
         if (d.commit.author.avatarUrl) {
           const clipId = `clip-${d.id}`;
           
-          // We need to append defs to the main SVG if not already there, 
-          // but doing it locally per-node is tricky in D3 without a shared defs ref.
-          // Instead, we can append a clipPath to the node group itself if we reference it correctly,
-          // OR better: use the 'defs' selection we created in Phase 1 if we had stored it.
-          // Since we didn't store 'defs' in a ref, let's just append a clipPath to this group 
-          // and use a unique ID.
-          
           group.append("clipPath")
             .attr("id", clipId)
             .append("rect")
@@ -263,7 +256,7 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
             .attr("y", -halfSize)
             .attr("transform", "rotate(45)");
 
-          group.append("image")
+          const img = group.append("image")
             .attr("href", d.commit.author.avatarUrl)
             .attr("width", diamondSize * 1.4)
             .attr("height", diamondSize * 1.4)
@@ -271,6 +264,21 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
             .attr("y", -diamondSize * 0.7)
             .attr("clip-path", `url(#${clipId})`);
             
+          // Handle image error - fallback to initials
+          img.on("error", function() {
+            d3.select(this).remove();
+            
+            const initial = d.commit.author.name.charAt(0).toUpperCase();
+            group.append("text")
+             .attr("dy", "0.35em")
+             .attr("text-anchor", "middle")
+             .attr("fill", "white")
+             .style("font-size", "10px")
+             .style("font-weight", "bold")
+             .style("pointer-events", "none")
+             .text(initial);
+          });
+
           // Border on top
           group.append("rect")
             .attr("width", diamondSize)

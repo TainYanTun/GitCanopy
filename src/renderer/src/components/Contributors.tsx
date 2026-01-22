@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ContributorStats } from "@shared/types";
 import moment from "moment";
 import * as d3 from "d3";
+import { Avatar } from "./Avatar";
 
 interface ContributorsProps {
   repoPath: string;
@@ -158,8 +159,8 @@ export const Contributors: React.FC<ContributorsProps> = ({ repoPath }) => {
             </div>
 
             {/* Avatar - Tiny & Grayscale */}
-            <div className="w-6 h-6 grayscale opacity-40 group-hover:opacity-100 group-hover:grayscale-0 transition-all duration-300 overflow-hidden">
-              <img src={author.avatarUrl} alt={author.name} className="w-full h-full object-cover" />
+            <div className="w-6 h-6 grayscale opacity-40 group-hover:opacity-100 group-hover:grayscale-0 transition-all duration-300 overflow-hidden rounded-full">
+              <Avatar src={author.avatarUrl} name={author.name} className="w-full h-full object-cover" />
             </div>
 
             {/* Identity */}

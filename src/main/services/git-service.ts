@@ -487,7 +487,25 @@ export class GitService {
   }
 
   async push(repoPath: string): Promise<void> {
-    await this.run(["push"], repoPath);
+    try {
+      await this.run(["push"], repoPath);
+    } catch (error: any) {
+      const message = error.message || "";
+      // Check for "no upstream branch" error
+      if (message.includes("no upstream branch") || message.includes("set-upstream")) {
+        try {
+          const currentBranch = await this.getCurrentBranch(repoPath);
+          if (currentBranch && currentBranch !== "HEAD" && currentBranch !== "Detached") {
+            await this.run(["push", "--set-upstream", "origin", currentBranch], repoPath);
+            return;
+          }
+        } catch (innerError) {
+          // If fallback fails, throw the original error or the new one
+          throw innerError;
+        }
+      }
+      throw error;
+    }
   }
 
   async resetHard(repoPath: string, target: string): Promise<void> {

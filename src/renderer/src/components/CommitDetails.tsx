@@ -5,6 +5,7 @@ import { DiffModal } from "./DiffModal";
 import { FileTree } from "./FileTree";
 import { RobotOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import ReactMarkdown from 'react-markdown';
+import { Avatar } from "./Avatar";
 
 const CopyIcon = () => (
   <svg
@@ -44,7 +45,6 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [isDiffModalVisible, setDiffModalVisible] = useState(false);
-  const [imgError, setImgError] = useState(false);
   
   // AI Insight State
   const [aiInsight, setAiInsight] = useState<string | null>(null);
@@ -122,15 +122,6 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
     }
   }, [commit?.hash, repoPath]); // Re-fetch when commit hash or repoPath changes
 
-  const getAuthorInitials = (authorName: string) => {
-    return authorName
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
   if (!commit || !fullCommitDetails || loading) {
     return (
       <div className="p-4 text-zed-muted dark:text-zed-dark-muted">
@@ -151,18 +142,12 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
     <div className="p-4 space-y-4 text-zed-text dark:text-zed-dark-text text-sm">
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zed-element dark:bg-zinc-800 border border-zed-border dark:border-zed-dark-border flex items-center justify-center overflow-hidden shadow-sm">
-          {displayCommit.author.avatarUrl && !imgError ? (
-            <img
-              src={displayCommit.author.avatarUrl}
-              alt={displayCommit.author.name}
-              className="w-full h-full object-cover"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <span className="text-xs text-zed-muted dark:text-zinc-400 font-bold">
-              {getAuthorInitials(displayCommit.author.name)}
-            </span>
-          )}
+          <Avatar 
+            src={displayCommit.author.avatarUrl} 
+            name={displayCommit.author.name}
+            className="w-full h-full object-cover"
+            placeholderClassName="w-full h-full flex items-center justify-center bg-zed-element dark:bg-zinc-800 text-zed-muted dark:text-zinc-400 font-bold"
+          />
         </div>
         <div>
           <div className="font-semibold">{displayCommit.author.name}</div>
