@@ -374,11 +374,15 @@ class GitCanopyApp {
     ipcMain.handle("get-status", (_, repoPath: string) =>
       this.gitService.getStatus(repoPath),
     );
-    ipcMain.handle("clone", (_, url: string, targetPath: string) =>
-      this.gitService.clone(url, targetPath),
+    ipcMain.handle("clone", async (event, url: string, targetPath: string) =>
+      this.gitService.clone(url, targetPath, (progress) => {
+        event.sender.send("clone-progress", progress);
+      }),
     );
-    ipcMain.handle("clone-to-parent", (_, url: string, parentPath: string) =>
-      this.gitService.cloneToParent(url, parentPath),
+    ipcMain.handle("clone-to-parent", async (event, url: string, parentPath: string) =>
+      this.gitService.cloneToParent(url, parentPath, (progress) => {
+        event.sender.send("clone-progress", progress);
+      }),
     );
     ipcMain.handle("stage-file", (_, repoPath: string, filePath: string) =>
       this.gitService.stageFile(repoPath, filePath),

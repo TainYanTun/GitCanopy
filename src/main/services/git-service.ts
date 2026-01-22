@@ -286,7 +286,7 @@ export class GitService {
     }
   }
 
-  async getWorkRhythm(repoPath: string): Promise<Record<string, number>> {
+  async getWorkRhythm(repoPath: string): Promise<Record<string, { count: number, lastTimestamp: number }>> {
     try {
       // Get timestamps for all commits (limited to 5000 for performance)
       const output = await this.run(
@@ -294,7 +294,7 @@ export class GitService {
         repoPath
       );
       
-      const rhythm: Record<string, number> = {};
+      const rhythm: Record<string, { count: number, lastTimestamp: number }> = {};
       const lines = output.split('\n');
       
       for (const line of lines) {
@@ -304,7 +304,13 @@ export class GitService {
           const day = date.getDay(); // 0-6
           const hour = date.getHours(); // 0-23
           const key = `${day}-${hour}`;
-          rhythm[key] = (rhythm[key] || 0) + 1;
+          
+          if (!rhythm[key]) {
+            rhythm[key] = { count: 0, lastTimestamp: timestamp };
+          }
+          
+          rhythm[key].count++;
+          rhythm[key].lastTimestamp = Math.max(rhythm[key].lastTimestamp, timestamp);
         }
       }
       
@@ -458,14 +464,58 @@ export class GitService {
     return filename === ".env" || filename.startsWith(".env.");
   }
 
-  async clone(url: string, targetPath: string): Promise<void> {
+  async clone(url: string, targetPath: string, progressCallback?: (progress: string) => void): Promise<void> {
     const parentDir = path.dirname(targetPath);
     const repoName = path.basename(targetPath);
-    // Use -- to separate URL from potentially malicious repo names starting with -
-    await this.run(["clone", "--", url, repoName], parentDir);
+    
+    const args = ["clone", "--progress", "--", url, repoName];
+    const release = await this.commandLock.acquireWrite();
+
+    try {
+      const startTime = Date.now();
+      const env = { ...process.env };
+      if (this.authService) {
+          env.GIT_ASKPASS = this.getAskPassScriptPath();
+          env.GIT_CANOPY_AUTH_SOCK = this.authService.getSocketPath();
+          env.GIT_TERMINAL_PROMPT = '0';
+          await this.authService.start();
+      }
+
+      return await new Promise<void>((resolve, reject) => {
+        const gitProcess = spawn("git", args, { cwd: parentDir, env });
+        let stderr = "";
+
+        gitProcess.stderr.on("data", (data) => {
+          const chunk = data.toString();
+          stderr += chunk;
+          
+          if (progressCallback) {
+            // Parse progress: 'Receiving objects:  10%' or 'Resolving deltas:  50%'
+            const lines = chunk.split(/[\r\n]/);
+            for (const line of lines) {
+              const match = line.match(/(\d+)%/);
+              if (match) {
+                progressCallback(match[1]);
+              }
+            }
+          }
+        });
+
+        gitProcess.on("close", (code) => {
+          const duration = Date.now() - startTime;
+          this.logCommand(args, code === 0, code || 0, duration);
+          if (code === 0) resolve();
+          else reject(new Error(stderr || `Clone failed with code ${code}`));
+        });
+
+        gitProcess.on("error", reject);
+      });
+    } finally {
+      release();
+    }
   }
 
-  async cloneToParent(url: string, parentPath: string): Promise<string> {
+  async cloneToParent(url: string, parentPath: string, progressCallback?: (progress: string) => void): Promise<string> {
     // 1. Extract repo name
     const cleanUrl = url.replace(/\/$/, '').replace(/\.git$/, '');
     const repoName = cleanUrl.split('/').pop() || 'repository';
@@ -478,8 +528,8 @@ export class GitService {
         throw new Error(`Destination '${repoName}' already exists in selected folder.`);
     }
     
-    // 4. Clone
-    await this.clone(url, targetPath);
+    // 4. Clone with progress
+    await this.clone(url, targetPath, progressCallback);
     
     // 5. Verify existence
     if (!fs.existsSync(targetPath)) {
@@ -521,15 +571,10 @@ export class GitService {
       const message = error.message || "";
       // Check for "no upstream branch" error
       if (message.includes("no upstream branch") || message.includes("set-upstream")) {
-        try {
-          const currentBranch = await this.getCurrentBranch(repoPath);
-          if (currentBranch && currentBranch !== "HEAD" && currentBranch !== "Detached") {
-            await this.run(["push", "--set-upstream", "origin", currentBranch], repoPath);
-            return;
-          }
-        } catch (innerError) {
-          // If fallback fails, throw the original error or the new one
-          throw innerError;
+        const currentBranch = await this.getCurrentBranch(repoPath);
+        if (currentBranch && currentBranch !== "HEAD" && currentBranch !== "Detached") {
+          await this.run(["push", "--set-upstream", "origin", currentBranch], repoPath);
+          return;
         }
       }
       throw error;

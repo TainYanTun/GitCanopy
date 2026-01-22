@@ -14,7 +14,7 @@ export const Contributors: React.FC<ContributorsProps> = ({ repoPath }) => {
   const [loading, setLoading] = useState(true);
   const [teamPulse, setTeamPulse] = useState<string | null>(null);
   const [isPulseLoading, setIsPulseLoading] = useState(false);
-  const [workRhythm, setWorkRhythm] = useState<Record<string, number>>({});
+  const [workRhythm, setWorkRhythm] = useState<Record<string, { count: number, lastTimestamp: number }>>({});
   const chartRef = useRef<SVGSVGElement | null>(null);
   const rhythmRef = useRef<SVGSVGElement | null>(null);
 
@@ -160,13 +160,18 @@ export const Contributors: React.FC<ContributorsProps> = ({ repoPath }) => {
       .range([0, height])
       .padding(0.1);
 
-    const maxVal = d3.max(Object.values(workRhythm)) || 1;
+    const rhythmEntries = Object.values(workRhythm);
+    const maxVal = d3.max(rhythmEntries, d => d.count) || 1;
     const radiusScale = d3.scaleSqrt()
       .domain([0, maxVal])
       .range([0, xScale.bandwidth() / 2]);
 
     const colorScale = d3.scaleSequential(d3.interpolateBlues)
       .domain([0, maxVal]);
+
+    // Create Tooltip
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "fixed pointer-events-none bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border px-2 py-1.5 rounded shadow-xl text-[10px] font-mono z-[100] opacity-0 transition-opacity duration-200");
 
     // X-Axis (Hours)
     g.append("g")
@@ -182,19 +187,57 @@ export const Contributors: React.FC<ContributorsProps> = ({ repoPath }) => {
       .select(".domain").remove();
 
     // Data points
-    Object.entries(workRhythm).forEach(([key, val]) => {
+    Object.entries(workRhythm).forEach(([key, data]) => {
       const [dayIdx, hour] = key.split("-");
       const day = days[parseInt(dayIdx)];
+      const hourLabel = parseInt(hour) >= 12 ? (parseInt(hour) === 12 ? "12 PM" : `${parseInt(hour)-12} PM`) : (parseInt(hour) === 0 ? "12 AM" : `${hour} AM`);
+      const formattedDate = moment.unix(data.lastTimestamp).format("MMM D, YYYY");
       
       g.append("circle")
         .attr("cx", (xScale(hour) || 0) + xScale.bandwidth() / 2)
         .attr("cy", (yScale(day) || 0) + yScale.bandwidth() / 2)
-        .attr("r", radiusScale(val))
-        .attr("fill", colorScale(val))
+        .attr("r", radiusScale(data.count))
+        .attr("fill", colorScale(data.count))
         .attr("opacity", 0.8)
-        .append("title")
-        .text(`${val} commits at ${hour}:00 on ${day}`);
+        .attr("class", "cursor-crosshair transition-all duration-200")
+        .on("mouseenter", function(_event) {
+          d3.select(this)
+            .attr("opacity", 1)
+            .attr("stroke", "#3b82f6")
+            .attr("stroke-width", 1.5);
+            
+          tooltip
+            .style("opacity", 1)
+            .html(`
+              <div class="flex flex-col gap-1 min-w-[120px]">
+                <div class="flex items-center justify-between">
+                  <span class="text-zed-muted uppercase font-bold text-[8px]">${day} @ ${hourLabel}</span>
+                  <span class="text-zed-accent font-black">${data.count} COMMITS</span>
+                </div>
+                <div class="h-px bg-zed-border/30 w-full"></div>
+                <div class="flex items-center justify-between text-[8px] opacity-60">
+                  <span>LATEST ACTIVITY:</span>
+                  <span class="font-bold">${formattedDate}</span>
+                </div>
+              </div>
+            `);
+        })
+        .on("mousemove", function(event) {
+          tooltip
+            .style("left", (event.pageX + 12) + "px")
+            .style("top", (event.pageY - 12) + "px");
+        })
+        .on("mouseleave", function() {
+          d3.select(this)
+            .attr("opacity", 0.8)
+            .attr("stroke", "none");
+          tooltip.style("opacity", 0);
+        });
     });
+
+    return () => {
+      tooltip.remove();
+    };
 
   }, [workRhythm, loading]);
 

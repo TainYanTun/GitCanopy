@@ -229,6 +229,14 @@ const gitcanopyAPI: GitCanopyAPI = {
     };
   },
 
+  onCloneProgress: (callback: (progress: string) => void): (() => void) => {
+    const wrappedCallback = (_: any, progress: string) => callback(progress);
+    ipcRenderer.on("clone-progress", wrappedCallback);
+    return () => {
+      ipcRenderer.removeListener("clone-progress", wrappedCallback);
+    };
+  },
+
   // Utility functions
   showItemInFolder: (path: string): Promise<void> =>
     ipcRenderer.invoke("show-item-in-folder", path),

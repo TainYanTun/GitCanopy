@@ -18,10 +18,25 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const { showToast } = useToast();
   const [recentRepos, setRecentRepositories] = useState<string[]>([]);
   const [isCloning, setIsCloning] = useState(false);
+  const [cloneProgress, setCloneProgress] = useState<string>("0");
   const [showCloneInput, setShowCloneInput] = useState(false);
   const [cloneUrl, setCloneUrl] = useState("");
   const [version, setVersion] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let unsubscribeProgress: (() => void) | undefined;
+    
+    if (isCloning) {
+      unsubscribeProgress = window.gitcanopyAPI.onCloneProgress((progress) => {
+        setCloneProgress(progress);
+      });
+    }
+
+    return () => {
+      unsubscribeProgress?.();
+    };
+  }, [isCloning]);
 
   useEffect(() => {
     const fetchRecent = async () => {
@@ -146,12 +161,17 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       )}
                       <div className="flex flex-col items-start gap-0.5">
                         <span className="text-[11px] font-bold uppercase tracking-widest text-zed-text dark:text-zed-dark-text group-hover:text-zed-accent transition-colors">
-                          {isCloning ? "Cloning..." : "Clone Repository"}
+                          {isCloning ? "Cloning Repository" : "Clone Repository"}
                         </span>
                         <span className="text-[10px] font-mono text-zed-muted dark:text-zed-dark-muted opacity-60">
                           https://...
                         </span>
                       </div>
+                      {isCloning && (
+                        <span className="ml-auto text-[10px] font-mono font-bold text-zed-accent animate-pulse">
+                          {cloneProgress}%
+                        </span>
+                      )}
                     </button>
                   </>
                 ) : (

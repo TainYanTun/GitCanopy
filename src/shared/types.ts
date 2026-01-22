@@ -408,7 +408,7 @@ export interface GitCanopyAPI {
     limit?: number,
     options?: CommitFilterOptions,
   ) => Promise<HotFile[]>;
-  getWorkRhythm: (repoPath: string) => Promise<Record<string, number>>;
+  getWorkRhythm: (repoPath: string) => Promise<Record<string, { count: number, lastTimestamp: number }>>;
   getTeamPulse: (stats: any[]) => Promise<string>;
   getContributors: (repoPath: string) => Promise<ContributorStats[]>;
   getGitCommandHistory: (
@@ -468,6 +468,7 @@ export interface GitCanopyAPI {
   onMenuOpenBranchSwitcher: (callback: () => void) => () => void;
   onMenuSyncRepository: (callback: () => void) => () => void;
   onPushCompleted: (callback: () => void) => () => void;
+  onCloneProgress: (callback: (progress: string) => void) => () => void;
 
   // Utility
   showItemInFolder: (path: string) => Promise<void>;

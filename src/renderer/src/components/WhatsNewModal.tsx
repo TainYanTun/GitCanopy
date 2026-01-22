@@ -112,7 +112,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                   AI Code Reviewer
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Get a "Quality Score" on every commit. The AI analyzes your staged diffs for security risks, bugs, and style issues before you push.
+                  Get a &quot;Quality Score&quot; on every commit. The AI analyzes your staged diffs for security risks, bugs, and style issues before you push.
                 </p>
               </div>
             </div>
