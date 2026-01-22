@@ -408,6 +408,8 @@ export interface GitCanopyAPI {
     limit?: number,
     options?: CommitFilterOptions,
   ) => Promise<HotFile[]>;
+  getWorkRhythm: (repoPath: string) => Promise<Record<string, number>>;
+  getTeamPulse: (stats: any[]) => Promise<string>;
   getContributors: (repoPath: string) => Promise<ContributorStats[]>;
   getGitCommandHistory: (
     limit?: number,

@@ -42,7 +42,12 @@ export const CodeReviewModal: React.FC<CodeReviewModalProps> = ({
     ];
 
     const interval = setInterval(() => {
-      setLoadingStep((prev) => (prev + 1) % steps.length);
+      setLoadingStep((prev) => {
+        if (prev < steps.length - 1) {
+          return prev + 1;
+        }
+        return prev;
+      });
     }, 1200);
 
     return () => clearInterval(interval);

@@ -374,7 +374,7 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
             <button
               onClick={handleCodeReview}
               disabled={isReviewing}
-              className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-purple-600 text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2 shadow-sm"
+              className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2 shadow-sm"
             >
               <SafetyCertificateOutlined /> {isReviewing ? "Reviewing..." : "Review Changes"}
             </button>

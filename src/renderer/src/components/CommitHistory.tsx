@@ -159,7 +159,7 @@ export const CommitHistory: React.FC<CommitHistoryProps> = ({
                 className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest border transition-all ${
                 showAdvanced
                     ? "bg-zed-accent border-zed-accent text-white"
-                    : "bg-zed-element/50 dark:bg-zed-dark-element/50 border-zed-border dark:border-zed-dark-border text-zed-muted hover:text-zed-text"
+                    : "bg-zed-element/50 dark:bg-zed-dark-element/50 border-zed-border dark:border-zed-dark-border text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text"
                 }`}
             >
                 Advanced
@@ -191,7 +191,7 @@ export const CommitHistory: React.FC<CommitHistoryProps> = ({
                 placeholder="e.g. John Doe"
                 value={filters.author || ""}
                 onChange={(e) => onFilterChange({ ...filters, author: e.target.value || undefined })}
-                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border p-1.5 text-[10px] font-mono focus:outline-none"
+                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border p-1.5 text-[10px] font-mono focus:outline-none text-zed-text dark:text-zed-dark-text"
               />
             </div>
             <div className="space-y-1">
@@ -200,7 +200,7 @@ export const CommitHistory: React.FC<CommitHistoryProps> = ({
                 type="date"
                 value={filters.since || ""}
                 onChange={(e) => onFilterChange({ ...filters, since: e.target.value || undefined })}
-                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border p-1.5 text-[10px] font-mono focus:outline-none"
+                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border p-1.5 text-[10px] font-mono focus:outline-none text-zed-text dark:text-zed-dark-text"
               />
             </div>
             <div className="space-y-1">
@@ -209,7 +209,7 @@ export const CommitHistory: React.FC<CommitHistoryProps> = ({
                 type="date"
                 value={filters.until || ""}
                 onChange={(e) => onFilterChange({ ...filters, until: e.target.value || undefined })}
-                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border p-1.5 text-[10px] font-mono focus:outline-none"
+                className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border p-1.5 text-[10px] font-mono focus:outline-none text-zed-text dark:text-zed-dark-text"
               />
             </div>
           </div>

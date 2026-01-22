@@ -613,8 +613,27 @@ class GitCanopyApp {
       return this.aiService.reviewCode(diff, apiKey, provider, model);
     });
 
+    ipcMain.handle("git:get-team-pulse", async (_, stats: any[]) => {
+      const settings = await this.settingsService.getSettings();
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
+      }
+      return this.aiService.getTeamPulse(stats, apiKey, provider, model);
+    });
+
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>
       this.gitService.getHotFiles(repoPath, limit, options),
+    );
+    ipcMain.handle("git:get-work-rhythm", (_, repoPath: string) =>
+      this.gitService.getWorkRhythm(repoPath),
     );
     ipcMain.handle("git:get-contributors", (_, repoPath) =>
       this.gitService.getContributors(repoPath),

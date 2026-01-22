@@ -330,4 +330,49 @@ ${diff.substring(0, 30000)}
     }
     throw new Error("Provider not supported");
   }
+
+  async getTeamPulse(
+    stats: any[],
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<string> {
+    const prompt = `
+You are a technical people manager. 
+Based on the following team Git statistics, provide a 2-sentence "Team Pulse" summary.
+Identify the team's current health, work rhythm, and if there are any risks (like knowledge silos or heavy individual load).
+Be insightful and professional.
+
+Team Stats:
+${JSON.stringify(stats)}
+`;
+
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "No summary available.";
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.content[0].text;
+    }
+    throw new Error("Provider not supported");
+  }
 }

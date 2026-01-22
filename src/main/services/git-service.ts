@@ -286,6 +286,34 @@ export class GitService {
     }
   }
 
+  async getWorkRhythm(repoPath: string): Promise<Record<string, number>> {
+    try {
+      // Get timestamps for all commits (limited to 5000 for performance)
+      const output = await this.run(
+        ["log", "--all", "-n", "5000", "--pretty=format:%ct"],
+        repoPath
+      );
+      
+      const rhythm: Record<string, number> = {};
+      const lines = output.split('\n');
+      
+      for (const line of lines) {
+        const timestamp = parseInt(line.trim(), 10);
+        if (!isNaN(timestamp)) {
+          const date = new Date(timestamp * 1000);
+          const day = date.getDay(); // 0-6
+          const hour = date.getHours(); // 0-23
+          const key = `${day}-${hour}`;
+          rhythm[key] = (rhythm[key] || 0) + 1;
+        }
+      }
+      
+      return rhythm;
+    } catch (error) {
+      return {};
+    }
+  }
+
   async getContributors(repoPath: string): Promise<ContributorStats[]> {
     try {
       // Use git log to get stats per author

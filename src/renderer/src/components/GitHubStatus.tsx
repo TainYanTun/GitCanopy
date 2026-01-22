@@ -265,7 +265,7 @@ export const GitHubStatus: React.FC<GitHubStatusProps> = ({
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zed-muted hover:text-zed-text transition-colors"
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
                 >
                   Cancel
                 </button>

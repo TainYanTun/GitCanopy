@@ -464,14 +464,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"
+            className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
             title="Settings"
           >
              <SettingOutlined className="text-[12px]" />
           </button>
           
                     <button
-                      onClick={toggleTheme}            className="p-1.5 rounded hover:bg-zed-element text-zed-muted hover:text-zed-text transition-colors"
+                      onClick={toggleTheme}            className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
             title="Toggle Theme"
           >
             <svg

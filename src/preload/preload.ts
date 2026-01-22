@@ -115,8 +115,12 @@ const gitcanopyAPI: GitCanopyAPI = {
 
   getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) =>
     ipcRenderer.invoke("git:get-hot-files", repoPath, limit, options),
+  getWorkRhythm: (repoPath: string) =>
+    ipcRenderer.invoke("git:get-work-rhythm", repoPath),
   getContributors: (repoPath: string) =>
     ipcRenderer.invoke("git:get-contributors", repoPath),
+  getTeamPulse: (stats: any[]) =>
+    ipcRenderer.invoke("git:get-team-pulse", stats),
   getGitCommandHistory: (
     limit?: number,
     offset?: number,
