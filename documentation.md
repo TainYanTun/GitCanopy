@@ -6,7 +6,7 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 
 ## 🧠 The Cognitive Engine
 
-GitCanopy is built around the philosophy that **tools should understand code, not just text**. We leverage the Gemini 2.5 Flash model (and support OpenAI/Claude) to provide three distinct cognitive services:
+GitCanopy is built around the philosophy that **tools should understand code, not just text**. I leverage the Gemini 3 model (and support OpenAI/Claude) to provide three distinct cognitive services:
 
 ### 1. AI Code Reviewer (Pre-Commit Audit)
 Before you push code, GitCanopy acts as a virtual Senior Engineer. It scans your staged diffs and generates a comprehensive audit report.
