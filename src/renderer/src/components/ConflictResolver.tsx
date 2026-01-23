@@ -25,6 +25,7 @@ interface ConflictChunk {
   resolved?: string; // The user's choice
   status: "unresolved" | "resolved";
   isAiResolving?: boolean;
+  aiSuggestion?: string;
 }
 
 export const ConflictResolver: React.FC<ConflictResolverProps> = ({
@@ -39,7 +40,9 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aiInstructions, setAiInstructions] = useState<Record<number, string>>({});
+  const [aiInstructions, setAiInstructions] = useState<Record<number, string>>(
+    {},
+  );
 
   const parseConflictContent = (text: string): ConflictChunk[] => {
     const lines = text.split("\n");
@@ -185,21 +188,42 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
         chunk.incoming,
         instruction,
       );
-      handleResolve(chunk.id, "manual", resolved);
-      showToast("Resolved with AI", "success");
+
+      setChunks((prev) =>
+        prev.map((c) =>
+          c.id === chunk.id
+            ? { ...c, aiSuggestion: resolved, isAiResolving: false }
+            : c,
+        ),
+      );
+      showToast("AI Suggestion generated", "success");
     } catch (err: any) {
       let msg = err.message || "AI Resolution failed";
       if (msg.includes("quota") || msg.includes("429")) {
-        msg = "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
+        msg =
+          "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
       }
       showToast(msg, "error");
-    } finally {
       setChunks((prev) =>
         prev.map((c) =>
           c.id === chunk.id ? { ...c, isAiResolving: false } : c,
         ),
       );
     }
+  };
+
+  const acceptAiSuggestion = (chunk: ConflictChunk) => {
+    if (chunk.aiSuggestion) {
+      handleResolve(chunk.id, "manual", chunk.aiSuggestion);
+    }
+  };
+
+  const discardAiSuggestion = (chunkId: number) => {
+    setChunks((prev) =>
+      prev.map((c) =>
+        c.id === chunkId ? { ...c, aiSuggestion: undefined } : c,
+      ),
+    );
   };
 
   const handleSave = async () => {
@@ -402,87 +426,135 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
                 <div
                   key={chunk.id}
                   id={`chunk-${chunk.id}`}
-                  className="border border-red-500/20 dark:border-red-400/10 rounded overflow-hidden transition-all duration-200 shadow-sm"
+                  className="rounded-lg overflow-hidden border border-zed-border dark:border-zed-dark-border shadow-sm mb-6 bg-zed-bg dark:bg-zed-dark-bg"
                 >
                   {/* Header */}
-                  <div className="bg-red-500/[0.03] dark:bg-red-400/[0.02] px-4 py-1.5 flex justify-between items-center border-b border-red-500/10">
-                    <span className="text-[9px] font-medium text-red-500/70 uppercase tracking-widest">
-                      Merge Conflict
+                  <div className="bg-red-50/50 dark:bg-red-900/10 px-4 py-2 flex justify-between items-center border-b border-red-100 dark:border-red-900/30">
+                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
+                      <WarningOutlined /> Merge Conflict #{chunk.id}
                     </span>
                   </div>
 
-                  {/* AI Command Bar */}
-                  <div className="bg-zed-surface dark:bg-zed-dark-surface px-4 py-1.5 border-b border-zed-border dark:border-zed-dark-border flex items-center gap-3 group/ai">
-                    <RobotOutlined className="text-green-500/60 text-[11px]" />
-                    <input
-                      type="text"
-                      placeholder="Prompt AI (e.g. 'prefer current logic but use incoming styling')..."
-                      value={aiInstructions[chunk.id] || ""}
-                      onChange={(e) => setAiInstructions(prev => ({ ...prev, [chunk.id]: e.target.value }))}
-                      className="flex-1 bg-transparent border-none text-[11px] text-zed-text/80 dark:text-zed-dark-text/80 focus:ring-0 placeholder:text-zed-muted/30 p-0"
-                    />
-                    <button
-                      onClick={() => handleAiResolve(chunk)}
-                      disabled={chunk.isAiResolving}
-                      className="flex items-center gap-2 px-3 py-1 bg-zed-element dark:bg-zed-dark-element hover:bg-zed-border dark:hover:bg-zed-dark-border text-green-600 dark:text-green-400 rounded text-[10px] font-medium transition-all disabled:opacity-30 border border-zed-border dark:border-zed-dark-border"
-                    >
-                      {chunk.isAiResolving ? (
-                        <span className="flex items-center gap-2">
-                          <RobotOutlined className="animate-spin" /> Resolving...
-                        </span>
-                      ) : (
-                        "Resolve"
-                      )}
-                    </button>
-                  </div>
-
                   {/* Split View */}
-                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-zed-border dark:divide-zed-dark-border bg-zed-bg dark:bg-zed-dark-bg min-h-[200px]">
+                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-zed-border dark:divide-zed-dark-border min-h-[150px]">
                     {/* Current (Ours) */}
-                    <div className="flex-1 flex flex-col min-w-0">
-                      <div className="px-4 py-1.5 flex justify-between items-center border-b border-zed-border/30 dark:border-zed-dark-border/20">
-                        <span className="text-[9px] font-medium text-zed-muted uppercase tracking-wider">
-                          Current
+                    <div className="flex-1 flex flex-col min-w-0 bg-green-50/30 dark:bg-green-900/5">
+                      <div className="px-4 py-2 flex justify-between items-center border-b border-green-100/50 dark:border-green-900/20 bg-green-50/50 dark:bg-green-900/10">
+                        <span className="text-[9px] font-bold text-green-700 dark:text-green-400 uppercase tracking-wider opacity-80">
+                          Current Change
                         </span>
                         <button
                           onClick={() => handleResolve(chunk.id, "current")}
-                          className="text-[9px] font-medium text-green-500/80 hover:text-green-500 px-2 py-0.5 transition-colors"
+                          className="text-[9px] font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 px-2 py-1 rounded transition-colors"
                         >
-                          Accept
+                          Accept Current
                         </button>
                       </div>
-                      <div className="flex-1 overflow-auto p-4 custom-scrollbar font-mono text-[11px] leading-relaxed text-zed-text/80 dark:text-zed-dark-text/80">
+                      <div className="flex-1 overflow-auto p-4 custom-scrollbar font-mono text-[11px] leading-relaxed text-zed-text dark:text-zed-dark-text bg-white/50 dark:bg-black/20">
                         {chunk.current}
                       </div>
                     </div>
 
                     {/* Incoming (Theirs) */}
-                    <div className="flex-1 flex flex-col min-w-0">
-                      <div className="px-4 py-1.5 flex justify-between items-center border-b border-zed-border/30 dark:border-zed-dark-border/20">
-                        <span className="text-[9px] font-medium text-zed-muted uppercase tracking-wider">
-                          Incoming
+                    <div className="flex-1 flex flex-col min-w-0 bg-blue-50/30 dark:bg-blue-900/5">
+                      <div className="px-4 py-2 flex justify-between items-center border-b border-blue-100/50 dark:border-blue-900/20 bg-blue-50/50 dark:bg-blue-900/10">
+                        <span className="text-[9px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider opacity-80">
+                          Incoming Change
                         </span>
                         <button
                           onClick={() => handleResolve(chunk.id, "incoming")}
-                          className="text-[9px] font-medium text-blue-500/80 hover:text-blue-500 px-2 py-0.5 transition-colors"
+                          className="text-[9px] font-bold text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 px-2 py-1 rounded transition-colors"
                         >
-                          Accept
+                          Accept Incoming
                         </button>
                       </div>
-                      <div className="flex-1 overflow-auto p-4 custom-scrollbar font-mono text-[11px] leading-relaxed text-zed-text/80 dark:text-zed-dark-text/80">
+                      <div className="flex-1 overflow-auto p-4 custom-scrollbar font-mono text-[11px] leading-relaxed text-zed-text dark:text-zed-dark-text bg-white/50 dark:bg-black/20">
                         {chunk.incoming}
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions Footer */}
-                  <div className="bg-zed-surface/30 dark:bg-zed-dark-surface/10 px-4 py-2 flex justify-center gap-4 border-t border-zed-border/30 dark:border-zed-dark-border/20">
-                    <button
-                      onClick={() => handleResolve(chunk.id, "both")}
-                      className="text-[9px] font-medium text-zed-muted hover:text-zed-text transition-colors uppercase tracking-wider"
-                    >
-                      Keep Both
-                    </button>
+                  {/* AI & Actions Section */}
+                  <div className="border-t border-zed-border dark:border-zed-dark-border bg-zed-surface dark:bg-zed-dark-surface">
+                    {chunk.aiSuggestion ? (
+                      <div className="bg-blue-50/50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/30">
+                        <div className="px-4 py-2 flex items-center justify-between border-b border-blue-100 dark:border-blue-800/20">
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                            <RobotOutlined /> AI Suggestion
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => discardAiSuggestion(chunk.id)}
+                              className="px-3 py-1 text-[10px] font-medium text-zed-muted hover:text-red-500 transition-colors"
+                            >
+                              Discard
+                            </button>
+                            <button
+                              onClick={() => acceptAiSuggestion(chunk)}
+                              className="px-3 py-1 bg-zed-accent hover:opacity-90 text-white rounded text-[10px] font-bold transition-all shadow-sm"
+                            >
+                              Apply Fix
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-4 max-h-[300px] overflow-auto custom-scrollbar font-mono text-[11px] text-zed-text dark:text-zed-dark-text leading-relaxed bg-white/80 dark:bg-[#1e1e1e]">
+                          {chunk.aiSuggestion}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-6 py-4">
+                        <div className="flex items-center gap-3 dark:bg-zed-dark-bg dark:bg-blend-saturation rounded-full border-2 border-zed-border dark:border-zed-dark-border px-4 py-2 focus-within:border-zed-accent/50 transition-all shadow-sm">
+                          <RobotOutlined className="text-zed-accent text-sm" />
+                          <input
+                            type="text"
+                            placeholder="Ask AI to resolve (e.g. 'Combine logic from both, keep incoming styles')..."
+                            value={aiInstructions[chunk.id] || ""}
+                            onChange={(e) =>
+                              setAiInstructions((prev) => ({
+                                ...prev,
+                                [chunk.id]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleAiResolve(chunk);
+                            }}
+                            className="flex-1 bg-transparent border-none text-xs text-zed-text dark:text-zed-dark-text focus:ring-0 placeholder:text-zed-muted/50 p-0"
+                          />
+                          <button
+                            onClick={() => handleAiResolve(chunk)}
+                            disabled={
+                              chunk.isAiResolving || !aiInstructions[chunk.id]
+                            }
+                            className="flex items-center gap-2 px-4 py-1.5 bg-zed-accent text-white rounded-full text-[10px] font-bold transition-all disabled:opacity-50 shadow-sm hover:shadow"
+                          >
+                            {chunk.isAiResolving ? (
+                              <span className="flex items-center gap-2">
+                                <RobotOutlined className="animate-spin" />{" "}
+                                Thinking...
+                              </span>
+                            ) : (
+                              "Generate Fix"
+                            )}
+                          </button>
+                        </div>
+                        <p className="mt-2 text-[9px] text-zed-muted px-4 italic opacity-70">
+                          AI will analyze both changes and generate a merged
+                          version based on your instructions.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Manual Actions Footer */}
+                    {!chunk.aiSuggestion && (
+                      <div className="px-4 py-2 flex justify-center border-t border-zed-border/50 dark:border-zed-dark-border/50 bg-zed-bg/50 dark:bg-zed-dark-bg/50">
+                        <button
+                          onClick={() => handleResolve(chunk.id, "both")}
+                          className="text-[10px] font-bold text-zed-muted hover:text-zed-text transition-colors uppercase tracking-wider"
+                        >
+                          Keep Both
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
