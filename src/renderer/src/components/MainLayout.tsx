@@ -23,6 +23,8 @@ import { GitConsole } from "./GitConsole";
 import { GitHubStatus } from "./GitHubStatus";
 import { WorkflowRuns } from "./WorkflowRuns";
 import { SettingsModal } from "./SettingsModal";
+import { TimeMachineScrubber } from "./TimeMachineScrubber";
+import { GitCommandBar } from "./GitCommandBar";
 import { SyncOutlined, SettingOutlined } from "@ant-design/icons";
 
 interface MainLayoutProps {
@@ -38,6 +40,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
   const { toggleTheme } = useTheme();
   const { showToast } = useToast();
+  const { useCallback, useMemo } = React;
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -49,8 +52,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isBranchSwitcherOpen, setIsBranchSwitcherOpen] = useState(false);
-  const [pendingCheckoutBranch, setPendingCheckoutBranch] = useState<string | null>(null);
+  const [pendingCheckoutBranch, setPendingCheckoutBranch] = useState<
+    string | null
+  >(null);
   const [showStashConfirm, setShowStashConfirm] = useState(false);
+  const [isTimeMachineActive, setIsTimeMachineActive] = useState(false);
+  const [timeMachineIndex, setTimeMachineIndex] = useState(0);
+  const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
   const PAGE_SIZE = 50;
   const [currentView, setCurrentView] = useState<
     | "graph"
@@ -108,7 +116,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     }
   }, [repository.path, showToast, commitFilters]);
 
-  const loadMoreCommits = async () => {
+  const loadMoreCommits = useCallback(async () => {
     if (!hasMore) return;
     try {
       const nextOffset = offset + PAGE_SIZE;
@@ -129,9 +137,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       console.error("Failed to load more commits:", error);
       showToast("Failed to load more commits", "error");
     }
-  };
+  }, [hasMore, offset, repository.path, commitFilters, showToast]);
 
-  const loadAllCommits = async () => {
+  const loadAllCommits = useCallback(async () => {
     try {
       showToast(
         "Loading full repository history... This may take a moment.",
@@ -150,7 +158,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       console.error("Failed to load all commits:", error);
       showToast("Failed to load all commits", "error");
     }
-  };
+  }, [repository.path, commitFilters, showToast]);
 
   useEffect(() => {
     refreshData();
@@ -165,11 +173,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       unsubscribeBranches = window.gitcanopyAPI.onBranchesUpdated(refreshData);
       unsubscribeCommits = window.gitcanopyAPI.onCommitsUpdated(refreshData);
       unsubscribeHead = window.gitcanopyAPI.onHeadChanged(refreshData);
-      
-      unsubscribeMenuSwitcher = window.gitcanopyAPI.onMenuOpenBranchSwitcher(() => {
-        setIsBranchSwitcherOpen(true);
-      });
-      
+
+      unsubscribeMenuSwitcher = window.gitcanopyAPI.onMenuOpenBranchSwitcher(
+        () => {
+          setIsBranchSwitcherOpen(true);
+        },
+      );
+
       unsubscribeMenuSync = window.gitcanopyAPI.onMenuSyncRepository(() => {
         refreshData();
         showToast("Syncing repository...", "info");
@@ -191,7 +201,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     try {
       // 1. Check for uncommitted changes
       const status = await window.gitcanopyAPI.getStatus(repository.path);
-      const hasChanges = status.files.some(f => f.status !== 'untracked');
+      const hasChanges = status.files.some((f) => f.status !== "untracked");
 
       if (hasChanges) {
         setPendingCheckoutBranch(branchName);
@@ -232,13 +242,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   const handleStashAndCheckout = async () => {
     if (!pendingCheckoutBranch) return;
-    
+
     try {
       setShowStashConfirm(false);
       showToast("Stashing changes...", "info");
       await window.gitcanopyAPI.stash(repository.path);
       showToast("Changes stashed", "success");
-      
+
       await performCheckout(pendingCheckoutBranch);
       setPendingCheckoutBranch(null);
     } catch (error) {
@@ -247,30 +257,34 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     }
   };
 
-  const handleCommitSelect = (commit: Commit) => {
+  const handleCommitSelect = useCallback((commit: Commit) => {
     setSelectedCommit(commit);
-  };
+  }, []);
 
-  const handleFileHistorySelect = (filePath: string) => {
-    setCommitFilters({ path: filePath });
-    setCurrentView("history");
-    showToast(`Filtering history for ${filePath.split("/").pop()}`, "info");
-  };
+  const handleFileHistorySelect = useCallback(
+    (filePath: string) => {
+      setCommitFilters({ path: filePath });
+      setCurrentView("history");
+      showToast(`Filtering history for ${filePath.split("/").pop()}`, "info");
+    },
+    [showToast],
+  );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setCommitFilters({});
     showToast("Cleared all filters", "info");
-  };
+  }, [showToast]);
 
-  const handleFilterChange = (newFilters: CommitFilterOptions) => {
+  const handleFilterChange = useCallback((newFilters: CommitFilterOptions) => {
     setCommitFilters(newFilters);
-  };
+  }, []);
 
   // Keyboard shortcut for closing the right sidebar and manual refresh
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSelectedCommit(null);
+        setIsCommandBarOpen(false);
       }
       if ((event.ctrlKey || event.metaKey) && event.key === "r") {
         event.preventDefault();
@@ -281,6 +295,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         event.preventDefault();
         setIsBranchSwitcherOpen(true);
       }
+      if ((event.ctrlKey || event.metaKey) && event.key === "j") {
+        event.preventDefault();
+        setCurrentView("graph");
+        setIsCommandBarOpen((prev) => !prev);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -288,21 +307,74 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     };
   }, []);
 
+  const handleAiToggle = useCallback(() => {
+    setCurrentView("graph");
+    setIsCommandBarOpen((prev) => !prev);
+  }, []);
+
+  const handleTimeMachineToggle = useCallback(() => {
+    setCurrentView("graph");
+    setIsTimeMachineActive((prev) => {
+      if (!prev) setTimeMachineIndex(0);
+      return !prev;
+    });
+  }, []);
+
+  const graphCommits = useMemo(() => {
+    // Only slice if Time Machine is active AND we are at a past commit
+
+    if (isTimeMachineActive && timeMachineIndex > 0) {
+      return commits.slice(timeMachineIndex);
+    }
+
+    return commits;
+  }, [isTimeMachineActive, commits, timeMachineIndex]);
+
+  const timeMachineHeadHash = useMemo(() => {
+    if (isTimeMachineActive && timeMachineIndex > 0) {
+      return commits[timeMachineIndex]?.hash;
+    }
+
+    return repository.headCommit;
+  }, [isTimeMachineActive, commits, timeMachineIndex, repository.headCommit]);
+
   const renderMainContent = () => {
     switch (currentView) {
       case "graph":
         return (
-          <CommitGraph
-            commits={commits}
-            branches={branches}
-            stashes={stashes}
-            headCommitHash={repository.headCommit}
-            selectedCommitHash={selectedCommit?.hash}
-            onCommitSelect={handleCommitSelect}
-            onLoadMore={loadMoreCommits}
-            hasMore={hasMore}
-            onLoadAll={loadAllCommits}
-          />
+          <>
+            {isCommandBarOpen && (
+              <GitCommandBar
+                repoPath={repository.path}
+                onCommandExecuted={() => {
+                  setIsCommandBarOpen(false);
+                  refreshData();
+                }}
+              />
+            )}
+            <CommitGraph
+              commits={graphCommits}
+              branches={branches}
+              stashes={stashes}
+              headCommitHash={timeMachineHeadHash}
+              selectedCommitHash={selectedCommit?.hash}
+              onCommitSelect={handleCommitSelect}
+              onLoadMore={loadMoreCommits}
+              hasMore={hasMore}
+              onLoadAll={loadAllCommits}
+              onAiClick={handleAiToggle}
+              isTimeMachineActive={isTimeMachineActive}
+              onTimeMachineToggle={handleTimeMachineToggle}
+            />
+            {isTimeMachineActive && (
+              <TimeMachineScrubber
+                commits={commits}
+                currentIndex={timeMachineIndex}
+                onChange={setTimeMachineIndex}
+                onClose={handleTimeMachineToggle}
+              />
+            )}
+          </>
         );
       case "history":
         return (
@@ -370,8 +442,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         );
       case "objects":
         return (
-          <GitObjectsGallery 
-            repoPath={repository.path} 
+          <GitObjectsGallery
+            repoPath={repository.path}
             headCommit={repository.headCommit}
             onViewChanges={() => setCurrentView("changes")}
             onRefreshRepo={refreshData}
@@ -380,7 +452,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       case "help":
         return <HelpView />;
       case "console":
-        return <GitConsole />;
+        return <GitConsole repoPath={repository.path} />;
       case "actions":
         return (
           <WorkflowRuns
@@ -404,10 +476,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           onSelectBranch={handleBranchSelect}
         />
       )}
-      
-      <SettingsModal 
-        visible={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+
+      <SettingsModal
+        visible={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
 
       <ConfirmDialog
@@ -450,28 +522,29 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </svg>
           </button>
 
-                    <span className="text-xs font-medium text-zed-muted uppercase tracking-wider pl-2 border-l border-zed-border dark:border-zed-dark-border">
-                      {repository.name}
-                    </span>
-                  </div>
-          
-                  <div className="flex items-center gap-2 no-drag">
-                    <GitHubStatus 
-                      repoPath={repository.path} 
-                      currentBranch={repository.currentBranch} 
-                      onOpenActions={() => setCurrentView("actions")}
-                    />
+          <span className="text-xs font-medium text-zed-muted uppercase tracking-wider pl-2 border-l border-zed-border dark:border-zed-dark-border">
+            {repository.name}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 no-drag">
+          <GitHubStatus
+            repoPath={repository.path}
+            currentBranch={repository.currentBranch}
+            onOpenActions={() => setCurrentView("actions")}
+          />
 
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
             title="Settings"
           >
-             <SettingOutlined className="text-[12px]" />
+            <SettingOutlined className="text-[12px]" />
           </button>
-          
-                    <button
-                      onClick={toggleTheme}            className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
+
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded hover:bg-zed-element dark:hover:bg-zed-dark-element text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
             title="Toggle Theme"
           >
             <svg
@@ -545,7 +618,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     <span
                       className={`w-2 h-2 rounded-full ${repository.isDetached ? "bg-commit-refactor" : "bg-zed-accent"}`}
                     ></span>
-                    <button 
+                    <button
                       onClick={() => setIsBranchSwitcherOpen(true)}
                       className="truncate hover:text-zed-accent hover:underline cursor-pointer focus:outline-none"
                       title="Click to switch branch (Cmd+B)"
@@ -560,7 +633,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   </div>
 
                   {repository.isRebasing && (
-                    <div 
+                    <div
                       onClick={() => setCurrentView("changes")}
                       className="flex items-center justify-between gap-2 text-[10px] text-commit-refactor font-bold uppercase tracking-tight bg-commit-refactor/15 px-2.5 py-1.5 rounded border border-commit-refactor/30 cursor-pointer hover:bg-commit-refactor/25 transition-all shadow-sm active:scale-[0.98] group/badge"
                       title="Click to view changes"
@@ -581,14 +654,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                         </svg>
                         Rebase in progress
                       </div>
-                      <svg className="w-2.5 h-2.5 opacity-40 group-hover/badge:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-2.5 h-2.5 opacity-40 group-hover/badge:opacity-100 transition-opacity"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </div>
                   )}
 
                   {repository.hasConflicts && (
-                    <div 
+                    <div
                       onClick={() => setCurrentView("changes")}
                       className="flex items-center justify-between gap-2 text-[10px] text-commit-fix font-bold uppercase tracking-tight bg-commit-fix/15 px-2.5 py-1.5 rounded border border-commit-fix/30 cursor-pointer hover:bg-commit-fix/25 transition-all shadow-sm active:scale-[0.98] group/badge"
                       title="Click to resolve conflicts"
@@ -609,8 +692,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                         </svg>
                         Merge Conflicts
                       </div>
-                      <svg className="w-2.5 h-2.5 opacity-40 group-hover/badge:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-2.5 h-2.5 opacity-40 group-hover/badge:opacity-100 transition-opacity"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </div>
                   )}

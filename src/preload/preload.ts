@@ -112,6 +112,10 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("resolve-conflict-with-ai", current, incoming, context),
   explainDiff: (diff: string) =>
     ipcRenderer.invoke("git:explain-diff", diff),
+  translateNaturalLanguageToGit: (query: string, context: string) =>
+    ipcRenderer.invoke("translate-natural-language-to-git", query, context),
+  analyzeGitError: (error: string, context: string) =>
+    ipcRenderer.invoke("git:analyze-error", error, context),
 
   getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) =>
     ipcRenderer.invoke("git:get-hot-files", repoPath, limit, options),
@@ -158,6 +162,9 @@ const gitcanopyAPI: GitCanopyAPI = {
 
   clearRecentRepositories: (): Promise<void> =>
     ipcRenderer.invoke("clear-recent-repositories"),
+
+  executeRawGitCommand: (repoPath: string, command: string) =>
+    ipcRenderer.invoke("execute-raw-git-command", repoPath, command),
 
   getInitialRepo: (): Promise<string | null> =>
     ipcRenderer.invoke("get-initial-repo"),

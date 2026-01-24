@@ -56,6 +56,14 @@ export class AuthService {
       });
 
       this.server.listen(this.socketPath, () => {
+        // Secure the socket file permissions on Unix systems
+        if (process.platform !== 'win32') {
+          try {
+            fs.chmodSync(this.socketPath, 0o600);
+          } catch (e) {
+            logError('AuthService', `Failed to set socket permissions: ${e}`);
+          }
+        }
         // console.log('[AuthService] Listening on', this.socketPath);
         resolve(this.socketPath);
       });

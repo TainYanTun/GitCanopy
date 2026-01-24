@@ -18,6 +18,33 @@ interface CodeReviewResult {
 }
 
 export class AiService {
+  private filterDiff(diff: string): string {
+    if (!diff) return "";
+    
+    // Split into hunks per file
+    const sections = diff.split(/^diff --git /m);
+    const filteredSections = sections.filter(section => {
+      if (!section.trim()) return false;
+      
+      const firstLine = section.split('\n')[0];
+      const fileName = firstLine.split(' ').pop() || "";
+      
+      // Filter out noisy files
+      const noisyExtensions = ['.lock', 'lock.json', '.min.js', '.map', '.pnp.js'];
+      const noisyPaths = ['node_modules/', 'dist/', 'build/', '.next/', 'out/'];
+      
+      if (noisyExtensions.some(ext => fileName.endsWith(ext))) return false;
+      if (noisyPaths.some(p => section.includes(p))) return false;
+      
+      // Skip binary markers
+      if (section.includes('Binary files')) return false;
+      
+      return true;
+    });
+
+    return filteredSections.join('diff --git ').substring(0, 40000);
+  }
+
   async reviewCode(
     diff: string,
     apiKey: string,
@@ -25,6 +52,8 @@ export class AiService {
     model?: string
   ): Promise<CodeReviewResult> {
     if (!diff || !diff.trim()) throw new Error("Diff is empty.");
+    
+    const cleanDiff = this.filterDiff(diff);
     
     const prompt = `
 You are a strict Senior Software Engineer performing a code review.
@@ -45,7 +74,7 @@ Return ONLY a raw JSON object (no markdown, no backticks) with this structure:
 }
 
 Diff:
-${diff.substring(0, 50000)}
+${cleanDiff}
 `;
 
     let content = "";
@@ -115,7 +144,7 @@ Return ONLY a raw JSON object (no markdown formatting, no backticks) with the fo
 }
 
 Diff:
-${diff.substring(0, 30000)} 
+${this.filterDiff(diff)} 
 `;
 
     if (provider === 'gemini') {
@@ -356,6 +385,112 @@ ${JSON.stringify(stats)}
       });
       const data = await response.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "No summary available.";
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.content[0].text;
+    }
+    throw new Error("Provider not supported");
+  }
+
+  async translateNaturalLanguageToGit(
+    query: string,
+    context: string,
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<string> {
+    const prompt = `
+You are a Git expert. Translate the following natural language request into a valid Git command.
+The current repository context is: ${context}
+
+Natural Language Request: "${query}"
+
+Rules:
+1. Return ONLY the git command (no markdown, no backticks, no explanations).
+2. If the request is ambiguous, return the most likely command.
+3. If the request is not related to Git, return "NOT_A_GIT_COMMAND".
+4. Use standard Git CLI syntax.
+
+Example:
+Request: "checkout my last feature branch"
+Response: git checkout feature/login
+
+Example:
+Request: "undo my last commit but keep changes"
+Response: git reset --soft HEAD~1
+`;
+
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "NOT_A_GIT_COMMAND";
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.choices[0].message.content.trim();
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+      });
+      const data = await response.json();
+      return data.content[0].text.trim();
+    }
+    throw new Error("Provider not supported");
+  }
+
+  async analyzeGitError(
+    error: string,
+    context: string,
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<string> {
+    const prompt = `
+You are a Git expert. A user encountered the following Git error:
+"${error}"
+
+The current repository context is: ${context}
+
+Analyze this error and provide:
+1. A clear explanation of what went wrong.
+2. A suggested Git command to fix it.
+
+Keep it concise and helpful. Use markdown.
+`;
+
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't analyze this error.";
     } else if (provider === 'openai') {
       const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
         method: 'POST',

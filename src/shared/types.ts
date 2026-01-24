@@ -431,6 +431,8 @@ export interface GitCanopyAPI {
   generateCommitMessage: (repoPath: string) => Promise<{ summary: string; description: string }>;
   resolveConflictWithAi: (current: string, incoming: string, context?: string) => Promise<string>;
   explainDiff: (diff: string) => Promise<string>;
+  translateNaturalLanguageToGit: (query: string, context: string) => Promise<string>;
+  analyzeGitError: (error: string, context: string) => Promise<string>;
 
   // GitHub Integration
   getWorkflowRuns: (
@@ -449,6 +451,7 @@ export interface GitCanopyAPI {
   getGlobalConfig: (key: string) => Promise<string>;
   setGlobalConfig: (key: string, value: string) => Promise<void>;
   clearRecentRepositories: () => Promise<void>;
+  executeRawGitCommand: (repoPath: string, command: string) => Promise<{ success: boolean; stdout: string; stderr: string }>;
 
   getInitialRepo: () => Promise<string | null>;
   getAppVersion: () => Promise<string>;

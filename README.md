@@ -27,21 +27,24 @@ GitCanopy isn't just a wrapper around `git`. It is an **active development partn
 ### 🛡️ Proactive Quality Control
 Most clients let you push bad code. GitCanopy's **AI Code Reviewer** analyzes your staged diffs against security best practices and performance standards, giving you a **Quality Score (0-100)** before you ever hit commit.
 
-### ⚡ Intent-Based Conflict Resolution
-Merge conflicts are logic problems, not text problems. GitCanopy's **Prompted Resolver** lets you use natural language (e.g., *"Keep the logging from branch A but the variable naming from branch B"*) to synthesize a syntactically correct merge.
+### ✨ AI Command Center (Arc-style CLI)
+Stop memorizing complex Git flags. Press `⌘J` to open a centered, immersive command palette. Type your intent in plain English (e.g., *"undo my last commit but keep changes"* or *"delete branches already merged into main"*) and the AI will translate and execute the command safely.
 
-### 📝 Semantic Context Extraction
-Stop writing "fix bug" commits. The **Context Engine** reads your diffs, understands the architectural change, and generates semantic, Conventional Commits compliant messages automatically.
+### 🕰️ Git Time Machine
+History is a living thing. Use the **Time Machine** scrubber to travel back to any point in your project's life. The graph visualization rebuilds itself dynamically, allowing you to see how your architecture sprouted and merged over years or minutes.
 
 ---
 
 ## ✨ Features
 
 - **🤖 AI & Automation:**
+    - **AI Command Center (⌘J):** Centered, Spotlight-style natural language CLI for repository management.
     - **Smart Commit Generator:** Generate semantic messages from diffs using Gemini, OpenAI, or Claude.
     - **Intelligent Conflict Resolver:** Resolve complex merge conflicts with natural language instructions.
     - **AI Code Reviewer:** Get a pre-commit quality score (0-100) and catch security bugs before you push.
-- **Visualization Engine:** Lane-persistent commit graphs with semantic coloring and lineage tracing.
+- **Visualization Engine:** 
+    - **Railway-Style Graph:** Lane-persistent commit graphs with semantic coloring.
+    - **Git Time Machine:** Interactive historical scrubber to visualize repo evolution over time.
 - **Actions Explorer:** Real-time GitHub Actions monitoring with instant sync and branch filtering.
 - **Professional Performance:** 60FPS virtualized rendering and background worker-powered layouts.
 - **Seamless Workflow:** Atomic staging, high-fidelity diffs, and integrated remote synchronization.

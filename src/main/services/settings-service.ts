@@ -148,7 +148,7 @@ export class SettingsService {
         validated.lastSeenVersion = settings.lastSeenVersion;
     }
 
-    if (settings.aiProvider && ['gemini', 'openai'].includes(settings.aiProvider)) {
+    if (settings.aiProvider && ['gemini', 'openai', 'claude'].includes(settings.aiProvider)) {
         validated.aiProvider = settings.aiProvider;
     }
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Modal } from "antd";
 import {
   SafetyCertificateOutlined,
@@ -8,9 +8,12 @@ import {
   CheckCircleOutlined,
   CloseOutlined,
   WarningOutlined,
+  CopyOutlined,
+  CheckOutlined,
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import { CodeReviewResult } from "@shared/types";
+import { useToast } from "./ToastContext";
 
 interface CodeReviewModalProps {
   visible: boolean;
@@ -26,6 +29,37 @@ export const CodeReviewModal: React.FC<CodeReviewModalProps> = ({
   loading,
 }) => {
   const [loadingStep, setLoadingStep] = React.useState(0);
+  const [isCopied, setIsCopied] = useState(false);
+  const { showToast } = useToast();
+
+  const handleCopyReport = async () => {
+    if (!result) return;
+
+    const reportText = `
+# AI Code Review Report
+Score: ${result.score}/100
+
+## Summary
+${result.summary}
+
+## Issues Found (${result.issues.length})
+${result.issues
+  .map(
+    (issue) =>
+      `- [${issue.type.toUpperCase()}] (${issue.severity}): ${issue.message} (File: ${issue.file})`
+  )
+  .join("\n")}
+    `.trim();
+
+    try {
+      await window.gitcanopyAPI.copyToClipboard(reportText);
+      setIsCopied(true);
+      showToast("Review report copied to clipboard", "success", 2000);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      showToast("Failed to copy report", "error");
+    }
+  };
 
   React.useEffect(() => {
     if (!loading) {
@@ -208,12 +242,23 @@ export const CodeReviewModal: React.FC<CodeReviewModalProps> = ({
               <WarningOutlined />
               <span>AI-generated report. Verify before committing.</span>
             </div>
-            <button
-              onClick={onClose}
-              className="text-[10px] font-bold uppercase tracking-widest hover:text-zed-accent transition-colors"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleCopyReport}
+                className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-200 ${
+                  isCopied ? "text-emerald-500" : "text-zed-muted hover:text-zed-text dark:hover:text-white"
+                }`}
+              >
+                {isCopied ? <CheckOutlined /> : <CopyOutlined />}
+                <span>{isCopied ? "Copied" : "Copy Report"}</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="text-[10px] font-bold uppercase tracking-widest hover:text-zed-accent transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

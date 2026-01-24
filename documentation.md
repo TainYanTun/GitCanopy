@@ -74,12 +74,16 @@ Before you commit, click the purple **"Review Changes"** button in the Source Co
 2. Click the **Robot Icon** next to the commit message input.
 3. The AI will generate a Summary and Description based on the *intent* of your changes, not just the file names.
 
-### 4. Smart Conflict Resolution
+### 4. AI Command Bar (Natural Language CLI)
+The flagship feature of GitCanopy. Press `⌘J` to open a centered, Arc-style command palette. Type any Git intent in plain English, and the AI will translate it into a safe Git command for execution.
+- **Intent-Based:** "Switch to my work on the header" or "Undo my last commit."
+- **Context-Aware:** Understands your current branch and repository state.
+
+### 5. Smart Conflict Resolution
 When a merge conflict occurs:
 1. Click the conflicted file in the Changes view.
 2. You will see a 3-pane view: Current, Incoming, and Result.
 3. **The Magic:** In the "AI Instruction" box at the bottom, type naturally.
-    - *Example:* "Combine these. Keep the error handling from Incoming but use the async/await pattern from Current."
 4. Click **Resolve with AI**.
 
 ---
@@ -88,6 +92,7 @@ When a merge conflict occurs:
 
 ### 1. Unified Visual History
 - **Railway-Style Graph:** Maps the Directed Acyclic Graph (DAG) of your repository onto a stable, multi-lane grid.
+- **Git Time Machine:** A temporal scrubber that allows you to rebuild the graph visualization at any point in history.
 - **Virtualized Rendering:** Optimized to handle enterprise-scale repositories (10,000+ commits) without UI lag.
 - **Semantic Coloring:** Instantly distinguish between features, fixes, refactors, and merges based on commit message prefixes.
 
@@ -135,6 +140,7 @@ When a merge conflict occurs:
 | :--- | :--- |
 | `⌘ + O` | Open Repository |
 | `⌘ + B` | Spotlight Branch Switcher |
+| `⌘ + J` | AI Command Center |
 | `⌘ + R` | Refresh / Sync Data |
 | `Esc` | Close Panels / Clear Selection |
 | `⌘ + Enter` | Execute Commit (when in Changes view) |

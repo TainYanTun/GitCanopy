@@ -441,27 +441,49 @@ export class GitService {
   }
 
   async stageFile(repoPath: string, filePath: string): Promise<void> {
-    if (this.isEnvFile(filePath)) {
-      throw new Error(`SECURITY: Pushing .env files is blocked to prevent accidental leakage of secrets. Please add '${filePath}' to your .gitignore.`);
+    if (this.isSensitiveFile(filePath)) {
+      throw new Error(`SECURITY: Staging sensitive files like secrets or configuration is blocked to prevent accidental leakage. Please add '${filePath}' to your .gitignore.`);
     }
     await this.run(["add", "--", filePath], repoPath);
   }
 
   async stageAll(repoPath: string): Promise<void> {
-    // Check if any files to be staged are .env files
+    // Check if any files to be staged are sensitive
     const status = await this.getStatus(repoPath);
-    const envFiles = status.files.filter(f => !f.staged && this.isEnvFile(f.path));
+    const sensitiveFiles = status.files.filter(f => !f.staged && this.isSensitiveFile(f.path));
     
-    if (envFiles.length > 0) {
-      throw new Error(`SECURITY: .env files detected (${envFiles.map(f => f.path).join(", ")}). 'Stage All' is blocked to prevent accidental leakage. Please stage files individually or update your .gitignore.`);
+    if (sensitiveFiles.length > 0) {
+      throw new Error(`SECURITY: Sensitive files detected (${sensitiveFiles.map(f => f.path).join(", ")}). 'Stage All' is blocked to prevent accidental leakage. Please stage files individually or update your .gitignore.`);
     }
     
     await this.run(["add", "."], repoPath);
   }
 
-  private isEnvFile(filePath: string): boolean {
+  private isSensitiveFile(filePath: string): boolean {
     const filename = path.basename(filePath).toLowerCase();
-    return filename === ".env" || filename.startsWith(".env.");
+    
+    // Environment files
+    if (filename === ".env" || filename.startsWith(".env.")) return true;
+    
+    // Auth/Credential files
+    const sensitiveNames = [
+      ".npmrc", ".yarnrc", ".pypirc", 
+      "credentials", "config", "key.json", "secret.json",
+      "auth.json", "passwd", "shadow"
+    ];
+    if (sensitiveNames.includes(filename)) return true;
+
+    // Keys and certs
+    const sensitiveExts = [
+      ".pem", ".key", ".pub", ".crt", ".p12", ".pfx", 
+      ".asc", ".gpg", ".sig", ".signature"
+    ];
+    if (sensitiveExts.some(ext => filename.endsWith(ext))) return true;
+
+    // SSH
+    if (filename.includes("id_rsa") || filename.includes("id_ed25519") || filename.includes("known_hosts")) return true;
+
+    return false;
   }
 
   async clone(url: string, targetPath: string, progressCallback?: (progress: string) => void): Promise<void> {
@@ -1441,5 +1463,26 @@ export class GitService {
     }
     const index = Math.abs(hash) % palette.length;
     return palette[index];
+  }
+
+  async executeRawCommand(repoPath: string, command: string): Promise<{ success: boolean; stdout: string; stderr: string }> {
+    // Basic sanitization: split by spaces but respect quotes
+    const args = command.trim().split(/\s+(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(arg => arg.replace(/^"|"$/g, ''));
+    
+    // If command starts with 'git', remove it
+    if (args[0] === 'git') {
+      args.shift();
+    }
+
+    if (args.length === 0) {
+      return { success: false, stdout: '', stderr: 'Empty command' };
+    }
+
+    try {
+      const stdout = await this.run(args, repoPath);
+      return { success: true, stdout, stderr: '' };
+    } catch (error: any) {
+      return { success: false, stdout: '', stderr: error.message || 'Unknown error' };
+    }
   }
 }

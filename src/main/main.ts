@@ -633,6 +633,38 @@ class GitCanopyApp {
       return this.aiService.getTeamPulse(stats, apiKey, provider, model);
     });
 
+    ipcMain.handle("translate-natural-language-to-git", async (_, query: string, context: string) => {
+      const settings = await this.settingsService.getSettings();
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
+      }
+      return this.aiService.translateNaturalLanguageToGit(query, context, apiKey, provider, model);
+    });
+
+    ipcMain.handle("git:analyze-error", async (_, error: string, context: string) => {
+      const settings = await this.settingsService.getSettings();
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
+      }
+      return this.aiService.analyzeGitError(error, context, apiKey, provider, model);
+    });
+
     ipcMain.handle("git:get-hot-files", (_, repoPath, limit, options?: CommitFilterOptions) =>
       this.gitService.getHotFiles(repoPath, limit, options),
     );
@@ -711,6 +743,9 @@ class GitCanopyApp {
     );
     ipcMain.handle("git:set-global-config", (_, key: string, value: string) =>
       this.gitService.setGlobalConfig(key, value),
+    );
+    ipcMain.handle("execute-raw-git-command", (_, repoPath: string, command: string) =>
+      this.gitService.executeRawCommand(repoPath, command),
     );
     ipcMain.handle("clear-recent-repositories", () =>
       this.settingsService.clearRecentRepositories(),

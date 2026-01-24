@@ -343,6 +343,12 @@ export const HelpView: React.FC = () => {
                 {modKey} B
               </div>
               <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
+                AI Command
+              </div>{" "}
+              <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
+                {modKey} J
+              </div>
+              <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
                 Escape View
               </div>{" "}
               <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
@@ -455,26 +461,43 @@ export const HelpView: React.FC = () => {
               08
             </span>
             <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
-              AI Assistant
+              AI & Temporal Intelligence
             </h2>
           </div>
 
           <div className="space-y-8 pl-8 text-sm">
             <div className="space-y-3">
               <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
-                Commit Message Generation
+                AI Command Center ({modKey}+J)
               </h3>
               <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                Analyze staged changes to generate semantic commit messages. The engine follows the Conventional Commits spec, producing a concise summary and detailed bullet points automatically.
+                A centralized, natural language interface for repository management. Instead of memorizing complex Git flags, you can simply type your intent.
+              </p>
+              <div className="bg-zed-element/20 dark:bg-zed-dark-element/20 p-4 rounded-lg border border-zed-border dark:border-zed-dark-border space-y-2">
+                <p className="text-[10px] font-bold text-zed-accent uppercase">Example Queries:</p>
+                <ul className="text-[11px] font-mono space-y-1 opacity-80">
+                  <li>&quot;Undo my last commit but keep changes&quot;</li>
+                  <li>&quot;Delete all branches already merged into main&quot;</li>
+                  <li>&quot;Switch to my feature branch&quot;</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                Git Time Machine
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                A non-destructive temporal scrubber that allows you to &quot;time travel&quot; through your repository&apos;s history. Activating the Time Machine reveals a scrubber that rebuilds the graph visualization at any historical point.
               </p>
             </div>
 
             <div className="space-y-3">
               <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
-                Prompted Conflict Resolution
+                Commit Message Generation
               </h3>
               <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                Beyond standard merging, you can provide instructions to the AI. Use the command bar in the Conflict Resolver to specify intent, such as <code className="text-green-500/80">&quot;prefer current logic but use incoming variable names&quot;</code>.
+                Analyze staged changes to generate semantic commit messages. The engine follows the Conventional Commits spec, producing a concise summary and detailed bullet points automatically.
               </p>
             </div>
           </div>
