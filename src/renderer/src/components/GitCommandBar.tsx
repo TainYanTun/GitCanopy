@@ -246,18 +246,26 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
           )}
 
           <div className="px-6 py-3 bg-zed-element/20 dark:bg-zed-dark-element/20 border-t border-zed-border/50 dark:border-zed-dark-border/30 flex items-center justify-between">
-            <div className="flex gap-3">
-              <span className="text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest">
-                Undo
-              </span>
-              <span className="text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest">
-                Branch
-              </span>
-              <span className="text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest">
-                Commit
-              </span>
+            <div className="flex gap-2">
+              {[
+                { label: 'Undo', query: 'undo my last commit but keep changes' },
+                { label: 'Branch', query: 'switch to branch ' },
+                { label: 'Commit', query: 'amend my last commit' },
+                { label: 'Clean', query: 'delete merged local branches' }
+              ].map(chip => (
+                <button
+                  key={chip.label}
+                  onClick={() => {
+                    setInputValue(chip.query);
+                    inputRef.current?.focus();
+                  }}
+                  className="text-[9px] font-bold text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-white bg-zed-bg/50 dark:bg-black/20 px-2 py-0.5 rounded-full border border-zed-border/50 dark:border-zed-dark-border/20 transition-all uppercase tracking-widest"
+                >
+                  {chip.label}
+                </button>
+              ))}
             </div>
-
+            
             <div className="flex items-center gap-2 text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest">
               <span>ESC to close</span>
             </div>

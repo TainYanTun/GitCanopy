@@ -221,6 +221,27 @@
     .animate-pulse-slow {
         animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
+
+    /* Syntax Highlighting */
+    .hl-keyword { @apply text-commit-docs font-bold; }
+    .hl-string { @apply text-commit-feat; }
+    .hl-comment { @apply text-zed-muted italic opacity-60; }
+    .hl-number { @apply text-commit-test; }
+    .hl-function { @apply text-commit-refactor font-medium; }
+    .hl-property { @apply text-commit-perf; }
+
+    .dark .hl-keyword { color: #61afef; }
+    .dark .hl-string { color: #98c379; }
+    .dark .hl-comment { color: #5c6370; }
+    .dark .hl-number { color: #d19a66; }
+    .dark .hl-function { color: #e5c07b; }
+    .dark .hl-property { color: #56b6c2; }
+
+    /* Diff Pattern */
+    .diff-empty-pattern {
+        background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOCIgaGVpZ2h0PSI4IiB2aWV3Qm94PSIwIDAgOCA4IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDhMOCAwTTAgMEwwIDh6TTggOEw4IDBMMCA4TDggOHoiIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1vcGFjaXR5PSIuMDUiLz48L3N2Zz4=');
+        background-repeat: repeat;
+    }
 }
 
 /* Keyframe animations */

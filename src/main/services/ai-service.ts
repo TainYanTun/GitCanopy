@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import { logError } from './logger-service';
+import { LRUCache } from 'lru-cache';
 
 interface GeneratedMessage {
   summary: string;
@@ -18,6 +19,8 @@ interface CodeReviewResult {
 }
 
 export class AiService {
+  private cache = new LRUCache<string, any>({ max: 100, ttl: 1000 * 60 * 60 }); // 1 hour cache
+
   private filterDiff(diff: string): string {
     if (!diff) return "";
     
@@ -241,22 +244,30 @@ ${this.filterDiff(diff)}
   }
 
   private async fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000): Promise<any> {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const response = await fetch(url, options);
-        if (response.status === 503 || response.status === 429) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await fetch(url, { ...options, signal: controller.signal });
+          if (response.status === 503 || response.status === 429) {
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            backoff *= 2;
+            continue;
+          }
+          return response;
+        } catch (err: any) {
+          if (err.name === 'AbortError') throw new Error("Request timed out after 30 seconds.");
+          if (i === retries - 1) throw err;
           await new Promise(resolve => setTimeout(resolve, backoff));
           backoff *= 2;
-          continue;
         }
-        return response;
-      } catch (err) {
-        if (i === retries - 1) throw err;
-        await new Promise(resolve => setTimeout(resolve, backoff));
-        backoff *= 2;
       }
+      return fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
     }
-    return fetch(url, options);
   }
 
   async resolveConflictWithAi(

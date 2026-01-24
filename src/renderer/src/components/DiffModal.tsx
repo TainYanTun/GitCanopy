@@ -1,25 +1,89 @@
-import React, { useMemo, useEffect } from "react";
-import { Modal } from "antd";
+import React, { useMemo, useEffect, useState } from "react";
+import { Modal, Switch } from "antd";
 import {
   CopyOutlined,
   FileTextOutlined,
   CheckOutlined,
+  PicCenterOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 import { List } from "react-window";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 
 interface DiffLine {
-  oldLineNumber: number | null;
-  newLineNumber: number | null;
-  type: "addition" | "deletion" | "context" | "info" | "hunk";
+  lineNumber: number | null;
+  type: "addition" | "deletion" | "context" | "info" | "hunk" | "empty";
   content: string;
+}
+
+interface SideBySideRow {
+  left: DiffLine | null;
+  right: DiffLine | null;
+  unified?: DiffLine;
+  type: "split" | "unified";
   key: number;
-  originalLine: string;
 }
 
 interface DiffRowProps {
-  items: DiffLine[];
+  items: SideBySideRow[];
+  splitView: boolean;
 }
+
+const Cell = ({ line, isSplit }: { line: DiffLine; isSplit: boolean }) => {
+  const isAddition = line.type === "addition";
+  const isDeletion = line.type === "deletion";
+  const isHunk = line.type === "hunk";
+  const isInfo = line.type === "info";
+  const isEmpty = line.type === "empty";
+
+  return (
+    <div
+      className={`flex min-w-0 border-r border-zed-border/5 dark:border-zed-dark-border/5 ${
+        isSplit ? 'flex-1' : 'w-full'
+      } ${
+        isAddition
+          ? "bg-green-500/10 dark:bg-green-900/20"
+          : isDeletion
+            ? "bg-red-500/10 dark:bg-red-900/20"
+            : isHunk
+              ? "bg-zed-accent/5 dark:bg-zed-accent/10 text-zed-accent/80 font-bold border-y border-zed-accent/10"
+              : isInfo
+                ? "bg-zed-element/30 dark:bg-zed-dark-element/30 text-zed-muted italic opacity-60"
+                : isEmpty
+                  ? "diff-empty-pattern opacity-40"
+                  : "hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40"
+      }`}
+    >
+      {/* Gutter */}
+      <div className="flex-shrink-0 w-12 text-right pr-3 text-[10px] font-mono py-1 select-none bg-zed-surface/50 dark:bg-black/20 text-zed-muted/40 border-r border-zed-border/5 dark:border-zed-dark-border/5">
+        {line.lineNumber || ""}
+      </div>
+
+      {/* Indicator */}
+      <div className={`flex-shrink-0 w-6 flex items-center justify-center font-mono text-[11px] select-none ${
+        isAddition ? "text-green-500" : isDeletion ? "text-red-500" : "text-zed-muted/20"
+      }`}>
+        {isAddition ? "+" : isDeletion ? "-" : isHunk ? "§" : ""}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-x-auto custom-scrollbar-h">
+        <pre
+          className={`px-3 whitespace-pre font-mono text-[12px] leading-6 ${
+            isAddition
+              ? "text-green-700 dark:text-green-300"
+              : isDeletion
+                ? "text-red-700 dark:text-red-300"
+                : isHunk
+                  ? "text-zed-accent opacity-80"
+                  : "text-zed-text dark:text-zed-dark-text opacity-90"
+          }`}
+          dangerouslySetInnerHTML={{ __html: line.content }}
+        />
+      </div>
+    </div>
+  );
+};
 
 const Row = ({
   index,
@@ -29,83 +93,21 @@ const Row = ({
   index: number;
   style: React.CSSProperties;
 } & DiffRowProps): React.ReactElement => {
-  const diffLine = items[index];
+  const row = items[index];
+  if (!row) return <div style={style} />;
 
-  if (!diffLine) return <div style={style} />;
-
-  const isAddition = diffLine.type === "addition";
-  const isDeletion = diffLine.type === "deletion";
-  const isHunk = diffLine.type === "hunk";
-  const isInfo = diffLine.type === "info";
+  if (row.type === "split") {
+    return (
+      <div style={style} className="flex border-b border-transparent">
+        <Cell line={row.left!} isSplit={true} />
+        <Cell line={row.right!} isSplit={true} />
+      </div>
+    );
+  }
 
   return (
-    <div
-      style={{ ...style, willChange: "transform" }}
-      className={`flex group border-b border-transparent transition-colors duration-75 ${
-        isAddition
-          ? "bg-green-500/10 dark:bg-green-900/20 hover:bg-green-500/20 dark:hover:bg-green-900/30"
-          : isDeletion
-            ? "bg-red-500/10 dark:bg-red-900/20 hover:bg-red-500/20 dark:hover:bg-red-900/30"
-            : isHunk
-              ? "bg-zed-accent/5 dark:bg-zed-accent/10 text-zed-accent/80 font-bold"
-              : isInfo
-                ? "bg-zed-element/30 dark:bg-zed-dark-element/30 text-zed-muted italic"
-                : "hover:bg-zed-element/40 dark:hover:bg-zed-dark-element/40"
-      }`}
-    >
-      {/* Gutter: Line Numbers */}
-      <div className="flex-shrink-0 flex select-none border-r border-zed-border/20 dark:border-zed-dark-border/20 bg-zed-bg/50 dark:bg-zed-dark-bg/50">
-        <div
-          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${
-            isAddition
-              ? "text-green-600 dark:text-green-400/50"
-              : isDeletion
-                ? "text-red-600 dark:text-red-400/50"
-                : "text-zed-muted/40"
-          }`}
-        >
-          {diffLine.oldLineNumber || ""}
-        </div>
-        <div
-          className={`w-10 text-right pr-2 text-[10px] font-mono py-1 ${
-            isAddition
-              ? "text-green-600 dark:text-green-400/50"
-              : isDeletion
-                ? "text-red-600 dark:text-red-400/50"
-                : "text-zed-muted/40"
-          }`}
-        >
-          {diffLine.newLineNumber || ""}
-        </div>
-      </div>
-
-      {/* Indicator Column */}
-      <div
-        className={`flex-shrink-0 w-6 flex items-center justify-center font-mono text-sm select-none ${
-          isAddition
-            ? "text-green-500 dark:text-green-400"
-            : isDeletion
-              ? "text-red-500 dark:text-red-400"
-              : "text-zed-muted/30"
-        }`}
-      >
-        {isAddition ? "+" : isDeletion ? "-" : ""}
-      </div>
-
-      {/* Content */}
-      <pre
-        className={`flex-grow px-2 whitespace-pre font-mono text-[12px] leading-6 overflow-hidden ${
-          isAddition
-            ? "text-green-700 dark:text-green-300"
-            : isDeletion
-              ? "text-red-700 dark:text-red-300"
-              : isHunk
-                ? "text-zed-accent"
-                : "text-zed-text dark:text-zed-dark-text opacity-90"
-        }`}
-      >
-        {diffLine.content}
-      </pre>
+    <div style={style} className="flex border-b border-transparent">
+      <Cell line={row.unified!} isSplit={false} />
     </div>
   );
 };
@@ -125,12 +127,20 @@ export const DiffModal: React.FC<DiffModalProps> = ({
   onClose,
   visible,
 }) => {
-  const [diffLines, setDiffLines] = React.useState<DiffLine[]>([]);
+  const [rows, setRows] = React.useState<SideBySideRow[]>([]);
   const [parsing, setParsing] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const [splitView, setSplitView] = useState(true);
   const [imageDataUrl, setImageDataUrl] = React.useState<string | null>(null);
 
   const isBinary = diffContent === "BINARY_FILE";
+
+  const fileStatus = useMemo(() => {
+    if (!diffContent) return null;
+    if (diffContent.includes("new file mode")) return "Added";
+    if (diffContent.includes("deleted file mode")) return "Deleted";
+    return "Modified";
+  }, [diffContent]);
 
   useEffect(() => {
     if (
@@ -149,7 +159,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
 
       worker.onmessage = (e) => {
         if (e.data.type === "SUCCESS") {
-          setDiffLines(e.data.result);
+          setRows(e.data.result);
         }
         setParsing(false);
         worker.terminate();
@@ -160,17 +170,17 @@ export const DiffModal: React.FC<DiffModalProps> = ({
         worker.terminate();
       };
 
-      worker.postMessage({ diffContent });
+      worker.postMessage({ diffContent, splitView, fileName: filePath });
       return () => worker.terminate();
     } else {
-      setDiffLines([]);
+      setRows([]);
       if (diffContent !== "Loading diff...") {
         setParsing(false);
       } else {
         setParsing(true);
       }
     }
-  }, [visible, diffContent, isBinary]);
+  }, [visible, diffContent, isBinary, splitView, filePath]);
 
   const isImage = useMemo(() => {
     const ext = filePath.split(".").pop()?.toLowerCase();
@@ -196,7 +206,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
 
   const handleCopyDiff = () => {
     if (isBinary) return;
-    navigator.clipboard.writeText(diffContent);
+    window.gitcanopyAPI.copyToClipboard(diffContent);
     setCopied(true);
     setTimeout(() => {
       setCopied(false);
@@ -230,16 +240,46 @@ export const DiffModal: React.FC<DiffModalProps> = ({
               <FileTextOutlined className="text-zed-accent text-lg" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-zed-text dark:text-zed-dark-text tracking-tight truncate max-w-xl">
-                {filePath}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-zed-text dark:text-zed-dark-text tracking-tight truncate max-w-xl">
+                  {filePath}
+                </span>
+                {fileStatus && (
+                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
+                    fileStatus === 'Added' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                    fileStatus === 'Deleted' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                    'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  }`}>
+                    {fileStatus}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] text-zed-muted dark:text-zed-dark-muted uppercase tracking-widest font-bold opacity-60">
-                Unified Diff View
+                {splitView ? "Side-by-Side Diff" : "Unified Diff View"}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 mr-2 px-3 py-1 bg-zed-element/30 dark:bg-zed-dark-element/30 rounded-lg border border-zed-border/50 dark:border-zed-dark-border/50">
+              <span
+                className={`text-[10px] font-bold uppercase tracking-tighter transition-opacity ${!splitView ? "text-zed-accent" : "text-zed-muted opacity-40"}`}
+              >
+                <MenuOutlined className="mr-1" /> Unified
+              </span>
+              <Switch
+                size="small"
+                checked={splitView}
+                onChange={setSplitView}
+                className="bg-zed-muted/20"
+              />
+              <span
+                className={`text-[10px] font-bold uppercase tracking-tighter transition-opacity ${splitView ? "text-zed-accent" : "text-zed-muted opacity-40"}`}
+              >
+                Split <PicCenterOutlined className="ml-1" />
+              </span>
+            </div>
+
             {!isBinary && (
               <button
                 onClick={handleCopyDiff}
@@ -283,11 +323,29 @@ export const DiffModal: React.FC<DiffModalProps> = ({
         {/* List Header / Column Labels */}
         {!isBinary && (
           <div className="flex bg-zed-element/10 dark:bg-zed-dark-element/10 border-b border-zed-border/10 dark:border-zed-dark-border/10 text-[9px] uppercase font-black tracking-[0.2em] text-zed-muted/40 dark:text-zed-dark-muted/40 select-none">
-            <div className="w-20 border-r border-zed-border/10 dark:border-zed-dark-border/10 text-center py-1">
-              Lines
-            </div>
-            <div className="w-6 text-center py-1">±</div>
-            <div className="px-2 py-1">Content</div>
+            {splitView ? (
+              <>
+                <div className="flex-1 flex border-r border-zed-border/10">
+                  <div className="w-12 text-center py-1 border-r border-zed-border/10">
+                    Line
+                  </div>
+                  <div className="px-4 py-1">Original (Old)</div>
+                </div>
+                <div className="flex-1 flex">
+                  <div className="w-12 text-center py-1 border-r border-zed-border/10">
+                    Line
+                  </div>
+                  <div className="px-4 py-1">Modified (New)</div>
+                </div>
+              </>
+            ) : (
+              <div className="w-full flex">
+                <div className="w-12 text-center py-1 border-r border-zed-border/10">
+                  Line
+                </div>
+                <div className="px-4 py-1">Interleaved Changes</div>
+              </div>
+            )}
           </div>
         )}
 
@@ -348,20 +406,20 @@ export const DiffModal: React.FC<DiffModalProps> = ({
               )}
               <AutoSizer
                 Child={({ height, width }: any) => (
-                  <List<DiffRowProps>
-                    key={filePath}
+                  <List
+                    key={`${filePath}-${splitView}`}
                     style={{ height: height || 0, width: width || 0 }}
-                    rowCount={diffLines.length}
+                    rowCount={rows.length}
                     rowHeight={24}
                     overscanCount={15}
                     rowComponent={Row as any}
-                    rowProps={{ items: diffLines }}
+                    rowProps={{ items: rows, splitView }}
                     className="custom-scrollbar"
                   />
                 )}
               />
 
-              {diffLines.length === 0 && !isBinary && !parsing && (
+              {rows.length === 0 && !isBinary && !parsing && (
                 <div className="absolute inset-0 flex items-center justify-center text-zed-muted dark:text-zed-dark-muted italic font-mono text-sm opacity-30">
                   No changes to display.
                 </div>
@@ -373,13 +431,13 @@ export const DiffModal: React.FC<DiffModalProps> = ({
         {/* Footer info */}
         {!isBinary && (
           <div className="px-4 py-1.5 border-t border-zed-border dark:border-zed-dark-border bg-zed-element/10 dark:bg-zed-dark-element/10 flex justify-between items-center text-[10px] font-mono text-zed-muted/50 dark:text-zed-dark-muted/50">
-            <div>Total Lines: {diffLines.length}</div>
+            <div>Total Rows: {rows.length}</div>
             <div className="flex gap-4">
               <span className="text-green-600 dark:text-green-400/60">
-                + {diffLines.filter((l) => l.type === "addition").length}
+                + New Changes
               </span>
               <span className="text-red-600 dark:text-red-400/60">
-                - {diffLines.filter((l) => l.type === "deletion").length}
+                - Previous Version
               </span>
             </div>
           </div>
