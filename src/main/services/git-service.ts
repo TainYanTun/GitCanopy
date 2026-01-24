@@ -135,8 +135,8 @@ export class GitService {
       .createHash("md5")
       .update(cleanEmail)
       .digest("hex");
-    // Use 404 as default so we can detect failure in the browser
-    const url = `https://www.gravatar.com/avatar/${hash}?s=64&d=404`;
+    // Use identicon as default to avoid 404 console errors while keeping it professional
+    const url = `https://www.gravatar.com/avatar/${hash}?s=64&d=identicon`;
     
     this.avatarCache.set(cleanEmail, url);
     return url;
