@@ -80,7 +80,7 @@ ${cleanDiff}
     let content = "";
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,7 +148,7 @@ ${this.filterDiff(diff)}
 `;
 
     if (provider === 'gemini') {
-      return this.generateWithGemini(prompt, apiKey, model || 'gemini-2.5-flash');
+      return this.generateWithGemini(prompt, apiKey, model || 'gemini-3-flash');
     } else if (provider === 'openai') {
       return this.generateWithOpenAI(prompt, apiKey, model || 'gpt-4o');
     } else if (provider === 'claude') {
@@ -283,7 +283,7 @@ ${incoming}
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -332,7 +332,7 @@ ${diff.substring(0, 30000)}
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -377,7 +377,7 @@ ${JSON.stringify(stats)}
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -434,7 +434,7 @@ Response: git reset --soft HEAD~1
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -483,7 +483,7 @@ Keep it concise and helpful. Use markdown.
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

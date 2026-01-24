@@ -181,14 +181,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         <div className="space-y-1">
                           <label className="text-xs font-bold opacity-70">Gemini Model</label>
                           <select
-                            value={settings.geminiModel || 'gemini-1.5-flash'}
+                            value={settings.geminiModel || 'gemini-3-flash'}
                             onChange={(e) => setSettings({ ...settings, geminiModel: e.target.value })}
                             className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
                           >
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                             <option value="gemini-3-flash">Gemini 3 Flash</option>
                             <option value="gemini-3-pro">Gemini 3 Pro</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                             <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
                             <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
                             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>

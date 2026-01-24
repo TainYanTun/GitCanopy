@@ -17,7 +17,7 @@ export class SettingsService {
     compactMode: false,
     colorBlindMode: false,
     recentRepositories: [],
-    geminiModel: 'gemini-2.5-flash',
+    geminiModel: 'gemini-3-flash',
   };
 
   constructor() {
