@@ -346,6 +346,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             {isCommandBarOpen && (
               <GitCommandBar
                 repoPath={repository.path}
+                branches={branches}
                 onCommandExecuted={() => {
                   setIsCommandBarOpen(false);
                   refreshData();

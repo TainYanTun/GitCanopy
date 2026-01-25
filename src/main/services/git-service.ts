@@ -1484,6 +1484,37 @@ export class GitService {
       return { success: false, stdout: '', stderr: 'Empty command' };
     }
 
+    // 1. Security: Command Whitelist
+    const ALLOWED_COMMANDS = new Set([
+      "status", "log", "fetch", "pull", "push", "checkout", "branch", 
+      "stash", "tag", "commit", "add", "diff", "reset", "restore", 
+      "switch", "merge", "rebase", "cherry-pick", "revert", "clean", 
+      "mv", "rm", "remote", "config", "show", "rev-parse", "ls-files", "ls-tree"
+    ]);
+
+    const subcommand = args[0];
+    if (!ALLOWED_COMMANDS.has(subcommand)) {
+      return { 
+        success: false, 
+        stdout: '', 
+        stderr: `Security Error: Command '${subcommand}' is not allowed in the raw command interface.` 
+      };
+    }
+
+    // 2. Security: Block configuration overrides which can execute arbitrary code
+    // e.g. -c core.editor=...
+    const hasDangerousFlags = args.some(arg => 
+      arg === '-c' || arg.startsWith('--config') || arg.startsWith('--exec-path')
+    );
+
+    if (hasDangerousFlags) {
+      return { 
+        success: false, 
+        stdout: '', 
+        stderr: `Security Error: Configuration overrides are blocked for security reasons.` 
+      };
+    }
+
     try {
       const stdout = await this.run(args, repoPath);
       return { success: true, stdout, stderr: '' };

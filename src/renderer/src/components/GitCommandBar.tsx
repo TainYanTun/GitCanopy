@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useToast } from "./ToastContext";
+import { Branch } from "@shared/types";
 
 interface GitCommandBarProps {
   repoPath: string;
+  branches?: Branch[];
   onCommandExecuted: () => void;
 }
 
 export const GitCommandBar: React.FC<GitCommandBarProps> = ({
   repoPath,
+  branches: propBranches,
   onCommandExecuted,
 }) => {
   const { showToast } = useToast();
@@ -63,8 +66,16 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
     try {
       // Get context
       const status = await window.gitcanopyAPI.getStatus(repoPath);
-      const branches = await window.gitcanopyAPI.getBranches(repoPath);
-      const context = `Current path: ${repoPath}. Branch status: ${status.ahead} ahead, ${status.behind} behind. Existing branches: ${branches.map((b) => b.name).join(", ")}`;
+      
+      let branchesContext = "";
+      if (propBranches) {
+         branchesContext = propBranches.map((b) => b.name).join(", ");
+      } else {
+         const fetchedBranches = await window.gitcanopyAPI.getBranches(repoPath);
+         branchesContext = fetchedBranches.map((b) => b.name).join(", ");
+      }
+
+      const context = `Current path: ${repoPath}. Branch status: ${status.ahead} ahead, ${status.behind} behind. Existing branches: ${branchesContext}`;
 
       const result = await window.gitcanopyAPI.translateNaturalLanguageToGit(
         query,
