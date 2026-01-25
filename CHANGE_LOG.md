@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-01-25
+
+### AI Command Center (v2)
+- **Minimalist Text Interface:** Completely redesigned the command palette (`Cmd+J`) into a sleek, text-first interface using a "Zinc" glassmorphism aesthetic.
+- **Hybrid Execution Engine:** Now supports **Direct Execution** for standard Git commands (skipping AI translation for zero latency) while retaining AI capabilities for natural language intents.
+- **Smart Context:** The input bar intelligently detects if you are typing a command or a request, adapting its behavior and UI feedback instantly.
+
+### Security Hardening
+- **Strict Command Whitelist:** Implemented a rigorous whitelist for the `executeRawGitCommand` interface. Only safe, standard Git subcommands are allowed.
+- **Injection Prevention:** Explicitly blocked dangerous configuration flags (e.g., `-c`, `--config`, `--exec-path`) to prevent arbitrary code execution via Git configuration overrides.
+- **Input Sanitization:** Enhanced argument parsing to safely handle quotes and spacing, preventing shell injection vectors.
+
+### Performance
+- **Zero-Latency Path:** Standard Git commands (e.g., `git status`, `git push`) now bypass the AI service entirely, executing immediately.
+- **Optimized Data Fetching:** The Command Center now reuses cached branch data from the main application state, eliminating redundant IPC calls and reducing UI lag.
+
 ## [1.2.0] - 2026-01-21
 
 ### AI & Automation

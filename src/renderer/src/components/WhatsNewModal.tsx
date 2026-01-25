@@ -64,10 +64,10 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  AI-Powered Workflow
+                  AI Command Center v2
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Leverage Gemini, OpenAI, or Claude to generate semantic commit messages and resolve conflicts with specific natural language instructions.
+                  A redesigned, minimalist text interface for natural language git operations. Now features a sleek "Zinc" glassmorphism aesthetic.
                 </p>
               </div>
             </div>
@@ -79,40 +79,25 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  High-Performance Rendering
+                  Hybrid Execution Engine
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Changes View is now virtualized, allowing for buttery-smooth interaction even in repositories with thousands of modified files.
+                  The best of both worlds: Direct zero-latency execution for standard Git commands, and AI translation for complex natural language intents.
                 </p>
               </div>
             </div>
 
             {/* Feature 3 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
-                <GithubOutlined className="text-base" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  GitHub Integration
-                </h3>
-                <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Securely manage Personal Access Tokens to monitor private repository workflows and sync pull requests directly from the interface.
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-red-500/10 flex items-center justify-center text-red-500">
                 <SafetyCertificateOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  AI Code Reviewer
+                  Enterprise-Grade Security
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Get a &quot;Quality Score&quot; on every commit. The AI analyzes your staged diffs for security risks, bugs, and style issues before you push.
+                  Hardened execution pipeline with strict command whitelisting and injection prevention to keep your workstation safe.
                 </p>
               </div>
             </div>
