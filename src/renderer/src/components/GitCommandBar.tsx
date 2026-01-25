@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useToast } from "./ToastContext";
-import { RobotOutlined } from "@ant-design/icons";
 
 interface GitCommandBarProps {
   repoPath: string;
@@ -29,14 +28,39 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
     e.preventDefault();
     if (!inputValue.trim() || isExecuting || suggestedCommand) return;
 
+    const query = inputValue.trim();
+
+    // 1. Check for direct Git commands or common shorthand
+    const commonGitCommands = [
+      "status",
+      "log",
+      "fetch",
+      "pull",
+      "push",
+      "checkout",
+      "branch",
+      "stash",
+      "tag",
+      "commit",
+      "add",
+      "diff",
+    ];
+    const isDirectGit =
+      query.startsWith("git ") ||
+      commonGitCommands.includes(query.split(" ")[0]);
+
+    if (isDirectGit) {
+      const command = query.startsWith("git ") ? query : `git ${query}`;
+      setSuggestedCommand(command);
+      return;
+    }
+
+    // 2. Otherwise, use AI translation
     setIsExecuting(true);
     setErrorAnalysis(null);
     setLastError(null);
-    const query = inputValue.trim();
 
     try {
-      showToast("AI is thinking...", "info", 1500);
-
       // Get context
       const status = await window.gitcanopyAPI.getStatus(repoPath);
       const branches = await window.gitcanopyAPI.getBranches(repoPath);
@@ -48,7 +72,10 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
       );
 
       if (result === "NOT_A_GIT_COMMAND") {
-        showToast("I couldn't translate that to a Git command.", "error");
+        showToast(
+          "I couldn't translate that. Try a direct git command.",
+          "error",
+        );
         setIsExecuting(false);
         return;
       }
@@ -67,17 +94,17 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
     setErrorAnalysis(null);
     setLastError(null);
     try {
-      showToast(`Executing: ${suggestedCommand}`, "success", 2000);
       const result = await window.gitcanopyAPI.executeRawGitCommand(
         repoPath,
         suggestedCommand,
       );
 
       if (result.success) {
+        showToast(`Executed: ${suggestedCommand}`, "success", 1500);
         onCommandExecuted();
       } else {
         setLastError(result.stderr || "Unknown Git error");
-        showToast("Command failed. AI can help analyze the error.", "error");
+        showToast("Command failed.", "error");
       }
     } catch (error: any) {
       setLastError(error.message || "Execution error");
@@ -118,66 +145,55 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 animate-in fade-in duration-300">
       {/* Immersive Backdrop */}
       <div
-        className="absolute inset-0 bg-black/20 dark:bg-black/60 backdrop-blur-[4px]"
+        className="absolute inset-0 bg-black/10 dark:bg-black/50 backdrop-blur-[8px]"
         onClick={() => !isExecuting && !isAnalyzingError && onCommandExecuted()}
       />
 
-      <div className="relative w-full max-w-xl -mt-[10vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
-        <div className="bg-white/95 dark:bg-zed-dark-surface/95 backdrop-blur-3xl border border-zed-border/50 dark:border-zed-dark-border/50 focus-within:border-zed-muted/50 rounded-2xl shadow-[0_24px_48px_-12px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col transition-all duration-300">
+      <div className="relative w-full max-w-2xl -mt-[12vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
+        <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col transition-all duration-300">
           {!suggestedCommand && !lastError && !errorAnalysis ? (
             <form
               onSubmit={handleSubmit}
-              className="flex items-center px-6 py-4 gap-4"
+              className="flex items-center px-6 py-5 gap-4"
             >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-zed-element/50 dark:bg-zed-dark-element/50 shrink-0">
-                <RobotOutlined className="text-xl text-zed-muted dark:text-zed-dark-muted animate-pulse-soft" />
-              </div>
-
+              <span className="text-zinc-300 dark:text-zinc-600 font-sans text-2xl select-none leading-none -mt-0.5">
+                {">"}
+              </span>
               <input
                 ref={inputRef}
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 disabled={isExecuting}
-                placeholder="What can I help you with?"
-                className="flex-1 bg-transparent border-none outline-none text-lg font-medium text-zed-text dark:text-white placeholder-zed-muted/20 caret-zed-muted dark:caret-white"
+                autoFocus
+                placeholder="Describe a task or type a command..."
+                className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 text-xl font-sans font-medium tracking-tight text-zinc-800 dark:text-zinc-100 placeholder-zinc-300 dark:placeholder-zinc-700 caret-zinc-800 dark:caret-zinc-100"
               />
-              
-              {isExecuting ? (
-                <div className="w-5 h-5 border-2 border-zed-text dark:border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <div className="flex items-center gap-2 shrink-0">
-                  <kbd className="flex items-center justify-center h-7 px-2.5 rounded-lg bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border text-[9px] font-bold text-zed-muted dark:text-zed-dark-muted shadow-sm uppercase tracking-tighter">
-                    ENTER
-                  </kbd>
-                </div>
+
+              {isExecuting && (
+                <div className="w-5 h-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-800 dark:border-t-zinc-100 rounded-full animate-spin"></div>
               )}
             </form>
           ) : lastError || errorAnalysis ? (
-            <div className="flex flex-col animate-in slide-in-from-top-4 duration-300">
+            <div className="flex flex-col animate-in slide-in-from-top-2 duration-300">
               <div className="px-6 py-5 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-commit-fix uppercase tracking-[0.2em]">
-                      Command Failed
-                    </span>
-                    {isAnalyzingError && (
-                      <div className="w-3 h-3 border-2 border-zed-text dark:border-white border-t-transparent rounded-full animate-spin" />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
+                  <span className="text-[10px] font-sans font-bold text-red-500 uppercase tracking-[0.2em]">
+                    Execution Error
+                  </span>
+                  <div className="flex gap-4">
                     {!errorAnalysis && (
                       <button
                         onClick={handleAnalyzeError}
                         disabled={isAnalyzingError}
-                        className="text-[10px] font-bold bg-zed-text dark:bg-white text-zed-bg dark:text-zed-dark-bg px-3 py-1 rounded-lg hover:opacity-90 transition-all flex items-center gap-2"
+                        className="text-[10px] font-sans font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
                       >
-                        <RobotOutlined /> ANALYZE WITH AI
+                        {isAnalyzingError ? "ANALYZING..." : "ANALYZE ERROR"}
                       </button>
                     )}
                     <button
                       onClick={handleCancel}
-                      className="text-[10px] font-bold text-zed-muted hover:text-zed-text transition-colors px-2 py-1 rounded"
+                      className="text-[10px] font-sans font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                     >
                       DISMISS
                     </button>
@@ -185,95 +201,60 @@ export const GitCommandBar: React.FC<GitCommandBarProps> = ({
                 </div>
 
                 {lastError && !errorAnalysis && (
-                  <div className="bg-commit-fix/5 dark:bg-commit-fix/10 p-4 rounded-xl border border-commit-fix/20 font-mono text-xs text-commit-fix shadow-inner max-h-40 overflow-y-auto custom-scrollbar">
+                  <div className="font-sans text-[13px] text-red-500/90 break-words whitespace-pre-wrap leading-relaxed bg-red-500/5 dark:bg-red-500/10 p-4 rounded-lg border border-red-500/10">
                     {lastError}
                   </div>
                 )}
 
                 {errorAnalysis && (
-                  <div className="bg-zed-element/50 dark:bg-zed-dark-element/50 p-5 rounded-xl border border-zed-border dark:border-zed-dark-border text-sm leading-relaxed text-zed-text dark:text-zed-dark-text max-h-80 overflow-y-auto custom-scrollbar">
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      {errorAnalysis.split("\n").map((line, i) => (
-                        <p
-                          key={i}
-                          className={
-                            line.startsWith("git")
-                              ? "font-mono text-zed-text dark:text-white bg-zed-bg dark:bg-zed-dark-bg p-2 rounded mt-2 border border-zed-border dark:border-zed-dark-border"
-                              : "mt-1"
-                          }
-                        >
-                          {line}
-                        </p>
-                      ))}
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-zinc-600 dark:text-zinc-400 font-sans text-sm leading-relaxed">
+                      {errorAnalysis}
                     </div>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <div className="flex flex-col animate-in slide-in-from-right-4 duration-300">
-              <div className="px-6 py-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-zed-muted dark:text-zed-dark-muted uppercase tracking-[0.2em]">
-                    Suggested Command
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCancel}
-                      className="text-[10px] font-bold text-zed-muted hover:text-zed-text transition-colors px-2 py-1 rounded"
-                    >
-                      CANCEL
-                    </button>
-                    <button
-                      onClick={handleConfirm}
-                      disabled={isExecuting}
-                      className="text-[10px] font-bold bg-zed-text dark:bg-white text-zed-bg dark:text-zed-dark-bg px-3 py-1 rounded-lg shadow-lg hover:opacity-90 transition-all flex items-center gap-2"
-                    >
-                      {isExecuting ? (
-                        <div className="w-3 h-3 border border-white dark:border-zed-dark-bg border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        "CONFIRM"
-                      )}
-                    </button>
+            <div className="flex flex-col animate-in slide-in-from-right-2 duration-300">
+              <div className="px-6 py-6 flex items-center gap-5">
+                <div className="flex flex-col flex-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-zinc-300 dark:text-zinc-600 font-sans text-2xl select-none leading-none -mt-0.5">
+                      $
+                    </span>
+                    <span className="flex-1 font-sans text-xl font-semibold text-zinc-900 dark:text-white break-all tracking-tight">
+                      {suggestedCommand}
+                    </span>
                   </div>
+                  {!inputValue.startsWith("git ") && (
+                    <span className="text-[10px] font-sans font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-[0.15em] mt-2 ml-7">
+                      AI Suggested Command
+                    </span>
+                  )}
                 </div>
-                <div className="bg-zed-element dark:bg-zed-dark-element p-4 rounded-xl border border-zed-border dark:border-zed-dark-border font-mono text-sm text-zed-text dark:text-white shadow-inner">
-                  <span className="opacity-40 mr-2">$</span>
-                  {suggestedCommand}
+                <div className="flex items-center gap-4 shrink-0">
+                  <button
+                    onClick={handleConfirm}
+                    disabled={isExecuting}
+                    className="text-[11px] font-sans font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-5 py-2.5 rounded-lg shadow-xl hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    CONFIRM
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="text-[11px] font-sans font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors px-2"
+                  >
+                    ESC
+                  </button>
                 </div>
               </div>
             </div>
           )}
-
-          <div className="px-6 py-3 bg-zed-element/20 dark:bg-zed-dark-element/20 border-t border-zed-border/50 dark:border-zed-dark-border/30 flex items-center justify-between">
-            <div className="flex gap-2">
-              {[
-                { label: 'Undo', query: 'undo my last commit but keep changes' },
-                { label: 'Branch', query: 'switch to branch ' },
-                { label: 'Commit', query: 'amend my last commit' },
-                { label: 'Clean', query: 'delete merged local branches' }
-              ].map(chip => (
-                <button
-                  key={chip.label}
-                  onClick={() => {
-                    setInputValue(chip.query);
-                    inputRef.current?.focus();
-                  }}
-                  className="text-[9px] font-bold text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-white bg-zed-bg/50 dark:bg-black/20 px-2 py-0.5 rounded-full border border-zed-border/50 dark:border-zed-dark-border/20 transition-all uppercase tracking-widest"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex items-center gap-2 text-[9px] font-bold text-zed-muted/40 uppercase tracking-widest">
-              <span>ESC to close</span>
-            </div>
-          </div>
         </div>
 
-        {/* Subtle Glow Effect */}
-        <div className="absolute -inset-1 bg-zed-text/5 dark:bg-white/5 rounded-[2rem] blur-2xl -z-10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
+        {/* Shadow Depth */}
+        <div className="absolute inset-0 bg-black/20 dark:bg-black/40 blur-3xl -z-10 rounded-xl" />
       </div>
     </div>
   );
