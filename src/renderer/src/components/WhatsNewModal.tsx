@@ -4,7 +4,6 @@ import {
   RocketOutlined,
   RobotOutlined,
   ThunderboltOutlined,
-  GithubOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
 
@@ -67,7 +66,9 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                   AI Command Center v2
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  A redesigned, minimalist text interface for natural language git operations. Now features a sleek "Zinc" glassmorphism aesthetic.
+                  A redesigned, minimalist text interface for natural language
+                  git operations. Now features a sleek &quot;Zinc&quot; glassmorphism
+                  aesthetic.
                 </p>
               </div>
             </div>
@@ -82,7 +83,9 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                   Hybrid Execution Engine
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  The best of both worlds: Direct zero-latency execution for standard Git commands, and AI translation for complex natural language intents.
+                  The best of both worlds: Direct zero-latency execution for
+                  standard Git commands, and AI translation for complex natural
+                  language intents.
                 </p>
               </div>
             </div>
@@ -97,7 +100,8 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                   Enterprise-Grade Security
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Hardened execution pipeline with strict command whitelisting and injection prevention to keep your workstation safe.
+                  Hardened execution pipeline with strict command whitelisting
+                  and injection prevention to keep your workstation safe.
                 </p>
               </div>
             </div>
