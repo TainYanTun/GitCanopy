@@ -402,6 +402,12 @@ export class GitService {
       
       const ahead = aheadMatch ? parseInt(aheadMatch[1], 10) : 0;
       const behind = behindMatch ? parseInt(behindMatch[1], 10) : 0;
+      
+      // Check if branch tracks a remote (contains "...")
+      // e.g. "## main...origin/main" vs "## feature-branch"
+      const firstLine = branchOutput.split('\n')[0];
+      const hasRemote = firstLine.includes("...");
+      const isDetached = firstLine.includes("HEAD (no branch)");
 
       // Get file status
       const output = await this.run(["status", "--porcelain=v1"], repoPath);
@@ -433,10 +439,10 @@ export class GitService {
         return { path: finalPath, status, staged };
       });
 
-      return { files, ahead, behind };
+      return { files, ahead, behind, hasRemote, isDetached };
     } catch (error) {
       logError("GitService", `Failed to get status: ${error}`);
-      return { files: [], ahead: 0, behind: 0 };
+      return { files: [], ahead: 0, behind: 0, hasRemote: false, isDetached: false };
     }
   }
 

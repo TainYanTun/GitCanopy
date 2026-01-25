@@ -335,6 +335,8 @@ export interface WorkingTreeStatus {
   files: StatusFile[];
   ahead: number;
   behind: number;
+  hasRemote?: boolean;
+  isDetached?: boolean;
 }
 
 export interface ReflogEntry {

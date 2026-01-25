@@ -379,13 +379,13 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
               <SafetyCertificateOutlined /> {isReviewing ? "Reviewing..." : "Review Changes"}
             </button>
           )}
-          {status && status.ahead > 0 && (
+          {status && !status.isDetached && (status.ahead > 0 || status.hasRemote === false) && (
             <button
               onClick={handlePush}
               disabled={isPushing}
               className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2"
             >
-              <CloudUploadOutlined /> {isPushing ? "Pushing..." : "Sync Changes"}
+              <CloudUploadOutlined /> {isPushing ? "Pushing..." : (status.hasRemote === false ? "Publish Branch" : "Sync Changes")}
             </button>
           )}
         </div>
