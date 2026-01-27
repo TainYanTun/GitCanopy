@@ -217,7 +217,8 @@ export const GitObjectsGallery: React.FC<GitObjectsGalleryProps> = ({
       await window.gitcanopyAPI.pushTag(repoPath, tagName);
       showToast(`Tag '${tagName}' pushed`, "success");
     } catch (error) {
-      showToast("Push failed", "error");
+      const errorMessage = error instanceof Error ? error.message : "Push failed";
+      showToast(errorMessage, "error");
     }
   };
 

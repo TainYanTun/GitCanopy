@@ -366,6 +366,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               onAiClick={handleAiToggle}
               isTimeMachineActive={isTimeMachineActive}
               onTimeMachineToggle={handleTimeMachineToggle}
+              repoPath={repository.path}
+              onViewChanges={() => setCurrentView("changes")}
             />
             {isTimeMachineActive && (
               <TimeMachineScrubber
@@ -395,7 +397,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           />
         );
       case "changes":
-        return <ChangesView repoPath={repository.path} />;
+        return <ChangesView repoPath={repository.path} currentBranch={repository.currentBranch} />;
       case "contributors":
         return (
           <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">

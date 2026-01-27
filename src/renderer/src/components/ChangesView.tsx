@@ -30,6 +30,7 @@ import { AutoSizer } from "react-virtualized-auto-sizer";
 
 interface ChangesViewProps {
   repoPath: string;
+  currentBranch: string;
 }
 
 interface GroupedFiles {
@@ -40,7 +41,7 @@ type FlatItem =
   | { type: "directory"; dir: string; fileCount: number }
   | { type: "file"; file: StatusFile; isStaged: boolean };
 
-export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
+export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranch }) => {
   const { showToast } = useToast();
   const [status, setStatus] = useState<WorkingTreeStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,7 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
   const [isCommitting, setIsCommitting] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
+  const [showForcePushOption, setShowForcePushOption] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["."]));
   const [conflictFile, setConflictFile] = useState<StatusFile | null>(null);
 
@@ -275,15 +277,46 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
 
   const handlePush = async () => {
     setIsPushing(true);
+    setShowForcePushOption(false);
     try {
       await window.gitcanopyAPI.push(repoPath);
       showToast("Pushed successfully", "success");
       fetchStatus();
-    } catch (_err) {
-      showToast("Push failed", "error");
+    } catch (err: any) {
+      const errorMessage = err instanceof Error ? err.message : "Push failed";
+      
+      // Intelligent Error Handling for Squashed/Diverged history
+      if (errorMessage.includes("rejected") && errorMessage.includes("non-fast-forward")) {
+        showToast("Push Rejected: Local history has diverged from remote (did you squash?).", "warning", 5000);
+        setShowForcePushOption(true);
+      } else {
+        showToast(errorMessage, "error");
+      }
     } finally {
       setIsPushing(false);
     }
+  };
+
+  const handleForcePush = async () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Danger: Force Push",
+      message: `You are about to overwrite the remote history of '${currentBranch}'. This is required after a squash, but will affect other collaborators. Proceed?`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setIsPushing(true);
+        try {
+          await window.gitcanopyAPI.forcePush(repoPath);
+          showToast("Force pushed successfully", "success");
+          setShowForcePushOption(false);
+          fetchStatus();
+        } catch (err: any) {
+          showToast(err.message || "Force push failed", "error");
+        } finally {
+          setIsPushing(false);
+        }
+      }
+    });
   };
 
   const handleCodeReview = async () => {
@@ -380,13 +413,25 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath }) => {
             </button>
           )}
           {status && !status.isDetached && (status.ahead > 0 || status.hasRemote === false) && (
-            <button
-              onClick={handlePush}
-              disabled={isPushing}
-              className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2"
-            >
-              <CloudUploadOutlined /> {isPushing ? "Pushing..." : (status.hasRemote === false ? "Publish Branch" : "Sync Changes")}
-            </button>
+            <div className="flex gap-2">
+              {(showForcePushOption || (status.behind > 0 && status.ahead > 0)) && (
+                <button
+                  onClick={handleForcePush}
+                  disabled={isPushing}
+                  className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 rounded-sm hover:bg-red-500/20 disabled:opacity-30 transition-all flex items-center gap-2"
+                  title="Overwrite remote history (required after squash)"
+                >
+                  <CloudUploadOutlined /> Force Push
+                </button>
+              )}
+              <button
+                onClick={handlePush}
+                disabled={isPushing}
+                className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2"
+              >
+                <CloudUploadOutlined /> {isPushing ? "Pushing..." : (status.hasRemote === false ? `Publish ${currentBranch}` : `Sync ${currentBranch}`)}
+              </button>
+            </div>
           )}
         </div>
       </div>

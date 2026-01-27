@@ -411,6 +411,10 @@ class GitCanopyApp {
       await this.gitService.push(repoPath);
       this.mainWindow?.webContents.send("push-completed");
     });
+    ipcMain.handle("force-push", async (_, repoPath: string) => {
+      await this.gitService.forcePush(repoPath);
+      this.mainWindow?.webContents.send("push-completed");
+    });
     ipcMain.handle("reset-hard", (_, repoPath: string, target: string) =>
       this.gitService.resetHard(repoPath, target),
     );
@@ -550,6 +554,9 @@ class GitCanopyApp {
     );
     ipcMain.handle("git:resolve-conflict", (_, repoPath, filePath, content) =>
       this.gitService.resolveConflict(repoPath, filePath, content),
+    );
+    ipcMain.handle("squash", (_, repoPath: string, commitHashes: string[]) =>
+      this.gitService.squash(repoPath, commitHashes),
     );
 
     // AI Operations

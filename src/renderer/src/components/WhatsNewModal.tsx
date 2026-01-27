@@ -2,9 +2,10 @@ import React from "react";
 import { Modal } from "antd";
 import {
   RocketOutlined,
-  RobotOutlined,
+  SelectOutlined,
+  BranchesOutlined,
+  BgColorsOutlined,
   ThunderboltOutlined,
-  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 
 interface WhatsNewModalProps {
@@ -51,41 +52,41 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               What&apos;s New in {version}
             </h2>
             <span className="text-[10px] font-mono text-zed-muted opacity-50 uppercase tracking-widest bg-zed-element dark:bg-zed-dark-element px-2 py-0.5 rounded">
-              Stable Release
+              Feature Release
             </span>
           </div>
 
           <div className="space-y-6">
             {/* Feature 1 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-purple-500/10 flex items-center justify-center text-purple-500">
-                <RobotOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <SelectOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  AI Command Center v2
+                  Marquee Selection
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  A redesigned, minimalist text interface for natural language
-                  git operations. Now features a sleek &quot;Zinc&quot; glassmorphism
-                  aesthetic.
+                  Bulk operations are here. Switch to **Select Mode (V)** and
+                  drag a marquee box over commits to copy hashes or prepare for
+                  squashing.
                 </p>
               </div>
             </div>
 
             {/* Feature 2 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <ThunderboltOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
+                <BranchesOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Hybrid Execution Engine
+                  Origin Tracking & Noise Reduction
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  The best of both worlds: Direct zero-latency execution for
-                  standard Git commands, and AI translation for complex natural
-                  language intents.
+                  The graph now displays inferred branch origins for every
+                  commit. Branch lists are now grouped into **Primary** and
+                  **Ancestors** to eliminate merged-branch clutter.
                 </p>
               </div>
             </div>
@@ -93,15 +94,32 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             {/* Feature 3 */}
             <div className="flex gap-4">
               <div className="w-8 h-8 shrink-0 rounded bg-red-500/10 flex items-center justify-center text-red-500">
-                <SafetyCertificateOutlined className="text-base" />
+                <ThunderboltOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Enterprise-Grade Security
+                  Safe Force Push
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Hardened execution pipeline with strict command whitelisting
-                  and injection prevention to keep your workstation safe.
+                  GitCanopy now offers a smart **Force Push** option when
+                  history diverges. It uses safe leases and dynamic remote
+                  detection to keep your work synchronized.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="flex gap-4">
+              <div className="w-8 h-8 shrink-0 rounded bg-zinc-500/10 flex items-center justify-center text-zinc-500">
+                <BgColorsOutlined className="text-base" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
+                  Hyper-Minimalist UI
+                </h3>
+                <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                  Refined glass-morphism, ultra-fine 0.5px borders, and
+                  invisible scrollbars. Designed to stay out of your way.
                 </p>
               </div>
             </div>
@@ -109,7 +127,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
 
           <div className="mt-10 pt-6 border-t border-zed-border/30 dark:border-zed-dark-border/30 flex justify-between items-center">
             <span className="text-[10px] text-zed-muted italic font-mono opacity-50">
-              Thanks for building with GitCanopy.
+              High-velocity Git visualizer.
             </span>
             <button
               onClick={onClose}

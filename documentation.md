@@ -92,6 +92,7 @@ When a merge conflict occurs:
 
 ### 1. Unified Visual History
 - **Railway-Style Graph:** Maps the Directed Acyclic Graph (DAG) of your repository onto a stable, multi-lane grid.
+- **Edit Mode & Marquee Selection (V):** Switch to Select mode to draw a marquee box over multiple commits. This activates the bulk action bar for squashing and hash copying.
 - **Git Time Machine:** A temporal scrubber that allows you to rebuild the graph visualization at any point in history.
 - **Virtualized Rendering:** Optimized to handle enterprise-scale repositories (10,000+ commits) without UI lag.
 - **Semantic Coloring:** Instantly distinguish between features, fixes, refactors, and merges based on commit message prefixes.
@@ -142,7 +143,10 @@ When a merge conflict occurs:
 | `⌘ + B` | Spotlight Branch Switcher |
 | `⌘ + J` | AI Command Center |
 | `⌘ + R` | Refresh / Sync Data |
+| `V` | Select Mode (Marquee) |
+| `H` | Pan Mode (Navigation) |
 | `Esc` | Close Panels / Clear Selection |
+| `⌘ + C` | Copy Selected Hashes |
 | `⌘ + Enter` | Execute Commit (when in Changes view) |
 
 ---

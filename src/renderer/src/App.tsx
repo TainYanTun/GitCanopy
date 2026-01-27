@@ -188,35 +188,46 @@ const App: React.FC = () => {
 
   // Set up event listeners for repository changes
   useEffect(() => {
+    let lastRefresh = 0;
+    const REFRESH_COOLDOWN = 500; // ms
+
     const handleRepositoryChanged = async (_event: any) => {
-      if (state.repository) {
-        try {
-          const updatedRepo = await window.gitcanopyAPI.getRepository(
-            state.repository.path,
-          );
-          setState((prev) => ({
-            ...prev,
-            repository: updatedRepo,
-          }));
-        } catch (error) {
-          console.error("Failed to refresh repository on change:", error);
-        }
+      if (!state.repository) return;
+      
+      const now = Date.now();
+      if (now - lastRefresh < REFRESH_COOLDOWN) return;
+      lastRefresh = now;
+
+      try {
+        const updatedRepo = await window.gitcanopyAPI.getRepository(
+          state.repository.path,
+        );
+        setState((prev) => ({
+          ...prev,
+          repository: updatedRepo,
+        }));
+      } catch (error) {
+        console.error("Failed to refresh repository on change:", error);
       }
     };
 
     const handleHeadChanged = async (_event: any) => {
-      if (state.repository) {
-        try {
-          const updatedRepo = await window.gitcanopyAPI.getRepository(
-            state.repository.path,
-          );
-          setState((prev) => ({
-            ...prev,
-            repository: updatedRepo,
-          }));
-        } catch (error) {
-          console.error("Failed to refresh repository on HEAD change:", error);
-        }
+      if (!state.repository) return;
+
+      const now = Date.now();
+      if (now - lastRefresh < REFRESH_COOLDOWN) return;
+      lastRefresh = now;
+
+      try {
+        const updatedRepo = await window.gitcanopyAPI.getRepository(
+          state.repository.path,
+        );
+        setState((prev) => ({
+          ...prev,
+          repository: updatedRepo,
+        }));
+      } catch (error) {
+        console.error("Failed to refresh repository on HEAD change:", error);
       }
     };
 

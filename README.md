@@ -7,7 +7,7 @@
 **Stop managing Git. Start engineering.** 
 GitCanopy combines high-performance visualization with a cognitive AI engine to automate commit hygiene, resolve complex conflicts, and audit code quality in real-time.
 
-[![Version](https://img.shields.io/badge/version-1.2.0_Stable-1f2937?style=flat&logo=git)](https://github.com/TainYanTun/GitCanopy/releases)
+[![Version](https://img.shields.io/badge/version-1.2.2_Stable-1f2937?style=flat&logo=git)](https://github.com/TainYanTun/GitCanopy/releases)
 [![AI Engine](https://img.shields.io/badge/AI-Gemini%20%7C%20OpenAI%20%7C%20Claude-7c3aed?style=flat)](documentation.md)
 [![Build](https://img.shields.io/badge/build-passing-success?style=flat)](https://github.com/TainYanTun/GitCanopy/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
@@ -44,6 +44,7 @@ History is a living thing. Use the **Time Machine** scrubber to travel back to a
     - **AI Code Reviewer:** Get a pre-commit quality score (0-100) and catch security bugs before you push.
 - **Visualization Engine:** 
     - **Railway-Style Graph:** Lane-persistent commit graphs with semantic coloring.
+    - **Precision Multi-selection (V):** Marquee-style bulk selection for squashing and hash copying.
     - **Git Time Machine:** Interactive historical scrubber to visualize repo evolution over time.
 - **Actions Explorer:** Real-time GitHub Actions monitoring with instant sync and branch filtering.
 - **Professional Performance:** 60FPS virtualized rendering and background worker-powered layouts.

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useMemo, useCallback, memo } from "react";
 import * as d3 from "d3";
-import { RobotOutlined } from "@ant-design/icons";
+import { RobotOutlined, DragOutlined, SelectOutlined } from "@ant-design/icons";
 import {
   Commit,
   Branch,
@@ -25,6 +25,7 @@ interface CommitGraphProps {
   isTimeMachineActive?: boolean;
   onTimeMachineToggle?: () => void;
   repoPath?: string;
+  onViewChanges?: () => void;
 }
 
 export const CommitGraph = memo(
@@ -42,6 +43,7 @@ export const CommitGraph = memo(
     isTimeMachineActive,
     onTimeMachineToggle,
     repoPath,
+    onViewChanges,
   }: CommitGraphProps) => {
     const { showToast } = useToast();
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -104,6 +106,87 @@ export const CommitGraph = memo(
       height: 0,
       bounds: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
     });
+
+    // Tool Mode State
+    const [toolMode, setToolMode] = React.useState<"pan" | "edit">("pan");
+    const toolModeRef = useRef<"pan" | "edit">("pan");
+
+    const [selectedHashes, setSelectedHashes] = React.useState<Set<string>>(
+      new Set(),
+    );
+    const selectedHashesRef = useRef<Set<string>>(new Set());
+
+    // Update refs when state changes
+    useEffect(() => {
+      toolModeRef.current = toolMode;
+      selectedHashesRef.current = selectedHashes;
+      // Update cursor on container
+      if (containerRef.current) {
+        containerRef.current.style.cursor =
+          toolMode === "pan" ? "grab" : "default";
+      }
+    }, [toolMode, selectedHashes]);
+
+    const handleSquash = async () => {
+      if (!repoPath || selectedHashes.size < 2) return;
+      try {
+        await window.gitcanopyAPI.squash(repoPath, Array.from(selectedHashes));
+        showToast("Commits squashed! Finalize your commit in the Changes view.", "success");
+        setSelectedHashes(new Set());
+        onViewChanges?.();
+      } catch (error: any) {
+        showToast(`Squash failed: ${error.message}`, "error");
+      }
+    };
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Don't trigger if user is typing in an input
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        )
+          return;
+
+        switch (e.key.toLowerCase()) {
+          case "v":
+            setToolMode("edit");
+            break;
+          case "h":
+            setToolMode("pan");
+            break;
+          case "escape":
+            if (selectedHashesRef.current.size > 0) {
+              setSelectedHashes(new Set());
+            }
+            else {
+              setToolMode("pan");
+            }
+            break;
+          case "c":
+            if ((e.metaKey || e.ctrlKey) && selectedHashesRef.current.size > 0) {
+              const hashes = Array.from(selectedHashesRef.current).join("\n");
+              window.gitcanopyAPI.copyToClipboard(hashes);
+              showToast(
+                `Copied ${selectedHashesRef.current.size} hashes`,
+                "success",
+              );
+            }
+            break;
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [showToast]); // Only depend on showToast (stable)
+
+    // Helper for Set equality
+    const areSetsEqual = (a: Set<string>, b: Set<string>) => {
+      if (a.size !== b.size) return false;
+      for (const item of a) if (!b.has(item)) return false;
+      return true;
+    };
 
     // Merge State
     const [mergeSource, setMergeSource] = React.useState<string | null>(null);
@@ -260,12 +343,96 @@ export const CommitGraph = memo(
         .zoom<SVGSVGElement, unknown>()
 
         .scaleExtent([0.1, 2])
+        .filter((event) => {
+          if (event.type === "wheel") return true;
+          // In Edit mode, allow pan only with middle click or if NOT dragging from background (which starts marquee)
+          if (toolModeRef.current === "edit") {
+            return event.button === 1; // Middle click to pan in edit mode
+          }
+          return !event.button;
+        })
         .on("zoom", (event) => g.attr("transform", event.transform));
 
       zoomRef.current = zoom;
       svg.call(zoom);
       svg.call(zoom.transform, d3.zoomIdentity.translate(40, 60).scale(0.8));
-    }, []);
+
+      // --- Marquee Selection Logic ---
+      const selectionRect = g
+        .append("rect")
+        .attr("class", "selection-marquee")
+        .attr("fill", "rgba(97, 175, 239, 0.04)") // Even more subtle
+        .attr("stroke", "#61afef")
+        .attr("stroke-width", 0.5) // Ultra thin
+        .attr("stroke-dasharray", "2,2")
+        .attr("visibility", "hidden");
+
+      let startX = 0;
+      let startY = 0;
+      let isSelecting = false;
+
+      svg
+        .on("mousedown", (event) => {
+          if (toolModeRef.current !== "edit" || event.button !== 0) return;
+          // Only start selection if clicking background (not a node/label)
+          if (event.target.tagName !== "svg" && !event.target.classList.contains("lane-layer")) {
+             // If we didn't click background, we might have clicked a node.
+             // We'll let the node's own click handler handle it.
+             return;
+          }
+
+          const [x, y] = d3.pointer(event, g.node());
+          startX = x;
+          startY = y;
+          isSelecting = true;
+
+          selectionRect
+            .attr("x", startX)
+            .attr("y", startY)
+            .attr("width", 0)
+            .attr("height", 0)
+            .attr("visibility", "visible");
+          
+          // Clear selection unless shift is held
+          if (!event.shiftKey) {
+            setSelectedHashes(new Set());
+          }
+        })
+        .on("mousemove", (event) => {
+          if (!isSelecting) return;
+
+          const [x, y] = d3.pointer(event, g.node());
+          const curX = Math.min(x, startX);
+          const curY = Math.min(y, startY);
+          const width = Math.abs(x - startX);
+          const height = Math.abs(y - startY);
+
+          selectionRect
+            .attr("x", curX)
+            .attr("y", curY)
+            .attr("width", width)
+            .attr("height", height);
+
+          // Real-time intersection check
+          const rect = { x1: curX, y1: curY, x2: curX + width, y2: curY + height };
+          const newSelected = new Set(event.shiftKey ? selectedHashesRef.current : []);
+
+          data.nodes.forEach(node => {
+            if (node.x >= rect.x1 && node.x <= rect.x2 && node.y >= rect.y1 && node.y <= rect.y2) {
+              newSelected.add(node.id);
+            }
+          });
+
+          if (!areSetsEqual(newSelected, selectedHashesRef.current)) {
+            setSelectedHashes(newSelected);
+          }
+        })
+        .on("mouseup", () => {
+          if (!isSelecting) return;
+          isSelecting = false;
+          selectionRect.attr("visibility", "hidden");
+        });
+    }, [data.nodes]); // Re-bind marquee if data nodes change
 
     // 2. Draw Graph Structure (Runs when data changes)
     useEffect(() => {
@@ -283,6 +450,9 @@ export const CommitGraph = memo(
       labelLayer.selectAll("*").remove();
       nodeLayer.selectAll("*").remove();
       dragLayer.selectAll("*").remove();
+
+      const maxGraphX = Math.max(...data.nodes.map((n) => n.x), 0);
+      const infoXOffset = maxGraphX + 60;
 
       // Draw Lanes
       laneLayer
@@ -321,6 +491,138 @@ export const CommitGraph = memo(
         .attr("opacity", 0.6);
 
       // Draw Node Groups
+      const commitToBranches = new Map<string, Branch[]>();
+      branches.forEach((b) => {
+        const list = commitToBranches.get(b.objectName) || [];
+        list.push(b);
+        commitToBranches.set(b.objectName, list);
+      });
+
+      // Drag Behavior for Branch Tips (and tip commits)
+      const getBranchFromDatum = (d: any): Branch | null => {
+        if (!d) return null;
+        if ("objectName" in d) return d as Branch;
+        if ("commit" in d) return commitToBranches.get(d.id)?.[0] || null;
+        return null;
+      };
+
+      const dragBehavior = d3
+        .drag<SVGGElement, any>()
+        .filter((event, d) => {
+          return !event.button && !!getBranchFromDatum(d);
+        })
+        .on("start", function (event, d) {
+          const branch = getBranchFromDatum(d);
+          if (!branch) return;
+
+          const [mouseX, mouseY] = d3.pointer(event, gRef.current?.node());
+          // Create ghost element in drag layer
+          const ghost = dragLayer
+            .append("g")
+            .attr("class", "drag-ghost")
+            .attr("transform", `translate(${mouseX}, ${mouseY})`);
+
+          ghost
+            .append("rect")
+            .attr("width", 100)
+            .attr("height", 24)
+            .attr("rx", 12)
+            .attr("fill", branch.color)
+            .attr("opacity", 0.8)
+            .attr("x", -50)
+            .attr("y", -12);
+
+          ghost
+            .append("text")
+            .attr("text-anchor", "middle")
+            .attr("dy", "0.35em")
+            .attr("fill", "white")
+            .style("font-size", "10px")
+            .style("font-weight", "bold")
+            .text(`Merging ${branch.name}...`);
+
+          d3.select(this).attr("opacity", 0.5);
+        })
+        .on("drag", function (event, d) {
+          const branch = getBranchFromDatum(d);
+          if (!branch) return;
+
+          const [mouseX, mouseY] = d3.pointer(event, gRef.current?.node());
+
+          // Move ghost
+          dragLayer
+            .select(".drag-ghost")
+            .attr("transform", `translate(${mouseX}, ${mouseY})`);
+
+          // Detect collision with other branch labels
+          let foundTarget: string | null = null;
+
+          labelLayer.selectAll(".branch-label").each(function (bd: any) {
+            // Skip self
+            if (bd.name === branch.name) return;
+
+            const parentGroup = d3.select(
+              (this as Element).parentNode as Element,
+            );
+            // parent group datum is GraphNode
+            const nodeData = parentGroup.datum() as GraphNode;
+
+            // Let's just assume if we are hovering close to the commit row Y and X > infoXOffset
+            if (Math.abs(mouseY - nodeData.y) < 20 && mouseX > infoXOffset) {
+              foundTarget = bd.name;
+              d3.select(this)
+                .select("rect")
+                .attr("stroke", "white")
+                .attr("stroke-width", 3);
+            } else {
+              d3.select(this)
+                .select("rect")
+                .attr("stroke", "white")
+                .attr("stroke-width", 0.5);
+            }
+          });
+
+          if (!foundTarget) {
+            // Clear highlights
+            labelLayer
+              .selectAll(".branch-label rect")
+              .attr("stroke", "white")
+              .attr("stroke-width", 0.5);
+          }
+        })
+        .on("end", function (event, d) {
+          const branch = getBranchFromDatum(d);
+          if (!branch) return;
+
+          dragLayer.selectAll("*").remove();
+          d3.select(this).attr("opacity", 1);
+          labelLayer
+            .selectAll(".branch-label rect")
+            .attr("stroke", "white")
+            .attr("stroke-width", 0.5);
+
+          // Final detection
+          let finalTarget: string | null = null;
+          labelLayer.selectAll(".branch-label").each(function (bd: any) {
+            if (bd.name === branch.name) return;
+            const parentGroup = d3.select(
+              (this as Element).parentNode as Element,
+            );
+            const nodeData = parentGroup.datum() as GraphNode;
+
+            const [mouseX, mouseY] = d3.pointer(event, gRef.current?.node());
+            if (Math.abs(mouseY - nodeData.y) < 20 && mouseX > infoXOffset) {
+              finalTarget = bd.name;
+            }
+          });
+
+          if (finalTarget) {
+            setMergeSource(branch.name);
+            setMergeTarget(finalTarget);
+            setIsMergeConfirmOpen(true);
+          }
+        });
+
       const nodes = nodeLayer
         .selectAll("g")
         .data(data.nodes, (d: any) => d.id)
@@ -329,10 +631,13 @@ export const CommitGraph = memo(
         .attr("class", "node-group")
         .attr("id", (d) => `node-${d.id}`)
         .attr("transform", (d) => `translate(${d.x}, ${d.y}) scale(0)`) // Start at scale 0
-        .style("cursor", "pointer")
+        .style("cursor", (d) =>
+          commitToBranches.has(d.id) ? "grab" : "pointer",
+        )
         .on("click", (e, d) => onCommitSelect?.(d.commit))
         .on("mouseenter", (e, d) => setHoveredCommitHash(d.id))
-        .on("mouseleave", () => setHoveredCommitHash(null));
+        .on("mouseleave", () => setHoveredCommitHash(null))
+        .call(dragBehavior as any);
 
       nodes
         .transition()
@@ -417,7 +722,7 @@ export const CommitGraph = memo(
               .attr("y", -halfSize)
               .attr("transform", "rotate(45)")
               .attr("fill", "none")
-              .attr("stroke", d.color) // Will be updated by Phase 3
+              .attr("stroke", d.color)
               .attr("stroke-width", 2)
               .attr("class", "node-border");
           } else {
@@ -482,137 +787,6 @@ export const CommitGraph = memo(
             .text(typeInitial);
         }
       });
-
-      // Draw Labels (Memoized labels logic)
-      const maxGraphX = Math.max(...data.nodes.map((n) => n.x), 0);
-      const infoXOffset = maxGraphX + 60;
-      const commitToBranches = new Map<string, Branch[]>();
-      branches.forEach((b) => {
-        const list = commitToBranches.get(b.objectName) || [];
-        list.push(b);
-        commitToBranches.set(b.objectName, list);
-      });
-
-      // Drag Behavior for Branch Tips
-      const dragBehavior = d3
-        .drag<SVGGElement, Branch>()
-        .on("start", function (event, d) {
-          // Create ghost element in drag layer
-          const ghost = dragLayer
-            .append("g")
-            .attr("class", "drag-ghost")
-            .attr("transform", `translate(${event.x}, ${event.y})`);
-
-          ghost
-            .append("rect")
-            .attr("width", 100)
-            .attr("height", 24)
-            .attr("rx", 12)
-            .attr("fill", d.color)
-            .attr("opacity", 0.8)
-            .attr("x", -50)
-            .attr("y", -12);
-
-          ghost
-            .append("text")
-            .attr("text-anchor", "middle")
-            .attr("dy", "0.35em")
-            .attr("fill", "white")
-            .style("font-size", "10px")
-            .style("font-weight", "bold")
-            .text(`Merging ${d.name}...`);
-
-          d3.select(this).attr("opacity", 0.5);
-        })
-        .on("drag", function (event) {
-          // Move ghost
-          dragLayer
-            .select(".drag-ghost")
-            .attr("transform", `translate(${event.x}, ${event.y})`);
-
-          // Detect collision with other branch labels
-          let foundTarget: string | null = null;
-
-          labelLayer.selectAll(".branch-label").each(function (bd: any) {
-            // Skip self
-            if (bd.name === (event.subject as Branch).name) return;
-
-            // Simple proximity check using raw coordinates (since we are in the same <g>)
-            // Note: The event.x/y are relative to the parent <g> (gRef),
-            // and branch labels are also children of labelLayer which is child of gRef.
-            // However, branch labels have a transform applied.
-            // We need to get the transformed position of the label group.
-
-            // Actually, d3.drag event gives coords relative to the container.
-            // Let's use simple distance check to the label's center.
-            // We stored the transform in the datum? No.
-            // We can use the parent group's transform (commit group).
-
-            const parentGroup = d3.select(
-              (this as Element).parentNode as Element,
-            );
-            // parent group datum is GraphNode
-            const nodeData = parentGroup.datum() as GraphNode;
-
-            // Approximate label position: nodeY, infoXOffset + internalOffset
-            // This is hard to calculate precisely without DOM inspection.
-            // Let's rely on DOM-based collision.
-
-            // Convert event coordinates (SVG space) to Screen space for comparison
-            // Or convert Screen rect to SVG space.
-            // Simpler: Use d3.pointer or verify overlap in SVG logic.
-
-            // Let's just assume if we are hovering close to the commit row Y and X > infoXOffset
-            if (Math.abs(event.y - nodeData.y) < 20 && event.x > infoXOffset) {
-              foundTarget = bd.name;
-              d3.select(this)
-                .select("rect")
-                .attr("stroke", "white")
-                .attr("stroke-width", 3);
-            } else {
-              d3.select(this)
-                .select("rect")
-                .attr("stroke", "white")
-                .attr("stroke-width", 0.5);
-            }
-          });
-
-          if (!foundTarget) {
-            // Clear highlights
-            labelLayer
-              .selectAll(".branch-label rect")
-              .attr("stroke", "white")
-              .attr("stroke-width", 0.5);
-          }
-        })
-        .on("end", function (event, d) {
-          dragLayer.selectAll("*").remove();
-          d3.select(this).attr("opacity", 1);
-          labelLayer
-            .selectAll(".branch-label rect")
-            .attr("stroke", "white")
-            .attr("stroke-width", 0.5);
-
-          // Final detection
-          let finalTarget: string | null = null;
-          labelLayer.selectAll(".branch-label").each(function (bd: any) {
-            if (bd.name === d.name) return;
-            const parentGroup = d3.select(
-              (this as Element).parentNode as Element,
-            );
-            const nodeData = parentGroup.datum() as GraphNode;
-
-            if (Math.abs(event.y - nodeData.y) < 20 && event.x > infoXOffset) {
-              finalTarget = bd.name;
-            }
-          });
-
-          if (finalTarget) {
-            setMergeSource(d.name);
-            setMergeTarget(finalTarget);
-            setIsMergeConfirmOpen(true);
-          }
-        });
 
       labelLayer
         .selectAll("g")
@@ -707,10 +881,13 @@ export const CommitGraph = memo(
       // Fast update for nodes
       g.selectAll(".node-group").each(function (datum) {
         const d = datum as GraphNode;
-        const isHighlighted =
-          !highlightedInfo || highlightedInfo.nodes.has(d.id);
-        const isSelected = d.id === selectedCommitHash;
+        const isSelected = selectedCommitHash === d.id || selectedHashes.has(d.id);
         const isSearchMatch = directMatches?.has(d.id);
+        const isHighlighted =
+          (!highlightedInfo && !selectedHashes.size) || 
+          (highlightedInfo?.nodes.has(d.id)) ||
+          (selectedHashes.size > 0 && selectedHashes.has(d.id));
+
         const group = d3.select<SVGGElement, GraphNode>(this as any);
 
         group
@@ -719,7 +896,7 @@ export const CommitGraph = memo(
           .attr("opacity", isHighlighted ? 1.0 : 0.2)
           .attr(
             "transform",
-            `translate(${d.x}, ${d.y}) scale(${isSelected || d.id === hoveredCommitHash ? 1.2 : 1})`,
+            `translate(${d.x}, ${d.y}) scale(${isSelected || d.id === hoveredCommitHash ? 1.05 : 1})`,
           );
 
         // Selection ring
@@ -729,16 +906,16 @@ export const CommitGraph = memo(
             ring = group
               .append("circle")
               .attr("class", "selection-ring")
-              .attr("r", d.size + 4)
+              .attr("r", d.size + 3)
               .attr("fill", "none")
-              .attr("stroke-width", 2);
+              .attr("stroke-width", 1);
           }
+          
+          const isMultiSelected = selectedHashes.has(d.id);
           ring
-            .attr("stroke", isSearchMatch ? "#3b82f6" : "#fff")
-            .style(
-              "filter",
-              isSearchMatch ? "drop-shadow(0 0 4px #3b82f6)" : "none",
-            );
+            .attr("stroke", isSearchMatch ? "#61afef" : isMultiSelected ? "#98c379" : "#fff")
+            .attr("opacity", 0.8)
+            .style("filter", "none");
         } else {
           ring.remove();
         }
@@ -750,12 +927,17 @@ export const CommitGraph = memo(
         .duration(150)
         .attr("opacity", (d) => {
           const edge = d as any;
-          if (!highlightedInfo) return 0.6;
-          return highlightedInfo.edges.has(edge.id) ? 1.0 : 0.1;
+          if (!highlightedInfo && !selectedHashes.size) return 0.6;
+          
+          const isConnectedToSelected = selectedHashes.has(edge.source) && selectedHashes.has(edge.target);
+          if (isConnectedToSelected) return 1.0;
+
+          return highlightedInfo?.edges.has(edge.id) ? 1.0 : 0.1;
         })
         .attr("stroke-width", (d) => {
           const edge = d as any;
-          return highlightedInfo?.edges.has(edge.id) ? 2.5 : 1.5;
+          const isConnectedToSelected = selectedHashes.has(edge.source) && selectedHashes.has(edge.target);
+          return (highlightedInfo?.edges.has(edge.id) || isConnectedToSelected) ? 2.5 : 1.5;
         });
 
       // Fast update for labels
@@ -764,12 +946,13 @@ export const CommitGraph = memo(
         .duration(150)
         .attr("opacity", (d) => {
           const node = d as GraphNode;
-          if (!highlightedInfo) return 1.0;
-          return highlightedInfo.nodes.has(node.id) ? 1.0 : 0.2;
+          if (!highlightedInfo && !selectedHashes.size) return 1.0;
+          return (highlightedInfo?.nodes.has(node.id) || selectedHashes.has(node.id)) ? 1.0 : 0.2;
         });
     }, [
       highlightedInfo,
       selectedCommitHash,
+      selectedHashes,
       directMatches,
       hoveredCommitHash,
       data.nodes,
@@ -790,7 +973,33 @@ export const CommitGraph = memo(
       >
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-zed-border dark:border-zed-dark-border bg-zed-surface/50 dark:bg-zed-dark-surface/50 backdrop-blur-sm">
           <div className="flex items-center gap-6">
+            <div className="flex bg-zed-element/40 dark:bg-zed-dark-element/40 rounded p-0.5 border border-zed-border/20 dark:border-zed-dark-border/20">
+              <button
+                onClick={() => setToolMode("pan")}
+                className={`p-1 px-2 rounded-sm transition-all text-xs ${
+                  toolMode === "pan"
+                    ? "bg-zed-surface dark:bg-zed-dark-surface text-zed-accent dark:text-zed-dark-accent shadow-sm"
+                    : "text-zed-muted/60 dark:text-zed-dark-muted/60 hover:text-zed-text dark:hover:text-zed-dark-text"
+                }`}
+                title="Pan Mode (H)"
+              >
+                <DragOutlined />
+              </button>
+              <button
+                onClick={() => setToolMode("edit")}
+                className={`p-1 px-2 rounded-sm transition-all text-xs ${
+                  toolMode === "edit"
+                    ? "bg-zed-surface dark:bg-zed-dark-surface text-zed-accent dark:text-zed-dark-accent shadow-sm"
+                    : "text-zed-muted/60 dark:text-zed-dark-muted/60 hover:text-zed-text dark:hover:text-zed-dark-text"
+                }`}
+                title="Select Mode (V)"
+              >
+                <SelectOutlined />
+              </button>
+            </div>
+
             <div className="relative group w-64">
+              {" "}
               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-zed-muted dark:text-zed-dark-muted group-focus-within:text-zed-accent">
                 <svg
                   className="w-3.5 h-3.5"
@@ -1010,6 +1219,47 @@ export const CommitGraph = memo(
               </>
             )}
           </div>
+
+          {selectedHashes.size > 1 && (
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-zed-surface/80 dark:bg-zed-dark-surface/80 backdrop-blur-xl px-5 py-2.5 rounded-lg border border-zed-border/40 dark:border-zed-dark-border/40 animate-in slide-in-from-bottom-2 duration-300 z-50">
+              <div className="flex flex-col border-r border-zed-border/30 dark:border-zed-dark-border/30 pr-4">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zed-muted/60 dark:text-zed-dark-muted/60 leading-none mb-1">
+                  Selected
+                </span>
+                <span className="text-xs font-bold text-zed-text dark:text-zed-dark-text leading-none">
+                  {selectedHashes.size} Commits
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={() => {
+                    const hashes = Array.from(selectedHashes).join('\n');
+                    window.gitcanopyAPI.copyToClipboard(hashes);
+                    showToast(`Copied ${selectedHashes.size} hashes`, "success");
+                  }}
+                  className="px-3 py-1.5 hover:bg-zed-element/50 dark:hover:bg-zed-dark-element/50 text-zed-text dark:text-zed-dark-text text-[9px] font-bold uppercase tracking-widest rounded transition-all"
+                >
+                  Copy
+                </button>
+                <button 
+                  onClick={handleSquash}
+                  className="px-3 py-1.5 bg-zed-accent/10 hover:bg-zed-accent/20 text-zed-accent dark:text-zed-dark-accent text-[9px] font-bold uppercase tracking-widest rounded transition-all"
+                >
+                  Squash
+                </button>
+                <button 
+                  onClick={() => setSelectedHashes(new Set())}
+                  className="ml-1 p-1.5 text-zed-muted/40 hover:text-zed-text transition-colors"
+                  title="Clear selection (Esc)"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <ConfirmDialog

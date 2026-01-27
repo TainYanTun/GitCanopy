@@ -363,6 +363,7 @@ export interface GitCanopyAPI {
   unstageAll: (repoPath: string) => Promise<void>;
   commit: (repoPath: string, message: string) => Promise<void>;
   push: (repoPath: string) => Promise<void>;
+  forcePush: (repoPath: string) => Promise<void>;
   resetHard: (repoPath: string, target: string) => Promise<void>;
 
   // Git data operations
@@ -429,6 +430,7 @@ export interface GitCanopyAPI {
     content: string,
   ) => Promise<void>;
   mergeBranch: (repoPath: string, branchName: string) => Promise<void>;
+  squash: (repoPath: string, commitHashes: string[]) => Promise<void>;
 
   // AI
   generateCommitMessage: (repoPath: string) => Promise<{ summary: string; description: string }>;

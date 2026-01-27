@@ -349,6 +349,24 @@ export const HelpView: React.FC = () => {
                 {modKey} J
               </div>
               <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
+                Select Mode
+              </div>{" "}
+              <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
+                V
+              </div>
+              <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
+                Pan Mode
+              </div>{" "}
+              <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
+                H
+              </div>
+              <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
+                Copy Hashes
+              </div>{" "}
+              <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">
+                {modKey} C
+              </div>
+              <div className="text-zed-muted dark:text-zed-dark-muted font-bold">
                 Escape View
               </div>{" "}
               <div className="text-right font-bold text-zed-text dark:text-zed-dark-text">

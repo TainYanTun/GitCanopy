@@ -117,8 +117,15 @@ export const CommitHistory: React.FC<CommitHistoryProps> = ({
               </span>
             ))}
           </div>
-          <div className="w-32 shrink-0 px-4 truncate text-xs text-zed-text dark:text-zed-dark-text opacity-80 font-mono text-right">
-            {commit.author.name}
+          <div className="w-32 shrink-0 px-4 truncate flex flex-col items-end">
+            <span className="text-xs text-zed-text dark:text-zed-dark-text opacity-80 font-mono">
+              {commit.author.name}
+            </span>
+            {commit.branchName && (
+              <span className="text-[9px] font-bold text-zed-accent/60 truncate max-w-full">
+                {commit.branchName}
+              </span>
+            )}
           </div>
           <div className="w-24 shrink-0 px-4 whitespace-nowrap text-[11px] text-zed-muted dark:text-zed-dark-muted font-mono opacity-60 text-right">
             {moment.unix(commit.timestamp).format("MMM D, YY")}

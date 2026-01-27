@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2026-01-27
+
+### Interaction Engine
+- **Marquee Selection (Select Mode):** Introduced precision bulk selection in the commit graph. Hold Left-click and drag in Select Mode to group multiple commits.
+- **Squash Commits:** Added support for squashing multiple selected commits into a single staged change, enabling a cleaner repository history.
+- **Polymorphic Drag-to-Merge:** Merging can now be initiated by dragging either the branch label or the commit node itself.
+- **Enhanced Keyboard Shortcuts:** Added `V` (Select Mode), `H` (Pan Mode), `Esc` (Clear Selection), and `Cmd+C` (Copy Hashes).
+
+### Remote Synchronization
+- **Safe Force Push:** Added support for `--force-with-lease`. The UI now automatically offers a red "Force Push" option when local history has diverged from remote.
+- **Remote Intelligence:** GitCanopy now dynamically identifies the correct upstream (origin, upstream, etc.) instead of assuming 'origin'.
+- **Auto-Fetch Integration:** Performing a Force Push now automatically triggers a background fetch to prevent "stale info" errors.
+- **Contextual UI Labels:** Synchronize buttons now explicitly name the branch being targeted (e.g., "Publish feature/login").
+
+### Data Clarity & UX
+- **Branch Noise Reduction:** Commit Details now intelligently categorizes branches into "Primary" and "Ancestors" (collapsed by default).
+- **Origin Tracking:** The Commit History list now displays the inferred branch of origin for every commit.
+- **Hyper-Minimalist UI:** Refined with 0.5px borders, invisible scrollbars, and sharp 1px selection rings.
+- **Copiable Error Toasts:** All error notifications now feature a "Copy Error" button and selectable text.
+
+### Bug Fixes
+- **Hook Order Fix:** Resolved a React error in the Commit Details panel.
+- **Performance:** Implemented Set-equality checks in the marquee logic to prevent redundant React re-renders.
+
 ## [1.2.1] - 2026-01-25
 
 ### AI Command Center (v2)

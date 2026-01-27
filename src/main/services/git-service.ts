@@ -601,11 +601,50 @@ export class GitService {
       if (message.includes("no upstream branch") || message.includes("set-upstream")) {
         const currentBranch = await this.getCurrentBranch(repoPath);
         if (currentBranch && currentBranch !== "HEAD" && currentBranch !== "Detached") {
-          await this.run(["push", "--set-upstream", "origin", currentBranch], repoPath);
+          // Identify the best remote to push to
+          const remote = await this.getBestRemote(repoPath);
+          await this.run(["push", "--set-upstream", remote, currentBranch], repoPath);
           return;
         }
       }
       throw error;
+    }
+  }
+
+  async forcePush(repoPath: string): Promise<void> {
+    try {
+      const remote = await this.getBestRemote(repoPath);
+      
+      // 1. Fetch first to update remote-tracking branches (avoids 'stale info' error)
+      // We only fetch from the specific remote we are interested in
+      await this.run(["fetch", remote], repoPath);
+      
+      // 2. Use --force-with-lease which is now safe since we just fetched
+      await this.run(["push", "--force-with-lease", remote], repoPath);
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * Helper to find the most appropriate remote.
+   * Prefers 'origin', then 'upstream', then the first available remote.
+   */
+  private async getBestRemote(repoPath: string): Promise<string> {
+    try {
+      const output = await this.run(["remote"], repoPath);
+      const remotes = output.trim().split("\n").filter(Boolean);
+      
+      if (remotes.length === 0) {
+        throw new Error("No remotes configured for this repository. Add a remote first.");
+      }
+
+      if (remotes.includes("origin")) return "origin";
+      if (remotes.includes("upstream")) return "upstream";
+      return remotes[0];
+    } catch (e: any) {
+      if (e.message?.includes("No remotes configured")) throw e;
+      return "origin"; // Last resort fallback
     }
   }
 
@@ -1494,12 +1533,12 @@ export class GitService {
       return { success: false, stdout: '', stderr: 'Empty command' };
     }
 
-    // 1. Security: Command Whitelist
+    // 1. Security: Command Whitelist (Strictly block aliases and dangerous subcommands)
     const ALLOWED_COMMANDS = new Set([
       "status", "log", "fetch", "pull", "push", "checkout", "branch", 
       "stash", "tag", "commit", "add", "diff", "reset", "restore", 
       "switch", "merge", "rebase", "cherry-pick", "revert", "clean", 
-      "mv", "rm", "remote", "config", "show", "rev-parse", "ls-files", "ls-tree"
+      "remote", "show", "rev-parse", "ls-files", "ls-tree"
     ]);
 
     const subcommand = args[0];
@@ -1507,21 +1546,22 @@ export class GitService {
       return { 
         success: false, 
         stdout: '', 
-        stderr: `Security Error: Command '${subcommand}' is not allowed in the raw command interface.` 
+        stderr: `Security Error: Command '${subcommand}' is not allowed.` 
       };
     }
 
-    // 2. Security: Block configuration overrides which can execute arbitrary code
-    // e.g. -c core.editor=...
+    // 2. Security: Block configuration overrides and aliases
     const hasDangerousFlags = args.some(arg => 
-      arg === '-c' || arg.startsWith('--config') || arg.startsWith('--exec-path')
+      arg === '-c' || arg.startsWith('--config') || 
+      arg.startsWith('--exec-path') || arg.startsWith('--work-tree') ||
+      arg.startsWith('--git-dir')
     );
 
     if (hasDangerousFlags) {
       return { 
         success: false, 
         stdout: '', 
-        stderr: `Security Error: Configuration overrides are blocked for security reasons.` 
+        stderr: `Security Error: Global flag overrides are blocked.` 
       };
     }
 
@@ -1530,6 +1570,53 @@ export class GitService {
       return { success: true, stdout, stderr: '' };
     } catch (error: any) {
       return { success: false, stdout: '', stderr: error.message || 'Unknown error' };
+    }
+  }
+
+  async squash(repoPath: string, commitHashes: string[]): Promise<void> {
+    if (commitHashes.length < 2) {
+      throw new Error("Select at least 2 commits to squash.");
+    }
+
+    try {
+      // 1. Get detailed info for all selected commits to find the oldest one
+      const commitDetails = await Promise.all(
+        commitHashes.map(hash => this.getCommitDetails(repoPath, hash))
+      );
+
+      // Sort by timestamp ascending (oldest first)
+      commitDetails.sort((a, b) => a.timestamp - b.timestamp);
+
+      const oldestCommit = commitDetails[0];
+      const newestCommit = commitDetails[commitDetails.length - 1];
+
+      // 2. Security/Sanity Check: Ensure the current HEAD is the tip of the selection
+      // (or at least that the selection is a logical range on the current branch)
+      const currentHead = await this.getCurrentHead(repoPath);
+      
+      // In a real 'Squash', we usually squash into the parent of the oldest commit.
+      // We'll use a soft reset approach which is safe and intuitive for a GUI.
+      
+      const parentOfOldest = oldestCommit.parents[0];
+      if (!parentOfOldest) {
+        throw new Error("Cannot squash the root commit.");
+      }
+
+      // 3. Perform the soft reset to the parent of the oldest selected commit.
+      // This effectively 'uncommits' everything after that parent but keeps changes STAGED.
+      // IMPORTANT: If current HEAD is NOT the newest commit in selection, 
+      // we should probably warn or checkout the newest one first.
+      if (currentHead !== newestCommit.hash) {
+         // Optionally checkout the newest commit first to ensure we capture all changes
+         await this.run(["checkout", newestCommit.hash], repoPath);
+      }
+
+      await this.run(["reset", "--soft", parentOfOldest], repoPath);
+      
+      // The changes are now staged. The UI will pick this up and show them in 'Changes' view.
+    } catch (error: any) {
+      logError("GitService", `Squash failed: ${error}`);
+      throw error;
     }
   }
 }

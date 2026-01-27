@@ -37,6 +37,7 @@ const gitcanopyAPI: GitCanopyAPI = {
   commit: (repoPath: string, message: string) =>
     ipcRenderer.invoke("commit", repoPath, message),
   push: (repoPath: string) => ipcRenderer.invoke("push", repoPath),
+  forcePush: (repoPath: string) => ipcRenderer.invoke("force-push", repoPath),
   resetHard: (repoPath: string, target: string) =>
     ipcRenderer.invoke("reset-hard", repoPath, target),
 
@@ -106,6 +107,8 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("git:resolve-conflict", repoPath, filePath, content),
   mergeBranch: (repoPath: string, branchName: string) =>
     ipcRenderer.invoke("git:merge-branch", repoPath, branchName),
+  squash: (repoPath: string, commitHashes: string[]) =>
+    ipcRenderer.invoke("squash", repoPath, commitHashes),
 
   // AI
   generateCommitMessage: (repoPath: string) =>

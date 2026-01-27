@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Commit, FileChange } from "@shared/types";
 import moment from "moment";
 import { DiffModal } from "./DiffModal";
 import { FileTree } from "./FileTree";
 import { RobotOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown from "react-markdown";
 import { Avatar } from "./Avatar";
 
 const CopyIcon = () => (
@@ -45,10 +45,36 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [isDiffModalVisible, setDiffModalVisible] = useState(false);
-  
+
   // AI Insight State
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
+  const [showAllBranches, setShowAllBranches] = useState(false);
+
+  const displayCommit = fullCommitDetails || commit; // Use full details if available, otherwise basic commit
+
+  // Categorize branches for better readability
+  const categorizedBranches = useMemo(() => {
+    if (!displayCommit.branches) return { primary: [], secondary: [] };
+
+    const branches = displayCommit.branches;
+    const tips = displayCommit.branchTips || [];
+    const inferred = commit.branchName;
+
+    const primary = branches.filter((b) => tips.includes(b) || b === inferred);
+    const secondary = branches.filter(
+      (b) => !tips.includes(b) && b !== inferred,
+    );
+
+    // Sort primary: Tips first, then inferred
+    primary.sort((a, b) => {
+      const aIsTip = tips.includes(a) ? 1 : 0;
+      const bIsTip = tips.includes(b) ? 1 : 0;
+      return bIsTip - aIsTip;
+    });
+
+    return { primary, secondary };
+  }, [displayCommit.branches, displayCommit.branchTips, commit.branchName]);
 
   const handleExplain = async () => {
     if (!fullCommitDetails) return;
@@ -63,7 +89,8 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
       console.error(err);
       let msg = err.message || "Unknown error";
       if (msg.includes("quota") || msg.includes("429")) {
-        msg = "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
+        msg =
+          "Gemini API Quota Exceeded. Please check your plan/billing in Google AI Studio.";
       }
       setAiInsight(`Error: ${msg}`);
     } finally {
@@ -133,7 +160,6 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
     );
   }
 
-  const displayCommit = fullCommitDetails || commit; // Use full details if available, otherwise basic commit
   const formattedDate = moment
     .unix(displayCommit.timestamp)
     .format("MMM D, YYYY h:mm A");
@@ -142,8 +168,8 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
     <div className="p-4 space-y-4 text-zed-text dark:text-zed-dark-text text-sm">
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zed-element dark:bg-zinc-800 border border-zed-border dark:border-zed-dark-border flex items-center justify-center overflow-hidden shadow-sm">
-          <Avatar 
-            src={displayCommit.author.avatarUrl} 
+          <Avatar
+            src={displayCommit.author.avatarUrl}
             name={displayCommit.author.name}
             className="w-full h-full object-cover"
             placeholderClassName="w-full h-full flex items-center justify-center bg-zed-element dark:bg-zinc-800 text-zed-muted dark:text-zinc-400 font-bold"
@@ -210,30 +236,63 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
                 className="text-[9px] px-1.5 py-0.5 bg-zed-element dark:bg-zed-dark-element hover:bg-zed-border dark:hover:bg-zed-dark-border border border-zed-border dark:border-zed-dark-border rounded flex items-center gap-1 transition-colors shrink-0"
                 title="Copy to clipboard"
               >
-                {copiedHash === "ai-insight" ? <span className="text-green-500">Copied</span> : <><CopyIcon /> Copy</>}
+                {copiedHash === "ai-insight" ? (
+                  <span className="text-green-500">Copied</span>
+                ) : (
+                  <>
+                    <CopyIcon /> Copy
+                  </>
+                )}
               </button>
             )}
-            <button 
-              onClick={handleExplain} 
+            <button
+              onClick={handleExplain}
               disabled={isExplaining}
               className="text-[9px] px-1.5 py-0.5 bg-zed-element dark:bg-zed-dark-element hover:bg-zed-border dark:hover:bg-zed-dark-border border border-zed-border dark:border-zed-dark-border rounded flex items-center gap-1 transition-colors disabled:opacity-50 shrink-0 font-medium"
             >
-              {isExplaining ? <RobotOutlined className="animate-spin" /> : <InfoCircleOutlined />}
+              {isExplaining ? (
+                <RobotOutlined className="animate-spin" />
+              ) : (
+                <InfoCircleOutlined />
+              )}
               {isExplaining ? "Analyzing" : "Analyze"}
             </button>
           </div>
         </div>
         {aiInsight && (
           <div className="bg-green-500/[0.03] dark:bg-green-500/[0.02] border border-green-500/10 rounded p-3 text-xs leading-relaxed text-zed-text dark:text-zed-dark-text max-h-[400px] overflow-y-auto custom-scrollbar">
-            <ReactMarkdown 
+            <ReactMarkdown
               components={{
-                h3: ({node: _node, ...props}) => <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400 mt-4 mb-2 first:mt-0" {...props} />,
-                p: ({node: _node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                ul: ({node: _node, ...props}) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                ol: ({node: _node, ...props}) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
-                li: ({node: _node, ...props}) => <li className="pl-1" {...props} />,
-                strong: ({node: _node, ...props}) => <strong className="font-bold text-zed-text dark:text-white" {...props} />,
-                code: ({node: _node, ...props}) => <code className="bg-zed-element dark:bg-zed-dark-element px-1 rounded font-mono text-[10px]" {...props} />
+                h3: ({ node: _node, ...props }) => (
+                  <h3
+                    className="text-[11px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400 mt-4 mb-2 first:mt-0"
+                    {...props}
+                  />
+                ),
+                p: ({ node: _node, ...props }) => (
+                  <p className="mb-2 last:mb-0" {...props} />
+                ),
+                ul: ({ node: _node, ...props }) => (
+                  <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />
+                ),
+                ol: ({ node: _node, ...props }) => (
+                  <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />
+                ),
+                li: ({ node: _node, ...props }) => (
+                  <li className="pl-1" {...props} />
+                ),
+                strong: ({ node: _node, ...props }) => (
+                  <strong
+                    className="font-bold text-zed-text dark:text-white"
+                    {...props}
+                  />
+                ),
+                code: ({ node: _node, ...props }) => (
+                  <code
+                    className="bg-zed-element dark:bg-zed-dark-element px-1 rounded font-mono text-[10px]"
+                    {...props}
+                  />
+                ),
               }}
             >
               {aiInsight}
@@ -315,36 +374,62 @@ export const CommitDetails: React.FC<CommitDetailsProps> = ({
       </div>
 
       {displayCommit.branches && displayCommit.branches.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <div className="text-xs text-zed-muted dark:text-zed-dark-muted uppercase flex items-center justify-between">
             <span>Branches</span>
             <span className="text-[10px] opacity-50 lowercase italic">
-              {displayCommit.branches.length} containing
+              {displayCommit.branches.length} total
             </span>
           </div>
+
+          {/* Primary Branches */}
           <div className="flex flex-wrap gap-1">
-            {displayCommit.branches.map((branch) => {
+            {categorizedBranches.primary.map((branch) => {
               const isTip = displayCommit.branchTips?.includes(branch);
-              const isInferred = commit.branchName === branch;
-              
+
               return (
                 <span
                   key={branch}
                   className={`px-2 py-0.5 text-[11px] rounded-full border transition-all ${
-                    isTip 
-                      ? "bg-zed-accent/10 border-zed-accent text-zed-accent font-bold" 
-                      : isInferred
-                        ? "bg-zed-element dark:bg-zed-dark-element border-zed-muted dark:border-zed-dark-border text-zed-text dark:text-zed-dark-text font-medium shadow-sm"
-                        : "bg-zed-element dark:bg-zed-dark-element border-transparent text-zed-muted dark:text-zed-dark-text opacity-90"
+                    isTip
+                      ? "bg-zed-accent/10 border-zed-accent text-zed-accent font-bold"
+                      : "bg-zed-element dark:bg-zed-dark-element border-zed-muted dark:border-zed-dark-border text-zed-text dark:text-zed-dark-text font-medium shadow-sm"
                   }`}
-                  title={isTip ? "Branch Tip" : isInferred ? "Inferred Original Branch" : "Contains Commit"}
+                  title={isTip ? "Branch Tip" : "Inferred Original Branch"}
                 >
-                  {isTip && <span className="mr-1">●</span>}
+                  {isTip && <span className="mr-1 text-[8px]">●</span>}
                   {branch}
                 </span>
               );
             })}
           </div>
+
+          {/* Secondary/Containing Branches */}
+          {categorizedBranches.secondary.length > 0 && (
+            <div className="mt-2">
+              <button
+                onClick={() => setShowAllBranches(!showAllBranches)}
+                className="text-[10px] text-zed-accent hover:underline flex items-center gap-1 opacity-80"
+              >
+                {showAllBranches
+                  ? "Hide ancestor branches"
+                  : `+ ${categorizedBranches.secondary.length} ancestor branches (main, develop, etc.)`}
+              </button>
+
+              {showAllBranches && (
+                <div className="flex flex-wrap gap-1 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {categorizedBranches.secondary.map((branch) => (
+                    <span
+                      key={branch}
+                      className="px-2 py-0.5 text-[10px] bg-zed-element/40 dark:bg-zed-dark-element/40 border border-transparent text-zed-muted dark:text-zed-dark-muted rounded-full"
+                    >
+                      {branch}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
