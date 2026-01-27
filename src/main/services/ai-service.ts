@@ -338,7 +338,19 @@ ${incoming}
   }
 
   private cleanCode(content: string): string {
-    return content.replace(/^```(?:\w+)?\n/, "").replace(/\n```$/, "").trim();
+    // 1. Try to find content within markdown code blocks ```...```
+    const codeBlockRegex = /```(?:[\w\-.]+)?\s*([\s\S]*?)\s*```/i;
+    const match = content.match(codeBlockRegex);
+    
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+
+    // 2. Fallback: If no code blocks, assume the whole text is code but trim whitespace
+    // potentially removing "Here is the code:" prefixes if they don't use markdown is hard 
+    // without risking deleting code, so we rely on the prompt being strict.
+    // But we can clean common "output only" markers.
+    return content.trim();
   }
 
   async explainDiff(
@@ -467,7 +479,7 @@ Response: git reset --soft HEAD~1
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       });
       const data = await response.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "NOT_A_GIT_COMMAND";
+      return this.cleanCode(data.candidates?.[0]?.content?.parts?.[0]?.text || "NOT_A_GIT_COMMAND");
     } else if (provider === 'openai') {
       const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -475,7 +487,7 @@ Response: git reset --soft HEAD~1
         body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
       });
       const data = await response.json();
-      return data.choices[0].message.content.trim();
+      return this.cleanCode(data.choices[0].message.content);
     } else if (provider === 'claude') {
       const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -483,7 +495,7 @@ Response: git reset --soft HEAD~1
         body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
       });
       const data = await response.json();
-      return data.content[0].text.trim();
+      return this.cleanCode(data.content[0].text);
     }
     throw new Error("Provider not supported");
   }
