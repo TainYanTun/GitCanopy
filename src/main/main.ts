@@ -447,6 +447,17 @@ class GitCanopyApp {
         }
       }
     );
+    ipcMain.handle(
+      "git:merge-branch",
+      async (_, repoPath: string, branchName: string) => {
+        this.repositoryWatcher.pause();
+        try {
+          await this.gitService.mergeBranch(repoPath, branchName);
+        } finally {
+          this.repositoryWatcher.resume();
+        }
+      }
+    );
     ipcMain.handle("get-stash-list", (_, repoPath: string) =>
       this.gitService.getStashList(repoPath),
     );

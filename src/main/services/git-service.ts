@@ -815,6 +815,16 @@ export class GitService {
     }
   }
 
+  async mergeBranch(repoPath: string, branchName: string): Promise<void> {
+    try {
+      await this.runWithRetry(["merge", branchName], repoPath);
+    } catch (error: any) {
+      logError("GitService", `Failed to merge branch ${branchName}: ${error}`);
+      // Propagate the error so the UI can show it (e.g. conflicts)
+      throw error;
+    }
+  }
+
   async getStashList(repoPath: string): Promise<string[]> {
     try {
       const output = await this.run(["stash", "list", "--pretty=format:%gd: %gs"], repoPath);

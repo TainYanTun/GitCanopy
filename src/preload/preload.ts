@@ -104,6 +104,8 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("git:get-file-content", repoPath, filePath),
   resolveConflict: (repoPath: string, filePath: string, content: string) =>
     ipcRenderer.invoke("git:resolve-conflict", repoPath, filePath, content),
+  mergeBranch: (repoPath: string, branchName: string) =>
+    ipcRenderer.invoke("git:merge-branch", repoPath, branchName),
 
   // AI
   generateCommitMessage: (repoPath: string) =>

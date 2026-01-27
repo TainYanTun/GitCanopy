@@ -428,6 +428,7 @@ export interface GitCanopyAPI {
     filePath: string,
     content: string,
   ) => Promise<void>;
+  mergeBranch: (repoPath: string, branchName: string) => Promise<void>;
 
   // AI
   generateCommitMessage: (repoPath: string) => Promise<{ summary: string; description: string }>;
