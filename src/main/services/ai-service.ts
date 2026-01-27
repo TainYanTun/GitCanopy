@@ -48,6 +48,27 @@ export class AiService {
     return filteredSections.join('diff --git ').substring(0, 40000);
   }
 
+  private extractJson(content: string): any {
+    try {
+      // First, try to find a JSON object using brace matching
+      const startIndex = content.indexOf('{');
+      const endIndex = content.lastIndexOf('}');
+      
+      if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+        const jsonStr = content.substring(startIndex, endIndex + 1);
+        return JSON.parse(jsonStr);
+      }
+
+      // Fallback to cleaning markdown tags if braces aren't found or parsing fails
+      // Make the regex case insensitive
+      const cleanJson = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (e) {
+      logError("AiService", `Failed to parse JSON from content: ${content.substring(0, 100)}...`);
+      throw new Error("Failed to parse AI response as JSON.");
+    }
+  }
+
   async reviewCode(
     diff: string,
     apiKey: string,
@@ -120,12 +141,7 @@ ${cleanDiff}
       content = data.content[0].text;
     }
 
-    try {
-      const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanJson);
-    } catch (e) {
-      throw new Error("Failed to parse AI Code Review response.");
-    }
+    return this.extractJson(content);
   }
 
   async generateCommitMessage(
@@ -232,8 +248,7 @@ ${this.filterDiff(diff)}
 
   private parseJsonMessage(content: string): GeneratedMessage {
     try {
-      const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
+      const parsed = this.extractJson(content);
       return {
         summary: parsed.summary || "chore: update code",
         description: parsed.description || ""
