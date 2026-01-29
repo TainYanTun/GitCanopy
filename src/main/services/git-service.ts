@@ -612,18 +612,14 @@ export class GitService {
   }
 
   async forcePush(repoPath: string): Promise<void> {
-    try {
-      const remote = await this.getBestRemote(repoPath);
-      
-      // 1. Fetch first to update remote-tracking branches (avoids 'stale info' error)
-      // We only fetch from the specific remote we are interested in
-      await this.run(["fetch", remote], repoPath);
-      
-      // 2. Use --force-with-lease which is now safe since we just fetched
-      await this.run(["push", "--force-with-lease", remote], repoPath);
-    } catch (error: any) {
-      throw error;
-    }
+    const remote = await this.getBestRemote(repoPath);
+
+    // 1. Fetch first to update remote-tracking branches (avoids 'stale info' error)
+    // We only fetch from the specific remote we are interested in
+    await this.run(["fetch", remote], repoPath);
+
+    // 2. Use --force-with-lease which is now safe since we just fetched
+    await this.run(["push", "--force-with-lease", remote], repoPath);
   }
 
   /**
