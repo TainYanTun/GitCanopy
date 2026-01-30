@@ -57,7 +57,7 @@ GitCanopy supports **Gemini** (Primary), **OpenAI**, and **Claude** as backend p
 ### 1. Configuration
 Go to **Settings (⌘,)** and navigate to the **AI Assistant** tab.
 - **Provider:** Select Google Gemini (Recommended).
-- **Model:** Choose `gemini-3-flash` or `gemini-3-pro` for the latest agentic capabilities and performance.
+- **Model:** Choose from a wide range of models including `gemini-3-flash`, `gemini-3-pro`, `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`, and `gemini-1.5-flash` to best suit your performance and intelligence needs.
 - **API Key:** Enter your key (it will be encrypted on disk).
 
 ### 2. AI Code Reviewer (New!)

@@ -55,9 +55,10 @@ History is a living thing. Use the **Time Machine** scrubber to travel back to a
 
 ## 📦 Download
 
-GitCanopy is an open-source project hosted on GitHub. You can find the latest installers for macOS, Windows, and Linux on our **Releases** page:
+GitCanopy is an open-source project. You can find the latest installers for macOS, Windows, and Linux on our **Releases** page or via our download mirror:
 
-👉 **[Download GitCanopy from GitHub](https://github.com/TainYanTun/GitCanopy/releases)**
+👉 **[Download GitCanopy from GitHub](https://github.com/TainYanTun/GitCanopy/releases)**  
+🌐 **[Alternative Mirror (Vercel)](https://git-canopy-download.vercel.app)**
 
 > **Note for macOS users:** Since the app is currently unsigned, you will need to **Right-Click > Open** the first time you launch it to bypass the security verification.
 >
@@ -101,7 +102,7 @@ graph TD
 
     subgraph "External Integrations"
         GitCLI["Build-in Git Binary"]
-        GeminiAPI["✨ Google Gemini API<br/>(v1beta/v1)"]
+        GeminiAPI["✨ Google Gemini API<br/>(v1beta)"]
         OpenAI_API["OpenAI API"]
         Claude_API["Anthropic Claude API"]
         GitHubAPI["GitHub API"]
