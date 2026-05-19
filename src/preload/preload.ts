@@ -121,6 +121,14 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("translate-natural-language-to-git", query, context),
   analyzeGitError: (error: string, context: string) =>
     ipcRenderer.invoke("git:analyze-error", error, context),
+  auditSecurity: (repoPath: string) =>
+    ipcRenderer.invoke("git:audit-security", repoPath),
+  triggerDuoAgent: (prompt: string, context: string) =>
+    ipcRenderer.invoke("git:trigger-duo-agent", prompt, context),
+  checkDuoAgentStatus: () =>
+    ipcRenderer.invoke("git:check-duo-agent-status"),
+  createGitLabIssue: (title: string, description: string) =>
+    ipcRenderer.invoke("git:create-gitlab-issue", title, description),
 
   getHotFiles: (repoPath: string, limit?: number, options?: CommitFilterOptions) =>
     ipcRenderer.invoke("git:get-hot-files", repoPath, limit, options),
@@ -271,6 +279,11 @@ const gitcanopyAPI: GitCanopyAPI = {
   },
   
   reviewCode: (repoPath: string) => ipcRenderer.invoke("git:review-code", repoPath),
+
+  // MCP
+  connectMcpServer: (config: any) => ipcRenderer.invoke("mcp:connect-server", config),
+  getAllMcpTools: () => ipcRenderer.invoke("mcp:get-all-tools"),
+  callMcpTool: (toolName: string, args: any) => ipcRenderer.invoke("mcp:call-tool", toolName, args),
 };
 
 // Expose the API to the renderer process

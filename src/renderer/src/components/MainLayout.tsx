@@ -20,12 +20,17 @@ import { BranchSwitcherModal } from "./BranchSwitcherModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { HelpView } from "./HelpView";
 import { GitConsole } from "./GitConsole";
+import { GitLabAgent } from "./GitLabAgent";
 import { GitHubStatus } from "./GitHubStatus";
 import { WorkflowRuns } from "./WorkflowRuns";
 import { SettingsModal } from "./SettingsModal";
 import { TimeMachineScrubber } from "./TimeMachineScrubber";
 import { GitCommandBar } from "./GitCommandBar";
-import { SyncOutlined, SettingOutlined } from "@ant-design/icons";
+import {
+  SyncOutlined,
+  SettingOutlined,
+  RobotOutlined,
+} from "@ant-design/icons";
 
 interface MainLayoutProps {
   repository: Repository;
@@ -70,6 +75,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     | "help"
     | "console"
     | "actions"
+    | "agent"
   >("graph");
 
   useEffect(() => {
@@ -397,7 +403,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           />
         );
       case "changes":
-        return <ChangesView repoPath={repository.path} currentBranch={repository.currentBranch} />;
+        return (
+          <ChangesView
+            repoPath={repository.path}
+            currentBranch={repository.currentBranch}
+          />
+        );
       case "contributors":
         return (
           <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">
@@ -456,6 +467,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         return <HelpView />;
       case "console":
         return <GitConsole repoPath={repository.path} />;
+      case "agent":
+        return (
+          <GitLabAgent
+            repoPath={repository.path}
+            projectName={repository.name}
+            currentBranch={repository.currentBranch}
+          />
+        );
       case "actions":
         return (
           <WorkflowRuns
@@ -968,6 +987,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
+            </button>
+            <button
+              onClick={() => setCurrentView("agent")}
+              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "agent" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
+              title="AI Agent (GitLab MCP)"
+            >
+              <RobotOutlined className="text-sm" />
             </button>
             <button
               onClick={() => setCurrentView("help")}

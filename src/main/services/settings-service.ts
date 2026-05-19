@@ -50,6 +50,9 @@ export class SettingsService {
       if (mergedSettings.claudeApiKey && typeof mergedSettings.claudeApiKey === 'string') {
         mergedSettings.claudeApiKey = this.decryptToken(mergedSettings.claudeApiKey);
       }
+      if (mergedSettings.gitlabToken && typeof mergedSettings.gitlabToken === 'string') {
+        mergedSettings.gitlabToken = this.decryptToken(mergedSettings.gitlabToken);
+      }
 
       return mergedSettings;
     } catch (error) {
@@ -81,6 +84,9 @@ export class SettingsService {
       }
       if (settingsToSave.claudeApiKey && typeof settingsToSave.claudeApiKey === 'string') {
         settingsToSave.claudeApiKey = this.encryptToken(settingsToSave.claudeApiKey);
+      }
+      if (settingsToSave.gitlabToken && typeof settingsToSave.gitlabToken === 'string') {
+        settingsToSave.gitlabToken = this.encryptToken(settingsToSave.gitlabToken);
       }
 
       // Validate settings before saving
@@ -146,6 +152,19 @@ export class SettingsService {
     }
     if (settings.lastSeenVersion && typeof settings.lastSeenVersion === 'string') {
         validated.lastSeenVersion = settings.lastSeenVersion;
+    }
+
+    if (settings.gitlabToken && typeof settings.gitlabToken === 'string') {
+        validated.gitlabToken = settings.gitlabToken;
+    }
+    if (settings.gitlabAgentId && typeof settings.gitlabAgentId === 'string') {
+        validated.gitlabAgentId = settings.gitlabAgentId;
+    }
+    if (settings.gitlabProjectPath && typeof settings.gitlabProjectPath === 'string') {
+        validated.gitlabProjectPath = settings.gitlabProjectPath;
+    }
+    if (settings.gitlabProjectId && typeof settings.gitlabProjectId === 'string') {
+        validated.gitlabProjectId = settings.gitlabProjectId;
     }
 
     if (settings.aiProvider && ['gemini', 'openai', 'claude'].includes(settings.aiProvider)) {

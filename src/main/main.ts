@@ -17,6 +17,8 @@ import { AuthService } from "./services/auth-service";
 import { UpdateService } from "./services/update-service";
 import { GitHubService } from "./services/github-service";
 import { AiService } from "./services/ai-service";
+import { GitLabAgentService } from "./services/gitlab-duo-service";
+import { McpService } from "./services/mcp-service";
 import { logInfo, logError, logWarn } from "./services/logger-service";
 import { CommitFilterOptions } from "../shared/types";
 
@@ -29,6 +31,8 @@ class GitCanopyApp {
   private updateService: UpdateService;
   private githubService: GitHubService;
   private aiService: AiService;
+  private gitLabAgentService: GitLabAgentService;
+  private mcpService: McpService;
 
   constructor() {
     this.authService = new AuthService();
@@ -38,6 +42,9 @@ class GitCanopyApp {
     this.updateService = new UpdateService();
     this.githubService = new GitHubService(this.gitService, this.settingsService);
     this.aiService = new AiService();
+    this.gitLabAgentService = new GitLabAgentService();
+    this.mcpService = new McpService();
+    this.gitLabAgentService.setMcpService(this.mcpService);
     this.initializeApp();
   }
 
@@ -55,6 +62,14 @@ class GitCanopyApp {
           );
           app.quit();
           return;
+        }
+
+        const settings = await this.settingsService.getSettings();
+        if (settings.gitlabToken) {
+          logInfo("App", "Connecting to GitLab MCP server...");
+          this.mcpService.connectGitLab(settings.gitlabToken).catch(err => {
+            logError("App", `Auto-connect GitLab MCP failed: ${err}`);
+          });
         }
 
         await this.createWindow();
@@ -77,6 +92,7 @@ class GitCanopyApp {
 
     // Quit when all windows are closed (except on macOS)
     app.on("window-all-closed", () => {
+      this.mcpService.shutdown();
       if (process.platform !== "darwin") {
         app.quit();
       }
@@ -87,6 +103,10 @@ class GitCanopyApp {
       if (BrowserWindow.getAllWindows().length === 0) {
         this.createWindow();
       }
+    });
+
+    app.on("will-quit", () => {
+      this.mcpService.shutdown();
     });
 
     // Security: Prevent new window creation
@@ -635,6 +655,59 @@ class GitCanopyApp {
       return this.aiService.reviewCode(diff, apiKey, provider, model);
     });
 
+    ipcMain.handle("git:audit-security", async (_, repoPath: string) => {
+      const diff = await this.gitService.getStagedDiff(repoPath);
+      if (!diff || !diff.trim()) {
+        throw new Error("No staged changes found to audit.");
+      }
+
+      const settings = await this.settingsService.getSettings();
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      if (!apiKey) {
+        throw new Error(`AI API Key for ${provider} not found. Please configure it in Settings.`);
+      }
+      return this.aiService.auditSecurity(diff, apiKey, provider, model);
+    });
+
+    ipcMain.handle("git:trigger-duo-agent", async (_, prompt: string, context: string) => {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.gitlabToken) throw new Error("GitLab Personal Access Token not configured.");
+
+      return this.gitLabAgentService.triggerAgent(
+        prompt,
+        context,
+        settings.gitlabToken,
+        settings.gitlabProjectId
+      );
+    });
+
+
+    ipcMain.handle("git:check-duo-agent-status", async () => {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.gitlabToken) return false;
+      return true;
+    });
+
+    ipcMain.handle("git:create-gitlab-issue", async (_, title: string, description: string) => {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.gitlabToken) throw new Error("GitLab Token not configured.");
+      if (!settings.gitlabProjectId) throw new Error("GitLab Project ID not configured.");
+
+      return this.gitLabAgentService.createIssue(
+        title,
+        description,
+        settings.gitlabToken,
+        settings.gitlabProjectId
+      );
+    });
+
     ipcMain.handle("git:get-team-pulse", async (_, stats: any[]) => {
       const settings = await this.settingsService.getSettings();
       const provider = settings.aiProvider || 'gemini';
@@ -795,6 +868,11 @@ class GitCanopyApp {
       this.authService.submitCredentials(answer),
     );
     ipcMain.handle("auth-cancel", () => this.authService.cancelAuth());
+
+    // MCP
+    ipcMain.handle("mcp:connect-server", (_, config) => this.mcpService.connectServer(config));
+    ipcMain.handle("mcp:get-all-tools", () => this.mcpService.getAllTools());
+    ipcMain.handle("mcp:call-tool", (_, toolName, args) => this.mcpService.callTool(toolName, args));
   }
 
   private async handleSelectRepository(): Promise<any> {

@@ -21,9 +21,10 @@ import {
 import { DiffModal } from "./DiffModal";
 import { ConflictResolver } from "./ConflictResolver";
 import { CodeReviewModal } from "./CodeReviewModal";
+import { SecurityAuditModal } from "./SecurityAuditModal";
 import { useToast } from "./ToastContext";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { CodeReviewResult } from "@shared/types";
+import { CodeReviewResult, SecurityAuditResult } from "@shared/types";
 
 import { List } from "react-window";
 import { AutoSizer } from "react-virtualized-auto-sizer";
@@ -61,6 +62,11 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranc
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewResult, setReviewResult] = useState<CodeReviewResult | null>(null);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
+
+  // Security Audit State
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<SecurityAuditResult | null>(null);
+  const [isAuditModalVisible, setIsAuditModalVisible] = useState(false);
   
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -338,6 +344,30 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranc
     }
   };
 
+  const handleSecurityAudit = async () => {
+    if (!hasStaged) {
+      showToast("Please stage changes before auditing.", "warning");
+      return;
+    }
+    setIsAuditing(true);
+    setIsAuditModalVisible(true);
+    setAuditResult(null);
+    try {
+      const result = await window.gitcanopyAPI.auditSecurity(repoPath);
+      setAuditResult(result);
+      if (result.findings.length > 0) {
+        showToast(`${result.findings.length} security findings identified.`, "warning");
+      } else {
+        showToast("No security risks detected.", "success");
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Security audit failed", "error");
+      setIsAuditModalVisible(false);
+    } finally {
+      setIsAuditing(false);
+    }
+  };
+
   const handleAiGenerate = async () => {
     if (!hasStaged) {
       showToast("Please stage changes first.", "warning");
@@ -404,13 +434,27 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranc
         </div>
         <div className="flex items-center gap-2">
           {hasStaged && (
-            <button
-              onClick={handleCodeReview}
-              disabled={isReviewing}
-              className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2 shadow-sm"
-            >
-              <SafetyCertificateOutlined /> {isReviewing ? "Reviewing..." : "Review Changes"}
-            </button>
+            <>
+              <button
+                onClick={handleSecurityAudit}
+                disabled={isAuditing}
+                className={`h-6 px-3 text-[9px] font-bold uppercase tracking-wider rounded-sm transition-all flex items-center gap-2 shadow-sm ${
+                  auditResult && !auditResult.isSafe 
+                    ? "bg-red-500 text-white animate-pulse" 
+                    : "bg-zed-surface dark:bg-zed-dark-bg text-zed-text dark:text-white border border-zed-border dark:border-zed-dark-border hover:bg-zed-element"
+                }`}
+              >
+                <SafetyCertificateOutlined className={isAuditing ? "animate-spin" : ""} /> 
+                {isAuditing ? "Auditing..." : "Security Guard"}
+              </button>
+              <button
+                onClick={handleCodeReview}
+                disabled={isReviewing}
+                className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2 shadow-sm"
+              >
+                <RobotOutlined /> {isReviewing ? "Reviewing..." : "AI Review"}
+              </button>
+            </>
           )}
           {status && !status.isDetached && (status.ahead > 0 || status.hasRemote === false) && (
             <div className="flex gap-2">
@@ -634,6 +678,13 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranc
         onClose={() => setIsReviewModalVisible(false)}
         result={reviewResult}
         loading={isReviewing}
+      />
+
+      <SecurityAuditModal
+        visible={isAuditModalVisible}
+        onClose={() => setIsAuditModalVisible(false)}
+        result={auditResult}
+        loading={isAuditing}
       />
 
       <ConfirmDialog

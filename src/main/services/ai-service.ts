@@ -18,6 +18,19 @@ interface CodeReviewResult {
   }>;
 }
 
+export interface SecurityAuditResult {
+  isSafe: boolean;
+  findings: Array<{
+    type: 'secret' | 'vulnerability' | 'compliance';
+    file: string;
+    message: string;
+    severity: 'critical' | 'high' | 'medium' | 'low';
+    snippet?: string;
+    remediation?: string;
+  }>;
+  summary: string;
+}
+
 export class AiService {
   private cache = new LRUCache<string, any>({ max: 100, ttl: 1000 * 60 * 60 }); // 1 hour cache
 
@@ -96,6 +109,126 @@ Return ONLY a raw JSON object (no markdown, no backticks) with this structure:
     }
   ]
 }
+
+Diff:
+${cleanDiff}
+`;
+
+    let content = "";
+
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        }),
+      });
+      const data = await response.json();
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: model || 'gpt-4o',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
+        }),
+      });
+      const data = await response.json();
+      content = data.choices[0].message.content;
+    } else if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: model || 'claude-3-5-sonnet-latest',
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
+      const data = await response.json();
+      content = data.content[0].text;
+    }
+
+    return this.extractJson(content);
+  }
+
+  async decorateToolOutput(
+    toolName: string,
+    rawData: any,
+    userPrompt: string,
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<string> {
+    const prompt = `
+You are the GitLab AI Agent for GitCanopy. 
+The user asked: "${userPrompt}"
+The tool "${toolName}" returned this raw data:
+${JSON.stringify(rawData).substring(0, 10000)}
+
+Your task is to "decorate" this output into a spectacular but hyper-minimalist Markdown response.
+Rules:
+1. NO EMOJIS.
+2. Keep it extremely clean and professional.
+3. Focus on the most relevant information for the user's prompt.
+4. Use minimalist tables or lists if needed.
+5. If there is an error in the raw data, explain it simply.
+6. Do not use conversational filler (e.g., "Here is what I found"). Just present the data.
+`;
+
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Failed to decorate output.";
+    }
+    // Fallback for others...
+    return "Output decoration only supported for Gemini currently.";
+  }
+
+  async auditSecurity(
+    diff: string,
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<SecurityAuditResult> {
+    if (!diff || !diff.trim()) throw new Error("Diff is empty.");
+    
+    const cleanDiff = this.filterDiff(diff);
+    
+    const prompt = `
+You are a highly paranoid Security Auditor and Automated Guard Agent.
+Analyze the following git diff for critical security risks, specifically looking for:
+1. Hardcoded secrets (API keys, tokens, passwords).
+2. Vulnerabilities (SQL injection, XSS, insecure dependencies, buffer overflows).
+3. Compliance violations (GDPR, HIPAA, SOC2).
+
+Return ONLY a raw JSON object (no markdown, no backticks) with this structure:
+{
+  "isSafe": boolean, // false if ANY finding is 'high' or 'critical'
+  "summary": "Brief executive summary of findings",
+  "findings": [
+    {
+      "type": "secret" | "vulnerability" | "compliance",
+      "file": "filename",
+      "message": "concise explanation of the risk",
+      "severity": "critical" | "high" | "medium" | "low",
+      "snippet": "the specific line of code that is problematic",
+      "remediation": "how to fix this (e.g., 'use environment variables', 'escape user input')"
+    }
+  ]
+}
+
+If no issues are found, return "findings": [].
 
 Diff:
 ${cleanDiff}

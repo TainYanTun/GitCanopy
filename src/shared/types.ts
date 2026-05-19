@@ -192,6 +192,10 @@ export interface AppSettings {
   recentRepositories?: string[];
   githubToken?: string;
   githubTokenCreated?: number;
+  gitlabToken?: string;
+  gitlabAgentId?: string;
+  gitlabProjectPath?: string;
+  gitlabProjectId?: string;
   lastSeenVersion?: string;
   aiProvider?: "gemini" | "openai" | "claude";
   aiApiKey?: string;
@@ -348,6 +352,20 @@ export interface ReflogEntry {
   timestamp: number;
 }
 
+export interface McpTool {
+  name: string;
+  description?: string;
+  inputSchema: any;
+}
+
+export interface McpServerConfig {
+  id: string;
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
 export interface GitCanopyAPI {
   // Repository operations
   selectRepository: () => Promise<Repository | null>;
@@ -438,6 +456,10 @@ export interface GitCanopyAPI {
   explainDiff: (diff: string) => Promise<string>;
   translateNaturalLanguageToGit: (query: string, context: string) => Promise<string>;
   analyzeGitError: (error: string, context: string) => Promise<string>;
+  auditSecurity: (repoPath: string) => Promise<SecurityAuditResult>;
+  triggerDuoAgent: (prompt: string, context: string) => Promise<{ message: string; actions?: any[] }>;
+  checkDuoAgentStatus: () => Promise<boolean>;
+  createGitLabIssue: (title: string, description: string) => Promise<{ webUrl: string }>;
 
   // GitHub Integration
   getWorkflowRuns: (
@@ -489,6 +511,11 @@ export interface GitCanopyAPI {
   onAuthRequest: (callback: (event: { prompt: string }) => void) => () => void;
   
   reviewCode: (repoPath: string) => Promise<CodeReviewResult>;
+
+  // MCP
+  connectMcpServer: (config: McpServerConfig) => Promise<void>;
+  getAllMcpTools: () => Promise<McpTool[]>;
+  callMcpTool: (toolName: string, args: any) => Promise<any>;
 }
 
 export interface CodeReviewResult {
@@ -500,6 +527,19 @@ export interface CodeReviewResult {
     message: string;
     severity: 'high' | 'medium' | 'low';
   }>;
+}
+
+export interface SecurityAuditResult {
+  isSafe: boolean;
+  findings: Array<{
+    type: 'secret' | 'vulnerability' | 'compliance';
+    file: string;
+    message: string;
+    severity: 'critical' | 'high' | 'medium' | 'low';
+    snippet?: string;
+    remediation?: string;
+  }>;
+  summary: string;
 }
 
 // Extend Window interface for TypeScript

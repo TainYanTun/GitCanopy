@@ -5,6 +5,7 @@ import {
   SaveOutlined,
   RobotOutlined,
   GithubOutlined,
+  GitlabOutlined,
   SettingOutlined,
   EyeOutlined,
   EyeInvisibleOutlined
@@ -19,7 +20,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
   const { setTheme: setAppTheme } = useTheme();
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'github'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'github' | 'gitlab'>('general');
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -99,6 +100,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
               className={`w-full text-left px-3 py-2 text-xs font-medium rounded flex items-center gap-2 ${activeTab === 'github' ? 'bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text' : 'text-zed-muted hover:bg-black/5 dark:hover:bg-white/5'}`}
             >
               <GithubOutlined /> GitHub
+            </button>
+            <button
+              onClick={() => setActiveTab('gitlab')}
+              className={`w-full text-left px-3 py-2 text-xs font-medium rounded flex items-center gap-2 ${activeTab === 'gitlab' ? 'bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text' : 'text-zed-muted hover:bg-black/5 dark:hover:bg-white/5'}`}
+            >
+              <GitlabOutlined /> GitLab
             </button>
           </div>
 
@@ -309,6 +316,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                           Required for private repositories, PRs, and workflow monitoring.
                           Generate a token at <a href="#" onClick={() => window.gitcanopyAPI.openExternal("https://github.com/settings/tokens")} className="text-blue-500 hover:underline">GitHub Settings</a>.
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+             )}
+             {activeTab === 'gitlab' && (
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold">GitLab Integration</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold uppercase tracking-tight">Active Integration</span>
+                    </div>
+                    
+                    <div className="p-3 mb-6 rounded border border-blue-100 bg-blue-50 dark:border-blue-900/30 dark:bg-blue-900/20 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+                      <strong>AI Agent Capabilities:</strong> This integration utilizes the <strong>Model Context Protocol (MCP)</strong> to enable autonomous repository management. Configure these settings to allow the AI assistant to interact directly with your GitLab projects.
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold opacity-70">Personal Access Token (PAT)</label>
+                        <div className="relative">
+                          <input
+                            type={showKey ? "text" : "password"}
+                            value={settings.gitlabToken || ''}
+                            onChange={(e) => setSettings({ ...settings, gitlabToken: e.target.value })}
+                            placeholder="glpat-..."
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent pr-10 dark:text-zed-dark-text"
+                          />
+                          <button
+                            onClick={() => setShowKey(!showKey)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-zed-muted hover:text-zed-text"
+                          >
+                            {showKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-zed-muted mt-2 leading-relaxed">
+                          The <strong>master key</strong> that allows the agent to act on your behalf. Required for all features.
+                          Scopes: <code>api, read_api, read_repository, write_repository</code>.
+                        </p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">Project ID</label>
+                          <input
+                            type="text"
+                            value={settings.gitlabProjectId || ''}
+                            onChange={(e) => setSettings({ ...settings, gitlabProjectId: e.target.value })}
+                            placeholder="e.g. 12345678"
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                          />
+                          <p className="text-[10px] text-zed-muted mt-1 leading-relaxed">
+                            The <strong>target</strong> project. Tells the agent exactly which repo to manage.
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold opacity-70">Project Path</label>
+                          <input
+                            type="text"
+                            value={settings.gitlabProjectPath || ''}
+                            onChange={(e) => setSettings({ ...settings, gitlabProjectPath: e.target.value })}
+                            placeholder="e.g. username/repo"
+                            className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
