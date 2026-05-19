@@ -131,13 +131,27 @@ export class GitService {
       return this.avatarCache.get(cleanEmail)!;
     }
 
-    const hash = crypto
-      .createHash("md5")
-      .update(cleanEmail)
-      .digest("hex");
-    // Use identicon as default to avoid 404 console errors while keeping it professional
-    const url = `https://www.gravatar.com/avatar/${hash}?s=64&d=identicon`;
-    
+    // Deterministic color from email hash — no external requests
+    const hash = crypto.createHash("md5").update(cleanEmail).digest("hex");
+    const hue = parseInt(hash.substring(0, 4), 16) % 360;
+    const saturation = 45 + (parseInt(hash.substring(4, 6), 16) % 25); // 45–70%
+    const lightness = 35 + (parseInt(hash.substring(6, 8), 16) % 20);  // 35–55%
+    const bg = `hsl(${hue},${saturation}%,${lightness}%)`;
+
+    // Initials from the local part of the email (before @)
+    const localPart = cleanEmail.split("@")[0] || "?";
+    const initials = localPart
+      .replace(/[^a-z0-9]/g, " ")
+      .trim()
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("") || localPart[0].toUpperCase();
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="${bg}"/><text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="600" fill="rgba(255,255,255,0.92)">${initials}</text></svg>`;
+    const url = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+
     this.avatarCache.set(cleanEmail, url);
     return url;
   }

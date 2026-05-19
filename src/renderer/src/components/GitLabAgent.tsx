@@ -1,7 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useToast } from "./ToastContext";
-import { RobotOutlined, UserOutlined, SendOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import {
+  RobotOutlined,
+  UserOutlined,
+  SendOutlined,
+  InfoCircleOutlined,
+  CopyOutlined,
+  CheckOutlined,
+  ThunderboltOutlined,
+  NodeIndexOutlined,
+  CompassOutlined,
+} from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { McpTool } from "@shared/types";
+
+const formatMentions = (text: string): string => {
+  if (!text) return "";
+  return text.replace(/(?<!`)(@[\w-]+)(?!`)/g, "`$1`");
+};
 
 interface GitLabAgentProps {
   repoPath: string;
@@ -10,114 +27,501 @@ interface GitLabAgentProps {
 }
 
 interface ChatMessage {
-  role: 'user' | 'agent';
+  role: "user" | "agent";
   content: string;
   timestamp: number;
 }
 
-export const GitLabAgent: React.FC<GitLabAgentProps> = ({ repoPath, projectName, currentBranch }) => {
+export const GitLabAgent: React.FC<GitLabAgentProps> = ({
+  repoPath,
+  projectName,
+  currentBranch,
+}) => {
   const { showToast } = useToast();
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [availableTools, setAvailableTools] = useState<McpTool[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [gitlabProjectPath, setGitlabProjectPath] = useState<
+    string | undefined
+  >(undefined);
+  const [gitlabProjectId, setGitlabProjectId] = useState<string | undefined>(
+    undefined,
+  );
+
   const inputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const fetchTools = async () => {
+    try {
+      const tools = await window.gitcanopyAPI.getAllMcpTools();
+      setAvailableTools(tools);
+      if (tools.length > 0) {
+        showToast(
+          `Mycelia discovered ${tools.length} Git tools`,
+          "success",
+          1000,
+        );
+      }
+    } catch (e) {
+      console.error("Failed to fetch MCP tools", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchTools();
+    // Load GitLab project identity from settings for context-aware agent calls
+    window.gitcanopyAPI
+      .getSettings()
+      .then((s: any) => {
+        if (s?.gitlabProjectPath) setGitlabProjectPath(s.gitlabProjectPath);
+        if (s?.gitlabProjectId) setGitlabProjectId(s.gitlabProjectId);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTo({
         top: chatScrollRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   }, [chatHistory, isAgentTyping]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const prompt = inputValue.trim();
-    if (!prompt || isAgentTyping) return;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
 
+    // Show suggestions if input starts with @
+    if (value.startsWith("@") && !value.includes(" ")) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (toolName: string) => {
+    setInputValue(`@${toolName} `);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const handleCopy = async (content: string, index: number) => {
+    try {
+      await window.gitcanopyAPI.copyToClipboard(content);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+      showToast("Message copied to clipboard", "success", 1500);
+    } catch (err) {
+      showToast("Failed to copy", "error");
+    }
+  };
+
+  const handleQuickAction = async (prompt: string) => {
+    if (isAgentTyping) return;
     setInputValue("");
-    const userMsg: ChatMessage = { role: 'user', content: prompt, timestamp: Date.now() };
-    setChatHistory(prev => [...prev, userMsg]);
+    setShowSuggestions(false);
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: prompt,
+      timestamp: Date.now(),
+    };
+    setChatHistory((prev) => [...prev, userMsg]);
     setIsAgentTyping(true);
 
     try {
-      // Get context (e.g. current status/diff)
       const status = await window.gitcanopyAPI.getStatus(repoPath);
       const context = JSON.stringify({
         project: projectName,
         branch: currentBranch,
-        status: status.files
+        status: status.files,
+        ...(gitlabProjectPath && { gitlabProjectPath }),
+        ...(gitlabProjectId && { gitlabProjectId }),
       });
-      
-      const response = await window.gitcanopyAPI.triggerDuoAgent(prompt, context);
-      
-      const agentMsg: ChatMessage = { 
-        role: 'agent', 
-        content: response.message, 
-        timestamp: Date.now() 
+
+      const response = await window.gitcanopyAPI.triggerDuoAgent(
+        prompt,
+        context,
+      );
+
+      const agentMsg: ChatMessage = {
+        role: "agent",
+        content:
+          response?.message || "No response received from Mycelia Agent.",
+        timestamp: Date.now(),
       };
-      setChatHistory(prev => [...prev, agentMsg]);
+      setChatHistory((prev) => [...prev, agentMsg]);
     } catch (error: any) {
-      showToast(error.message || "Agent connection error", "error");
+      showToast(error?.message || "Agent connection error", "error");
     } finally {
       setIsAgentTyping(false);
       inputRef.current?.focus();
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const prompt = inputValue.trim();
+    if (!prompt || isAgentTyping) return;
+
+    if (prompt === "@clear") {
+      setChatHistory([]);
+      setInputValue("");
+      setShowSuggestions(false);
+      showToast("Chat history cleared", "success", 1500);
+      return;
+    }
+
+    setInputValue("");
+    setShowSuggestions(false);
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: prompt,
+      timestamp: Date.now(),
+    };
+    setChatHistory((prev) => [...prev, userMsg]);
+    setIsAgentTyping(true);
+
+    try {
+      const status = await window.gitcanopyAPI.getStatus(repoPath);
+      const context = JSON.stringify({
+        project: projectName,
+        branch: currentBranch,
+        status: status.files,
+        ...(gitlabProjectPath && { gitlabProjectPath }),
+        ...(gitlabProjectId && { gitlabProjectId }),
+      });
+
+      const response = await window.gitcanopyAPI.triggerDuoAgent(
+        prompt,
+        context,
+      );
+
+      const agentMsg: ChatMessage = {
+        role: "agent",
+        content:
+          response?.message || "No response received from Mycelia Agent.",
+        timestamp: Date.now(),
+      };
+      setChatHistory((prev) => [...prev, agentMsg]);
+    } catch (error: any) {
+      showToast(error?.message || "Agent connection error", "error");
+    } finally {
+      setIsAgentTyping(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const clientCommands = [
+    {
+      name: "clear",
+      description: "Clear current chat history and message logs",
+    },
+  ];
+
+  const filteredCommands = clientCommands.filter((c) =>
+    c.name.toLowerCase().includes(inputValue.substring(1).toLowerCase()),
+  );
+
+  const filteredTools = availableTools.filter((t) =>
+    t.name.toLowerCase().includes(inputValue.substring(1).toLowerCase()),
+  );
+
+  const hasSuggestions =
+    filteredCommands.length > 0 || filteredTools.length > 0;
+
+
   return (
     <div className="h-full w-full bg-zed-bg dark:bg-zed-dark-bg flex flex-col font-sans animate-in fade-in duration-700">
       {/* Hyper-minimalist Context Bar */}
-      <div className="flex-shrink-0 px-8 py-4 border-b border-zed-border dark:border-zed-dark-border flex items-center justify-between">
+      <div className="flex-shrink-0 px-8 py-4 border-b border-zed-border dark:border-zed-dark-border flex items-center justify-between bg-zed-surface/30 dark:bg-zed-dark-surface/30 backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <div className="w-8 h-8 rounded bg-zed-accent/10 flex items-center justify-center text-zed-accent">
-            <RobotOutlined className="text-lg" />
+          <div className="w-9 h-9 rounded-none bg-gradient-to-tr from-violet-600 via-indigo-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/10">
+            <NodeIndexOutlined className="text-lg animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zed-text dark:text-zed-dark-text">GitLab Agent</h2>
+            <h2 className="text-xs font-black uppercase tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-indigo-400 to-pink-400">
+              Mycelia
+            </h2>
             <div className="flex items-center gap-2 mt-0.5 opacity-40">
-              <span className="text-[9px] font-bold uppercase tracking-widest">{projectName}</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest">
+                {projectName}
+              </span>
               <span className="text-[9px]">•</span>
               <span className="text-[9px] font-mono">{currentBranch}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity cursor-help">
-          <InfoCircleOutlined className="text-xs" />
-          <span className="text-[9px] font-bold uppercase tracking-widest">MCP Server Active</span>
+        <div className="flex items-center gap-4 text-zed-muted dark:text-zed-dark-muted">
+          {/* Gemini Status Indicator */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-purple-400 animate-pulse"></span>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] select-none opacity-50">
+              Gemini
+            </span>
+          </div>
+
+          {/* Minimalist Divider */}
+          <span className="text-[9px] opacity-20 select-none">|</span>
+
+          {/* MCP Status Indicator */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-1.5 h-1.5 ${availableTools.length > 0 ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}
+            ></span>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] select-none opacity-50">
+              MCP
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Chat Workspace */}
       <div className="flex-1 overflow-hidden relative">
-        <div 
+        <div
           ref={chatScrollRef}
           className="h-full overflow-y-auto custom-scrollbar"
         >
-          <div className="max-w-3xl mx-auto px-8 py-12 space-y-12">
+          <div className="max-w-4xl mx-auto px-8 py-12 space-y-12">
             {chatHistory.length === 0 && (
-              <div className="py-20 flex flex-col items-center justify-center space-y-6 opacity-20">
-                <RobotOutlined className="text-6xl stroke-thin" />
+              <div className="py-12 flex flex-col items-center justify-center space-y-10">
+                {/* Organic pulsing network SVG visualizer */}
+                <div className="relative flex items-center justify-center w-28 h-28">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-none blur-3xl animate-pulse"></div>
+                  <svg
+                    className="w-24 h-24 text-indigo-400 drop-shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                    viewBox="0 0 100 100"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M50 20 L30 50 L50 80 M50 20 L70 50 L50 80 M30 50 L70 50"
+                      strokeWidth="1"
+                      strokeDasharray="3 3"
+                      opacity="0.4"
+                    />
+                    <path
+                      d="M50 20 C 40 35, 35 45, 30 50 C 35 55, 40 65, 50 80 C 60 65, 65 55, 70 50 C 65 45, 60 35, 50 20 Z"
+                      strokeWidth="1.5"
+                    />
+                    <circle
+                      cx="50"
+                      cy="20"
+                      r="4.5"
+                      fill="#c084fc"
+                      className="animate-ping"
+                    />
+                    <circle cx="50" cy="20" r="3" fill="#c084fc" />
+                    <circle cx="30" cy="50" r="3" fill="#818cf8" />
+                    <circle cx="70" cy="50" r="3" fill="#ec4899" />
+                    <circle cx="50" cy="80" r="3" fill="#6366f1" />
+                    <path
+                      d="M50 20 C 50 35, 30 35, 30 50 C 30 65, 50 65, 50 80 C 50 65, 70 65, 70 50 C 70 35, 50 35, 50 20 Z"
+                      strokeWidth="0.5"
+                      opacity="0.3"
+                    />
+                  </svg>
+                </div>
+
                 <div className="text-center space-y-2">
-                  <p className="text-xs font-black uppercase tracking-[0.4em]">Autonomous Repository Agent</p>
-                  <p className="text-[10px] tracking-wide">Ready to manage issues, merge requests, and project health.</p>
+                  <h3 className="text-xs font-black uppercase tracking-[0.4em] text-zed-text dark:text-zed-dark-text opacity-85">
+                    Autonomous Repository AI
+                  </h3>
+                  <p className="text-[10px] tracking-wide text-zed-muted dark:text-zed-dark-muted max-w-sm mx-auto leading-relaxed">
+                    Mycelia is interconnected with your local environment,
+                    database schema, and Git actions to automate and inspect
+                    your workspace.
+                  </p>
+                </div>
+
+                {/* Suggestion Chips */}
+                <div className="grid grid-cols-2 gap-3 w-full max-w-2xl pt-4">
+                  <button
+                    onClick={() =>
+                      handleQuickAction(
+                        `Review the current uncommitted changes in the ${projectName} project on branch '${currentBranch}'${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}. Summarize what was modified and identify any potential issues.`,
+                      )
+                    }
+                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-indigo-500/50 hover:bg-indigo-500/[0.02] transition-all text-left group"
+                  >
+                    <CompassOutlined className="text-indigo-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
+                        Review Changes
+                      </h4>
+                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
+                        Analyze your staging area and active diff outputs
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleQuickAction(
+                        `Draft a conventional commit message for my latest modifications in the ${projectName} project on branch '${currentBranch}'${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}.`,
+                      )
+                    }
+                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-purple-500/50 hover:bg-purple-500/[0.02] transition-all text-left group"
+                  >
+                    <ThunderboltOutlined className="text-purple-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
+                        Draft Commit
+                      </h4>
+                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
+                        Generate semantic and descriptive commit drafts
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleQuickAction(
+                        `Show me the available Git tools and commands for the ${projectName} project${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}.`,
+                      )
+                    }
+                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-pink-500/50 hover:bg-pink-500/[0.02] transition-all text-left group"
+                  >
+                    <NodeIndexOutlined className="text-pink-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
+                        Available Tools
+                      </h4>
+                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
+                        Explore the active Git MCP server tool suite
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleQuickAction(
+                        `Give me a brief status report of the ${projectName} repository on branch '${currentBranch}'${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}. Include modified files, potential risks, and suggested next steps.`,
+                      )
+                    }
+                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-teal-500/50 hover:bg-teal-500/[0.02] transition-all text-left group"
+                  >
+                    <InfoCircleOutlined className="text-teal-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
+                        Status Report
+                      </h4>
+                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
+                        Get a snapshot of modifications and repository health
+                      </p>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
-            
+
             {chatHistory.map((msg, i) => (
-              <div key={i} className={`flex items-start gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500`}>
-                <div className={`shrink-0 w-8 h-8 rounded flex items-center justify-center mt-1 ${msg.role === 'user' ? 'bg-zed-element dark:bg-zed-dark-element' : 'bg-zed-accent text-white'}`}>
-                  {msg.role === 'user' ? <UserOutlined className="text-xs" /> : <RobotOutlined className="text-xs" />}
+              <div
+                key={i}
+                className={`flex items-start gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500 group`}
+              >
+                <div
+                  className={`shrink-0 w-8 h-8 rounded-none flex items-center justify-center mt-1 shadow-sm ${msg.role === "user" ? "bg-zed-element dark:bg-zed-dark-element border border-zed-border/30 dark:border-zed-dark-border/30" : "bg-gradient-to-br from-violet-600 to-indigo-600 text-white"}`}
+                >
+                  {msg.role === "user" ? (
+                    <UserOutlined className="text-xs" />
+                  ) : (
+                    <NodeIndexOutlined className="text-xs" />
+                  )}
                 </div>
-                <div className="flex-1 min-w-0 space-y-2 pt-1.5">
-                  <div className="text-[10px] font-black uppercase tracking-widest opacity-30">
-                    {msg.role === 'user' ? 'Local User' : 'GitLab Agent'}
+                <div className="flex-1 min-w-0 space-y-2 pt-1.5 relative">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[9px] font-black uppercase tracking-[0.15em] opacity-40">
+                      {msg.role === "user" ? "Local Operator" : "Mycelia"}
+                    </div>
+                    {msg.role === "agent" && (
+                      <button
+                        onClick={() => handleCopy(msg.content, i)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-zed-element dark:hover:bg-zed-dark-element rounded-none transition-all text-zed-muted hover:text-zed-text"
+                        title="Copy to clipboard"
+                      >
+                        {copiedIndex === i ? (
+                          <CheckOutlined className="text-emerald-500" />
+                        ) : (
+                          <CopyOutlined className="text-[10px]" />
+                        )}
+                      </button>
+                    )}
                   </div>
-                  <div className="text-[13px] text-zed-text dark:text-zed-dark-text leading-relaxed prose dark:prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-zed-element/50 prose-pre:border prose-pre:border-zed-border/30">
-                    {msg.role === 'agent' ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
+                  <div className="text-[13px] text-zed-text dark:text-zed-dark-text leading-relaxed markdown-content prose dark:prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || "");
+                          const codeText = String(children).replace(/\n$/, "");
+
+                          // Check if it's inline code
+                          const isInline = !className;
+
+                          if (isInline) {
+                            if (codeText.startsWith("@")) {
+                              return (
+                                <span className="px-1.5 py-0.5 rounded-none bg-purple-500/10 dark:bg-purple-500/20 text-purple-500 dark:text-purple-400 font-mono text-[11px] border border-purple-500/20">
+                                  {codeText}
+                                </span>
+                              );
+                            }
+                            return (
+                              <code
+                                className="px-1 py-0.5 rounded-none bg-zed-element/60 dark:bg-zed-dark-element/60 font-mono text-[11px] text-pink-500 dark:text-pink-400"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          }
+
+                          return (
+                            <div className="my-4 overflow-hidden rounded-none border border-zed-border/30 dark:border-zed-dark-border/30 bg-zed-element/30 dark:bg-zed-dark-element/30 shadow-md">
+                              <div className="flex items-center justify-between px-4 py-1.5 bg-zed-element/60 dark:bg-zed-dark-element/60 border-b border-zed-border/20 dark:border-zed-dark-border/20">
+                                <span className="text-[10px] font-bold font-mono uppercase text-zed-muted dark:text-zed-dark-muted">
+                                  {match ? match[1] : "code"}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    window.gitcanopyAPI.copyToClipboard(
+                                      codeText,
+                                    );
+                                    showToast("Code copied", "success", 1000);
+                                  }}
+                                  className="text-[10px] font-bold text-purple-500 hover:text-purple-400 dark:text-purple-400 dark:hover:text-purple-300 transition-colors flex items-center gap-1"
+                                >
+                                  <CopyOutlined className="text-[9px]" /> Copy
+                                </button>
+                              </div>
+                              <pre className="p-4 m-0 overflow-x-auto font-mono text-xs leading-relaxed bg-transparent">
+                                <code className={className} {...props}>
+                                  {children}
+                                </code>
+                              </pre>
+                            </div>
+                          );
+                        },
+                        table({ children, ...props }) {
+                          return (
+                            <div className="w-full overflow-x-auto my-4 rounded-none border border-zed-border/40 dark:border-zed-dark-border/40 bg-zed-element/20 dark:bg-zed-dark-element/20 shadow-sm scrollbar-thin">
+                              <table
+                                {...props}
+                                className="min-w-full m-0 border-none divide-y divide-zed-border/20 dark:divide-zed-dark-border/20"
+                              >
+                                {children}
+                              </table>
+                            </div>
+                          );
+                        },
+                      }}
+                    >
+                      {formatMentions(msg.content)}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
@@ -125,15 +529,17 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({ repoPath, projectName,
 
             {isAgentTyping && (
               <div className="flex items-start gap-6 animate-pulse">
-                <div className="shrink-0 w-8 h-8 rounded bg-zed-accent text-white flex items-center justify-center mt-1">
-                  <RobotOutlined className="text-xs" />
+                <div className="shrink-0 w-8 h-8 rounded-none bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center mt-1 shadow-sm">
+                  <NodeIndexOutlined className="text-xs" />
                 </div>
                 <div className="flex-1 pt-1.5 space-y-2">
-                  <div className="text-[10px] font-black uppercase tracking-widest opacity-30">GitLab Agent</div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.15em] opacity-40">
+                    Mycelia
+                  </div>
                   <div className="flex gap-1.5 pt-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-zed-accent/40 animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-zed-accent/40 animate-bounce [animation-delay:0.2s]"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-zed-accent/40 animate-bounce [animation-delay:0.4s]"></div>
+                    <div className="w-1.5 h-1.5 rounded-none bg-indigo-500/60 animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 rounded-none bg-indigo-500/60 animate-bounce [animation-delay:0.2s]"></div>
+                    <div className="w-1.5 h-1.5 rounded-none bg-indigo-500/60 animate-bounce [animation-delay:0.4s]"></div>
                   </div>
                 </div>
               </div>
@@ -143,29 +549,79 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({ repoPath, projectName,
       </div>
 
       {/* Input Area */}
-      <div className="flex-shrink-0 px-8 py-8">
-        <div className="max-w-3xl mx-auto relative group">
+      <div className="flex-shrink-0 px-8 py-8 relative bg-gradient-to-t from-zed-bg via-zed-bg to-transparent dark:from-zed-dark-bg dark:via-zed-dark-bg">
+        <div className="max-w-4xl mx-auto relative group">
+          {/* Suggestions Dropdown */}
+          {showSuggestions && hasSuggestions && (
+            <div className="absolute bottom-full left-0 w-96 max-h-60 mb-2 bg-white/95 dark:bg-zinc-950/95 border border-purple-500/30 rounded-md shadow-[0_12px_36px_rgba(0,0,0,0.2)] overflow-y-auto custom-scrollbar z-50 divide-y divide-zed-border/10 dark:divide-zed-dark-border/10">
+              {filteredCommands.map((cmd) => (
+                <button
+                  key={cmd.name}
+                  onClick={() => handleSuggestionClick(cmd.name)}
+                  className="w-full text-left px-4 py-2.5 hover:bg-purple-500/[0.04] dark:hover:bg-purple-500/[0.06] flex items-center justify-between transition-all group/item border-l-2 border-l-purple-500"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-mono font-bold tracking-wide text-purple-500 dark:text-purple-400 group-hover/item:translate-x-0.5 transition-transform">
+                      @{cmd.name}
+                    </span>
+                    <span className="text-[9px] text-zed-muted/70 truncate max-w-[280px] mt-0.5">
+                      {cmd.description}
+                    </span>
+                  </div>
+                  <span className="text-[8px] font-mono text-purple-400/40 opacity-0 group-hover/item:opacity-100 transition-all select-none">
+                    TAB to insert
+                  </span>
+                </button>
+              ))}
+              {filteredTools.map((tool) => (
+                <button
+                  key={tool.name}
+                  onClick={() => handleSuggestionClick(tool.name)}
+                  className="w-full text-left px-4 py-2.5 hover:bg-indigo-500/[0.04] dark:hover:bg-indigo-500/[0.06] flex items-center justify-between transition-all group/item border-l-2 border-l-indigo-500"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-mono font-bold tracking-wide text-indigo-500 dark:text-indigo-400 group-hover/item:translate-x-0.5 transition-transform">
+                      @{tool.name}
+                    </span>
+                    <span className="text-[9px] text-zed-muted/70 truncate max-w-[280px] mt-0.5">
+                      {tool.description || "MCP Git Action"}
+                    </span>
+                  </div>
+                  <span className="text-[8px] font-mono text-indigo-400/40 opacity-0 group-hover/item:opacity-100 transition-all select-none">
+                    TAB to insert
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+
           <form onSubmit={handleSubmit}>
             <input
               ref={inputRef}
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setShowSuggestions(false);
+              }}
               disabled={isAgentTyping}
-              placeholder="Assign a task to the agent..."
-              className="w-full bg-zed-element/30 dark:bg-zed-dark-element/30 border border-zed-border dark:border-zed-dark-border rounded-lg px-5 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent/50 transition-all placeholder:opacity-20"
+              placeholder="Query repository details, or type @ to invoke specific tools..."
+              className="w-full bg-zed-element/25 dark:bg-zed-dark-element/25 border border-zed-border dark:border-zed-dark-border rounded-md px-5 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/30 focus:border-purple-500/30 transition-all placeholder:opacity-30 text-zed-text dark:text-zed-dark-text shadow-sm"
               autoFocus
             />
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={!inputValue.trim() || isAgentTyping}
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded bg-zed-text dark:text-zed-bg flex items-center justify-center hover:opacity-90 disabled:opacity-10 transition-all"
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md bg-gradient-to-tr from-violet-600 to-indigo-600 hover:opacity-90 disabled:opacity-20 transition-all flex items-center justify-center shadow-lg shadow-indigo-500/20"
             >
-              <SendOutlined className="text-xs text-white dark:text-zinc-900" />
+              <SendOutlined className="text-xs text-white" />
             </button>
           </form>
-          <div className="absolute -bottom-6 left-2 opacity-20 group-hover:opacity-40 transition-opacity">
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em]">Press Enter to dispatch mission</span>
+          <div className="absolute -bottom-6 left-2 opacity-30">
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zed-muted">
+              Press Enter to dispatch request
+            </span>
           </div>
         </div>
       </div>

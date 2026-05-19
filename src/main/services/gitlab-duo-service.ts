@@ -15,6 +15,11 @@ interface GitLabAgentResponse {
 export class GitLabAgentService {
   private cache = new LRUCache<string, any>({ max: 50, ttl: 1000 * 60 * 5 });
   private mcpService: McpService | null = null;
+  private aiService: AiService;
+
+  constructor() {
+    this.aiService = new AiService();
+  }
 
   setMcpService(mcpService: McpService) {
     this.mcpService = mcpService;
@@ -29,49 +34,62 @@ export class GitLabAgentService {
     if (!prompt) throw new Error("prompt_required");
     if (!gitlabToken) throw new Error("token_required");
     
-    if (this.mcpService) {
-      try {
-        logInfo("GitLabAgent", `exec_mcp_tool: ${prompt}`);
-        
-        const projectId = gitlabProjectId || "";
-
-        if (prompt.toLowerCase().includes("issue") || prompt.toLowerCase().includes("bug") || prompt.toLowerCase().includes("task")) {
-          const result: any = await this.mcpService.callTool("list_project_issues", { project_id: projectId });
-          return {
-            message: `### project_issues\n\n${this.formatIssues(result)}`,
-            actions: [{ type: 'mcp_call', payload: { tool: 'list_project_issues', result } }]
-          };
-        }
-
-        if (prompt.toLowerCase().includes("branch") || prompt.toLowerCase().includes("repo") || prompt.toLowerCase().includes("project")) {
-          const result: any = await this.mcpService.callTool("list_branches", { project_id: projectId });
-          return {
-            message: `### project_branches\n\n${this.formatBranches(result)}`,
-            actions: [{ type: 'mcp_call', payload: { tool: 'list_branches', result } }]
-          };
-        }
-
-        if (prompt.toLowerCase().includes("diff") || prompt.toLowerCase().includes("review") || prompt.toLowerCase().includes("mr") || prompt.toLowerCase().includes("merge")) {
-           const result: any = await this.mcpService.callTool("list_merge_requests", { project_id: projectId, state: "opened" });
-           return {
-             message: `### merge_requests\n\n${this.formatMRs(result)}`,
-             actions: [{ type: 'mcp_call', payload: { tool: 'list_merge_requests', result } }]
-           };
-        }
-
-        const allTools = await this.mcpService.getAllTools();
-        return {
-          message: `### gitlab_agent_online\n\nmcp_status: connected\ntools_available: ${allTools.length}\n\n**capabilities**\n- issues: list / create / manage\n- merge_requests: review / approve\n- repository: branches / search\n- pipelines: status / logs`,
-          actions: []
-        };
-
-      } catch (e: any) {
-        logError("GitLabAgent", `tool_execution_failed: ${e.message}`);
-        return { message: `### execution_error\n\n${e.message}`, actions: [] };
-      }
+    if (!this.mcpService) {
+        return { message: "### agent_offline\n\nmcp_server_not_connected", actions: [] };
     }
 
-    return { message: "### agent_offline\n\nmcp_server_not_connected", actions: [] };
+    try {
+      // 1. Check for explicit @ command
+      if (prompt.startsWith("@")) {
+        const parts = prompt.substring(1).split(" ");
+        const toolName = parts[0];
+        let args = {};
+        
+        // Very basic naive parser for @tool name=val
+        parts.slice(1).forEach(p => {
+            const [k, v] = p.split("=");
+            if (k && v) (args as any)[k] = v;
+        });
+
+        // Default project_id if not provided
+        if (!(args as any).project_id && gitlabProjectId) {
+            (args as any).project_id = gitlabProjectId;
+        }
+
+        logInfo("GitLabAgent", `exec_direct_tool: ${toolName}`);
+        const result = await this.mcpService.callTool(toolName, args);
+        return {
+          message: `### direct_tool_execution: ${toolName}\n\n${JSON.stringify(result, null, 2)}`,
+          actions: [{ type: 'mcp_call', payload: { tool: toolName, args, result } }]
+        };
+      }
+
+      // 2. Otherwise, use Gemini to interpret and call tool
+      logInfo("GitLabAgent", `exec_agent_logic: ${prompt}`);
+      
+      const geminiTools = this.mcpService.getGeminiTools();
+      if (geminiTools.length === 0) {
+          return { message: "No GitLab tools available. Please ensure MCP server is initialized.", actions: [] };
+      }
+
+      // We need Gemini API key from settings, but triggerAgent doesn't receive it directly.
+      // However, we can use a placeholder for now or assume it's available in AiService if we configure it.
+      // Wait, triggerAgent in main.ts is called with prompt and context. 
+      // Main.ts has access to settingsService.
+      
+      // I should probably pass the apiKey to triggerAgent or have GitLabAgentService fetch it.
+      // Given the current structure in main.ts, it's easier to pass it.
+      // Let's assume for now we need to fix main.ts too.
+      
+      return { 
+        message: "Agent is processing your request with Gemini...",
+        actions: [{ type: 'agent_processing', payload: { prompt, context } }] 
+      };
+
+    } catch (e: any) {
+      logError("GitLabAgent", `agent_failed: ${e.message}`);
+      return { message: `### execution_error\n\n${e.message}`, actions: [] };
+    }
   }
 
   async checkAgentStatus(_gitlabToken: string, _agentId: string): Promise<boolean> {

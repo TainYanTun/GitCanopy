@@ -680,12 +680,82 @@ class GitCanopyApp {
       const settings = await this.settingsService.getSettings();
       if (!settings.gitlabToken) throw new Error("GitLab Personal Access Token not configured.");
 
-      return this.gitLabAgentService.triggerAgent(
+      const provider = settings.aiProvider || 'gemini';
+      const apiKey = provider === 'gemini' ? settings.aiApiKey : 
+                     provider === 'openai' ? settings.openaiApiKey : 
+                     settings.claudeApiKey;
+      const model = provider === 'gemini' ? settings.geminiModel :
+                    provider === 'openai' ? settings.openaiModel :
+                    settings.claudeModel;
+
+      // 1. Initial Call to Agent Service (handles @ commands directly or returns 'processing')
+      const initialResponse = await this.gitLabAgentService.triggerAgent(
         prompt,
         context,
         settings.gitlabToken,
         settings.gitlabProjectId
       );
+
+      // 2. Direct @ Tool Call Formatting
+      const mcpCallAction = initialResponse.actions?.find(a => a.type === 'mcp_call');
+      if (mcpCallAction && !initialResponse.actions?.find(a => a.type === 'agent_processing')) {
+        if (apiKey) {
+            try {
+                logInfo("App", `Formatting direct tool output for: ${prompt}`);
+                const { tool, result } = mcpCallAction.payload;
+                const formattedMessage = await this.aiService.summarizeAgentResult(
+                    prompt,
+                    tool,
+                    result,
+                    apiKey,
+                    provider,
+                    model
+                );
+                return {
+                    ...initialResponse,
+                    message: formattedMessage
+                };
+            } catch (err) {
+                logWarn("App", `AI formatting failed, returning raw: ${err}`);
+                return initialResponse;
+            }
+        }
+      }
+
+      // 3. Agentic Loop (for natural language)
+      if (initialResponse.actions?.find(a => a.type === 'agent_processing')) {
+        if (!apiKey) throw new Error(`${provider} API Key not configured for Agent usage.`);
+
+        const geminiTools = this.mcpService.getGeminiTools();
+        const cycleResult = await this.aiService.runAgentCycle(prompt, geminiTools, apiKey, provider, model);
+
+        // 4. Handle Tool Calling
+        if (cycleResult.toolCall) {
+          const { name, args } = cycleResult.toolCall;
+          
+          if (!args.project_id && settings.gitlabProjectId) {
+              args.project_id = settings.gitlabProjectId;
+          }
+
+          logInfo("App", `Agent executing tool: ${name} with args: ${JSON.stringify(args)}`);
+          const toolResult = await this.mcpService.callTool(name, args);
+          
+          // 5. Final Turn: Summarize results
+          const summary = await this.aiService.summarizeAgentResult(prompt, name, toolResult, apiKey, provider, model);
+          
+          return {
+            message: summary,
+            actions: [{ type: 'mcp_call', payload: { tool: name, args, result: toolResult } }]
+          };
+        }
+
+        return {
+          message: cycleResult.message,
+          actions: []
+        };
+      }
+
+      return initialResponse;
     });
 
 
@@ -806,9 +876,14 @@ class GitCanopyApp {
     );
     
     // GitHub Integration
-    ipcMain.handle("get-workflow-runs", (_, repoPath: string, branchName?: string) => 
-      this.githubService.getWorkflowRuns(repoPath, branchName)
-    );
+    ipcMain.handle("get-workflow-runs", async (_, repoPath: string, branchName?: string) => {
+      try {
+        return await this.githubService.getWorkflowRuns(repoPath, branchName);
+      } catch (err: any) {
+        console.error("[get-workflow-runs] IPC error:", err?.message ?? err);
+        return [];
+      }
+    });
     ipcMain.handle("validate-github-token", (_, token: string) => 
       this.githubService.validateGitHubToken(token)
     );

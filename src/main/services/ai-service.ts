@@ -82,6 +82,15 @@ export class AiService {
     }
   }
 
+  private normalizeModel(model?: string): string {
+    const defaultModel = 'gemini-2.5-flash';
+    const activeModel = model || defaultModel;
+    if (activeModel === 'gemini-3-flash') return 'gemini-2.5-flash';
+    if (activeModel === 'gemini-3-pro') return 'gemini-2.5-pro';
+    return activeModel;
+  }
+
+
   async reviewCode(
     diff: string,
     apiKey: string,
@@ -117,7 +126,7 @@ ${cleanDiff}
     let content = "";
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,7 +175,7 @@ ${cleanDiff}
     model?: string
   ): Promise<string> {
     const prompt = `
-You are the GitLab AI Agent for GitCanopy. 
+You are the Mycelia AI Agent for GitCanopy. 
 The user asked: "${userPrompt}"
 The tool "${toolName}" returned this raw data:
 ${JSON.stringify(rawData).substring(0, 10000)}
@@ -182,7 +191,7 @@ Rules:
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -237,7 +246,7 @@ ${cleanDiff}
     let content = "";
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -300,7 +309,7 @@ ${this.filterDiff(diff)}
 `;
 
     if (provider === 'gemini') {
-      return this.generateWithGemini(prompt, apiKey, model || 'gemini-3-flash');
+      return this.generateWithGemini(prompt, apiKey, this.normalizeModel(model));
     } else if (provider === 'openai') {
       return this.generateWithOpenAI(prompt, apiKey, model || 'gpt-4o');
     } else if (provider === 'claude') {
@@ -310,7 +319,7 @@ ${this.filterDiff(diff)}
   }
 
   private async generateWithGemini(prompt: string, apiKey: string, model: string): Promise<GeneratedMessage> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
     try {
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
@@ -442,7 +451,7 @@ ${incoming}
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -503,7 +512,7 @@ ${diff.substring(0, 30000)}
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -548,7 +557,7 @@ ${JSON.stringify(stats)}
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -605,7 +614,7 @@ Response: git reset --soft HEAD~1
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -633,6 +642,148 @@ Response: git reset --soft HEAD~1
     throw new Error("Provider not supported");
   }
 
+  async runAgentCycle(
+    userPrompt: string,
+    tools: any[],
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<{ message: string; toolCall?: any }> {
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          tools: tools
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Gemini Agent Error: ${await response.text()}`);
+      const data = await response.json();
+      const part = data.candidates?.[0]?.content?.parts?.[0];
+
+      if (part?.functionCall) {
+        return { message: "Calling tool...", toolCall: part.functionCall };
+      }
+      return { message: part?.text || "No response." };
+    }
+
+    if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: model || 'gpt-4o',
+          messages: [{ role: 'user', content: userPrompt }],
+          tools: tools.map(t => ({ type: 'function', function: t.function_declarations[0] })),
+          tool_choice: 'auto'
+        }),
+      });
+
+      if (!response.ok) throw new Error(`OpenAI Agent Error: ${await response.text()}`);
+      const data = await response.json();
+      const message = data.choices[0].message;
+
+      if (message.tool_calls) {
+        const tc = message.tool_calls[0].function;
+        return { 
+          message: "Calling tool...", 
+          toolCall: { name: tc.name, args: JSON.parse(tc.arguments) } 
+        };
+      }
+      return { message: message.content || "No response." };
+    }
+
+    // Claude support for tools is slightly different, skipping for brevity or add if needed
+    return { message: "Agent loop only supported for Gemini and OpenAI currently." };
+  }
+
+  async summarizeAgentResult(
+    userPrompt: string,
+    toolName: string,
+    toolResult: any,
+    apiKey: string,
+    provider: 'gemini' | 'openai' | 'claude' = 'gemini',
+    model?: string
+  ): Promise<string> {
+    let cleanResult = toolResult;
+    try {
+      if (toolResult && typeof toolResult === 'object') {
+        if (Array.isArray(toolResult.content) && toolResult.content[0]?.text) {
+          const text = toolResult.content[0].text;
+          try {
+            cleanResult = JSON.parse(text);
+          } catch {
+            cleanResult = text;
+          }
+        }
+      }
+    } catch (e) {
+      // Keep as raw toolResult if parsing fails
+    }
+
+    const prompt = `
+You are the Mycelia AI Agent for GitCanopy. 
+The user asked: "${userPrompt}"
+The tool "${toolName}" returned this result:
+${typeof cleanResult === 'string' ? cleanResult : JSON.stringify(cleanResult, null, 2).substring(0, 20000)}
+
+Your task is to present this data in a beautifully formatted, clear, and professional Markdown layout (e.g., tables, bulleted lists, or clean sections).
+Rules:
+1. STRICTLY NO EMOJIS.
+2. Be professional, direct, and hyper-minimalist.
+3. Avoid conversational filler (e.g., "Sure, here are the branches..."). Start directly with the formatted data or a clear header.
+4. Focus entirely on presenting the information requested by the user.
+`;
+
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        }),
+      });
+      if (!response.ok) throw new Error(`Gemini Summary Error: ${await response.text()}`);
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "No summary.";
+    }
+
+    if (provider === 'openai') {
+      const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: model || 'gpt-4o',
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
+      if (!response.ok) throw new Error(`OpenAI Summary Error: ${await response.text()}`);
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    if (provider === 'claude') {
+      const response = await this.fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: model || 'claude-3-5-sonnet-latest',
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
+      if (!response.ok) throw new Error(`Claude Summary Error: ${await response.text()}`);
+      const data = await response.json();
+      return data.content[0].text;
+    }
+
+    return "Summary provider not supported.";
+  }
+
   async analyzeGitError(
     error: string,
     context: string,
@@ -654,7 +805,7 @@ Keep it concise and helpful. Use markdown.
 `;
 
     if (provider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3-flash'}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

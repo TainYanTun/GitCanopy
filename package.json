@@ -79,7 +79,8 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "react-virtualized-auto-sizer": "^2.0.3",
-    "react-window": "^2.2.7"
+    "react-window": "^2.2.7",
+    "remark-gfm": "^4.0.1"
   },
   "build": {
     "appId": "com.gitcanopy.app",

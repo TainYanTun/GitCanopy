@@ -369,7 +369,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               onLoadMore={loadMoreCommits}
               hasMore={hasMore}
               onLoadAll={loadAllCommits}
-              onAiClick={handleAiToggle}
               isTimeMachineActive={isTimeMachineActive}
               onTimeMachineToggle={handleTimeMachineToggle}
               repoPath={repository.path}
@@ -991,7 +990,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <button
               onClick={() => setCurrentView("agent")}
               className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "agent" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
-              title="AI Agent (GitLab MCP)"
+              title="Mycelia AI Agent"
             >
               <RobotOutlined className="text-sm" />
             </button>

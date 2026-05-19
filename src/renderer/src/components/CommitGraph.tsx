@@ -21,7 +21,6 @@ interface CommitGraphProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   onLoadAll?: () => void;
-  onAiClick?: () => void;
   isTimeMachineActive?: boolean;
   onTimeMachineToggle?: () => void;
   repoPath?: string;
@@ -39,7 +38,6 @@ export const CommitGraph = memo(
     onLoadMore,
     hasMore,
     onLoadAll,
-    onAiClick,
     isTimeMachineActive,
     onTimeMachineToggle,
     repoPath,
@@ -1023,16 +1021,7 @@ export const CommitGraph = memo(
                 className="w-full bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border rounded-md pl-8 pr-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-zed-accent focus:border-zed-accent text-zed-text dark:text-zed-dark-text placeholder-zed-muted/40 dark:placeholder-zed-dark-muted/40 transition-all"
               />
             </div>
-            <button
-              onClick={onAiClick}
-              className="flex items-center gap-2 px-3 py-1 bg-zed-element dark:bg-zed-dark-element border border-zed-border dark:border-zed-dark-border rounded hover:border-zed-accent dark:hover:border-zed-dark-accent transition-all group"
-              title="Ask AI (Cmd+J)"
-            >
-              <RobotOutlined className="text-[10px] text-zed-accent dark:text-zed-dark-accent" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-zed-muted dark:text-zed-dark-muted group-hover:text-zed-accent dark:group-hover:text-zed-dark-accent">
-                AI Command
-              </span>
-            </button>
+
             <button
               onClick={onTimeMachineToggle}
               className={`flex items-center gap-2 px-3 py-1 border rounded transition-all group ${isTimeMachineActive ? "bg-zed-accent/10 border-zed-accent dark:border-zed-dark-accent" : "bg-zed-element dark:bg-zed-dark-element border-zed-border dark:border-zed-dark-border hover:border-zed-text dark:hover:border-zed-dark-text"}`}

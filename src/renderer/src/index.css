@@ -307,3 +307,199 @@
         scroll-behavior: auto !important;
     }
 }
+
+/* Premium Markdown Typography and Grid Styling for GitLab Agent */
+.markdown-content {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.011em;
+  line-height: 1.6;
+}
+
+/* Headers */
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: theme("colors.zed.text");
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.dark .markdown-content h1, 
+.dark .markdown-content h2, 
+.dark .markdown-content h3 {
+  color: #ffffff;
+}
+
+.markdown-content h2 {
+  font-size: 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 0.375rem;
+}
+
+.dark .markdown-content h2 {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.markdown-content h3 {
+  font-size: 13px;
+}
+
+/* Bold/Strong text */
+.markdown-content strong {
+  font-weight: 600;
+  color: theme("colors.zed.text");
+}
+
+.dark .markdown-content strong {
+  color: #ffffff;
+}
+
+/* Paragraphs & Text Output styling */
+.markdown-content p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: theme("colors.zed.text");
+  opacity: 0.95;
+}
+
+.dark .markdown-content p {
+  color: theme("colors.zed.dark.text");
+}
+
+/* Code Blocks & Inline Backticks */
+.markdown-content code {
+  font-family: theme("fontFamily.mono");
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: theme("colors.zed.element");
+  color: theme("colors.zed.accent");
+}
+
+.dark .markdown-content code {
+  background-color: theme("colors.zed.dark.element");
+  color: theme("colors.zed.dark.accent");
+}
+
+/* Tables */
+.markdown-content table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  font-size: 11.5px;
+  line-height: 1.5;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.dark .markdown-content table {
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.markdown-content th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  background-color: rgba(0, 0, 0, 0.02);
+  color: theme("colors.zed.muted");
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.06);
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.dark .markdown-content th {
+  background-color: rgba(255, 255, 255, 0.015);
+  color: theme("colors.zed.dark.muted");
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.06);
+}
+
+.markdown-content td {
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  color: theme("colors.zed.text");
+  vertical-align: middle;
+}
+
+.dark .markdown-content td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  color: theme("colors.zed.dark.text");
+}
+
+.markdown-content tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-content tr:nth-child(even) td {
+  background-color: rgba(0, 0, 0, 0.005);
+}
+
+.dark .markdown-content tr:nth-child(even) td {
+  background-color: rgba(255, 255, 255, 0.004);
+}
+
+.markdown-content tr:hover td {
+  background-color: rgba(59, 130, 246, 0.03) !important;
+}
+
+.dark .markdown-content tr:hover td {
+  background-color: rgba(97, 175, 239, 0.025) !important;
+}
+
+/* Branch name column styled like a code token */
+.markdown-content td:first-child {
+  font-family: theme("fontFamily.mono");
+  font-weight: 500;
+  font-size: 11px;
+}
+
+/* Monospace font styling for Committed Date */
+.markdown-content td:nth-child(4) {
+  font-family: theme("fontFamily.mono");
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* Bullet list and numbering styling */
+.markdown-content ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+  padding-left: 20px;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+/* Custom mention-token badges for @word elements */
+.markdown-content .mention-token {
+  background-color: rgba(97, 175, 239, 0.1) !important;
+  color: #61afef !important;
+  border: 1px solid rgba(97, 175, 239, 0.25) !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.light .markdown-content .mention-token {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  color: #2563eb !important;
+  border: 1px solid rgba(59, 130, 246, 0.15) !important;
+}

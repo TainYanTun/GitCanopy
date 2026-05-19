@@ -1,4 +1,4 @@
-import { net } from "electron";
+import fetch from "node-fetch";
 import { GitService } from "./git-service";
 import { SettingsService } from "./settings-service";
 import { logError } from "./logger-service";
@@ -179,35 +179,41 @@ export class GitHubService {
     return null;
   }
 
-  private fetchWithAuth(url: string, token: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const request = net.request(url);
-      request.setHeader("Authorization", `Bearer ${token}`);
-      request.setHeader("Accept", "application/vnd.github.v3+json");
-      request.setHeader("User-Agent", "GitCanopy");
+  private async fetchWithAuth(url: string, token: string, retries = 3): Promise<any> {
+    const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-      request.on("response", (response) => {
-        let data = "";
-        response.on("data", (chunk) => {
-          data += chunk.toString();
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "GitCanopy",
+            // Disable compression to prevent ERR_STREAM_PREMATURE_CLOSE from node-fetch Gunzip
+            "Accept-Encoding": "identity",
+          },
         });
-        response.on("end", () => {
-          if (response.statusCode >= 200 && response.statusCode < 300) {
-            try {
-              resolve(JSON.parse(data));
-            } catch (e) {
-              reject(e);
-            }
-          } else {
-            // Provide a clean error message without potentially sensitive response data
-            const errorMsg = `GitHub API error (${response.statusCode})`;
-            reject(new Error(errorMsg));
-          }
-        });
-        response.on("error", (error: any) => reject(error));
-      });
-      request.on("error", (error: any) => reject(error));
-      request.end();
-    });
+
+        if (!response.ok) {
+          throw new Error(`GitHub API error (${response.status})`);
+        }
+
+        return await response.json();
+      } catch (err: any) {
+        const isStreamError =
+          err?.code === "ERR_STREAM_PREMATURE_CLOSE" ||
+          err?.type === "system" ||
+          err?.message?.includes("Premature close");
+
+        if (isStreamError && attempt < retries) {
+          // Exponential backoff: 500ms, 1000ms, ...
+          await delay(500 * attempt);
+          continue;
+        }
+
+        throw err;
+      }
+    }
   }
 }
