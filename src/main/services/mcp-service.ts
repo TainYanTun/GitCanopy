@@ -138,6 +138,19 @@ export class McpService {
     } as any));
   }
 
+  async getServers(): Promise<{ id: string; name: string; status: string; toolCount: number }[]> {
+    return Array.from(this.processes.keys()).map(id => {
+      const toolsCount = Array.from(this.tools.values()).filter(t => t.serverId === id).length;
+      const process = this.processes.get(id);
+      return {
+        id,
+        name: id === 'gitlab' ? 'GitLab' : id,
+        status: process && !process.killed ? 'connected' : 'disconnected',
+        toolCount: toolsCount
+      };
+    });
+  }
+
   async callTool(toolName: string, args: any): Promise<any> {
     const toolInfo = this.tools.get(toolName);
     if (!toolInfo) throw new Error(`Tool ${toolName} not found.`);
@@ -232,9 +245,6 @@ export class McpService {
     return clean;
   }
 
-  /**
-   * Formats tools for Gemini's function calling API
-   */
   getGeminiTools(): any[] {
     const functionDeclarations = Array.from(this.tools.values()).map(({ tool }) => {
       const parameters = tool.inputSchema ? this.cleanSchemaForGemini(tool.inputSchema) : { type: 'OBJECT', properties: {} };
@@ -248,6 +258,7 @@ export class McpService {
     if (functionDeclarations.length === 0) return [];
 
     return [{
+      functionDeclarations: functionDeclarations,
       function_declarations: functionDeclarations
     }];
   }

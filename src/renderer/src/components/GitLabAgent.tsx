@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useToast } from "./ToastContext";
 import {
-  RobotOutlined,
   UserOutlined,
   SendOutlined,
   InfoCircleOutlined,
@@ -14,6 +13,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { McpTool } from "@shared/types";
+import { McpStatusPanel } from "./McpStatusPanel";
 
 const formatMentions = (text: string): string => {
   if (!text) return "";
@@ -50,6 +50,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
   const [gitlabProjectId, setGitlabProjectId] = useState<string | undefined>(
     undefined,
   );
+  const [showMcpStatus, setShowMcpStatus] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -117,48 +118,6 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
       showToast("Message copied to clipboard", "success", 1500);
     } catch (err) {
       showToast("Failed to copy", "error");
-    }
-  };
-
-  const handleQuickAction = async (prompt: string) => {
-    if (isAgentTyping) return;
-    setInputValue("");
-    setShowSuggestions(false);
-    const userMsg: ChatMessage = {
-      role: "user",
-      content: prompt,
-      timestamp: Date.now(),
-    };
-    setChatHistory((prev) => [...prev, userMsg]);
-    setIsAgentTyping(true);
-
-    try {
-      const status = await window.gitcanopyAPI.getStatus(repoPath);
-      const context = JSON.stringify({
-        project: projectName,
-        branch: currentBranch,
-        status: status.files,
-        ...(gitlabProjectPath && { gitlabProjectPath }),
-        ...(gitlabProjectId && { gitlabProjectId }),
-      });
-
-      const response = await window.gitcanopyAPI.triggerDuoAgent(
-        prompt,
-        context,
-      );
-
-      const agentMsg: ChatMessage = {
-        role: "agent",
-        content:
-          response?.message || "No response received from Mycelia Agent.",
-        timestamp: Date.now(),
-      };
-      setChatHistory((prev) => [...prev, agentMsg]);
-    } catch (error: any) {
-      showToast(error?.message || "Agent connection error", "error");
-    } finally {
-      setIsAgentTyping(false);
-      inputRef.current?.focus();
     }
   };
 
@@ -236,8 +195,14 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
 
   return (
     <div className="h-full w-full bg-zed-bg dark:bg-zed-dark-bg flex flex-col font-sans animate-in fade-in duration-700">
+      {/* MCP Modal Overlay */}
+      <McpStatusPanel 
+        visible={showMcpStatus} 
+        onClose={() => setShowMcpStatus(false)} 
+      />
+
       {/* Hyper-minimalist Context Bar */}
-      <div className="flex-shrink-0 px-8 py-4 border-b border-zed-border dark:border-zed-dark-border flex items-center justify-between bg-zed-surface/30 dark:bg-zed-dark-surface/30 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-8 py-4 border-b border-zed-border dark:border-zed-dark-border flex items-center justify-between bg-zed-surface/30 dark:bg-zed-dark-surface/30 backdrop-blur-sm relative z-50">
         <div className="flex items-center gap-4">
           <div className="w-9 h-9 rounded-none bg-gradient-to-tr from-violet-600 via-indigo-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/10">
             <NodeIndexOutlined className="text-lg animate-pulse" />
@@ -268,14 +233,17 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
           <span className="text-[9px] opacity-20 select-none">|</span>
 
           {/* MCP Status Indicator */}
-          <div className="flex items-center gap-1.5">
+          <button 
+            onClick={() => setShowMcpStatus(true)}
+            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+          >
             <span
               className={`w-1.5 h-1.5 ${availableTools.length > 0 ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}
             ></span>
             <span className="text-[9px] font-black uppercase tracking-[0.2em] select-none opacity-50">
               MCP
             </span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -283,11 +251,11 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
       <div className="flex-1 overflow-hidden relative">
         <div
           ref={chatScrollRef}
-          className="h-full overflow-y-auto custom-scrollbar"
+          className="h-full overflow-y-auto custom-scrollbar flex flex-col"
         >
-          <div className="max-w-4xl mx-auto px-8 py-12 space-y-12">
+          <div className={`max-w-4xl mx-auto px-8 py-12 space-y-12 w-full ${chatHistory.length === 0 ? 'flex-1 flex flex-col items-center justify-center' : ''}`}>
             {chatHistory.length === 0 && (
-              <div className="py-12 flex flex-col items-center justify-center space-y-10">
+              <div className="flex flex-col items-center justify-center space-y-10 animate-in fade-in zoom-in-95 duration-1000">
                 {/* Organic pulsing network SVG visualizer */}
                 <div className="relative flex items-center justify-center w-28 h-28">
                   <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-none blur-3xl animate-pulse"></div>
@@ -335,85 +303,6 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                     database schema, and Git actions to automate and inspect
                     your workspace.
                   </p>
-                </div>
-
-                {/* Suggestion Chips */}
-                <div className="grid grid-cols-2 gap-3 w-full max-w-2xl pt-4">
-                  <button
-                    onClick={() =>
-                      handleQuickAction(
-                        `Review the current uncommitted changes in the ${projectName} project on branch '${currentBranch}'${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}. Summarize what was modified and identify any potential issues.`,
-                      )
-                    }
-                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-indigo-500/50 hover:bg-indigo-500/[0.02] transition-all text-left group"
-                  >
-                    <CompassOutlined className="text-indigo-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
-                    <div>
-                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
-                        Review Changes
-                      </h4>
-                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
-                        Analyze your staging area and active diff outputs
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      handleQuickAction(
-                        `Draft a conventional commit message for my latest modifications in the ${projectName} project on branch '${currentBranch}'${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}.`,
-                      )
-                    }
-                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-purple-500/50 hover:bg-purple-500/[0.02] transition-all text-left group"
-                  >
-                    <ThunderboltOutlined className="text-purple-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
-                    <div>
-                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
-                        Draft Commit
-                      </h4>
-                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
-                        Generate semantic and descriptive commit drafts
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      handleQuickAction(
-                        `Show me the available Git tools and commands for the ${projectName} project${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}.`,
-                      )
-                    }
-                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-pink-500/50 hover:bg-pink-500/[0.02] transition-all text-left group"
-                  >
-                    <NodeIndexOutlined className="text-pink-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
-                    <div>
-                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
-                        Available Tools
-                      </h4>
-                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
-                        Explore the active Git MCP server tool suite
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      handleQuickAction(
-                        `Give me a brief status report of the ${projectName} repository on branch '${currentBranch}'${gitlabProjectPath ? ` (GitLab: ${gitlabProjectPath})` : ""}. Include modified files, potential risks, and suggested next steps.`,
-                      )
-                    }
-                    className="flex items-start gap-3 p-4 bg-zed-surface/40 dark:bg-zed-dark-surface/40 border border-zed-border/40 dark:border-zed-dark-border/40 rounded-none hover:border-teal-500/50 hover:bg-teal-500/[0.02] transition-all text-left group"
-                  >
-                    <InfoCircleOutlined className="text-teal-400 mt-0.5 text-sm group-hover:scale-110 transition-transform" />
-                    <div>
-                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zed-text dark:text-zed-dark-text">
-                        Status Report
-                      </h4>
-                      <p className="text-[9px] text-zed-muted mt-1 leading-normal">
-                        Get a snapshot of modifications and repository health
-                      </p>
-                    </div>
-                  </button>
                 </div>
               </div>
             )}
@@ -553,12 +442,12 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
         <div className="max-w-4xl mx-auto relative group">
           {/* Suggestions Dropdown */}
           {showSuggestions && hasSuggestions && (
-            <div className="absolute bottom-full left-0 w-96 max-h-60 mb-2 bg-white/95 dark:bg-zinc-950/95 border border-purple-500/30 rounded-md shadow-[0_12px_36px_rgba(0,0,0,0.2)] overflow-y-auto custom-scrollbar z-50 divide-y divide-zed-border/10 dark:divide-zed-dark-border/10">
+            <div className="absolute bottom-full left-0 w-96 max-h-60 mb-2 bg-zed-surface/95 dark:bg-zed-dark-surface/95 border border-zed-border dark:border-zed-dark-border rounded-md shadow-[0_12px_36px_rgba(0,0,0,0.2)] overflow-y-auto custom-scrollbar z-50 divide-y divide-zed-border/10 dark:divide-zed-dark-border/10">
               {filteredCommands.map((cmd) => (
                 <button
                   key={cmd.name}
                   onClick={() => handleSuggestionClick(cmd.name)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-purple-500/[0.04] dark:hover:bg-purple-500/[0.06] flex items-center justify-between transition-all group/item border-l-2 border-l-purple-500"
+                  className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-zed-dark-element flex items-center justify-between transition-all group/item border-l-2 border-l-purple-500"
                 >
                   <div className="flex flex-col">
                     <span className="text-[11px] font-mono font-bold tracking-wide text-purple-500 dark:text-purple-400 group-hover/item:translate-x-0.5 transition-transform">
@@ -577,7 +466,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                 <button
                   key={tool.name}
                   onClick={() => handleSuggestionClick(tool.name)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-indigo-500/[0.04] dark:hover:bg-indigo-500/[0.06] flex items-center justify-between transition-all group/item border-l-2 border-l-indigo-500"
+                  className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-zed-dark-element flex items-center justify-between transition-all group/item border-l-2 border-l-indigo-500"
                 >
                   <div className="flex flex-col">
                     <span className="text-[11px] font-mono font-bold tracking-wide text-indigo-500 dark:text-indigo-400 group-hover/item:translate-x-0.5 transition-transform">

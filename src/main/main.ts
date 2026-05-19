@@ -947,6 +947,7 @@ class GitCanopyApp {
     // MCP
     ipcMain.handle("mcp:connect-server", (_, config) => this.mcpService.connectServer(config));
     ipcMain.handle("mcp:get-all-tools", () => this.mcpService.getAllTools());
+    ipcMain.handle("mcp:get-servers", () => this.mcpService.getServers());
     ipcMain.handle("mcp:call-tool", (_, toolName, args) => this.mcpService.callTool(toolName, args));
   }
 

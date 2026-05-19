@@ -283,6 +283,7 @@ const gitcanopyAPI: GitCanopyAPI = {
   // MCP
   connectMcpServer: (config: any) => ipcRenderer.invoke("mcp:connect-server", config),
   getAllMcpTools: () => ipcRenderer.invoke("mcp:get-all-tools"),
+  getMcpServers: () => ipcRenderer.invoke("mcp:get-servers"),
   callMcpTool: (toolName: string, args: any) => ipcRenderer.invoke("mcp:call-tool", toolName, args),
 };
 

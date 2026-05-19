@@ -671,14 +671,20 @@ Response: git reset --soft HEAD~1
     }
 
     if (provider === 'openai') {
+      const allFunctions = tools[0]?.functionDeclarations || tools[0]?.function_declarations || [];
+      const openAiTools = allFunctions.map((f: any) => ({
+        type: 'function',
+        function: f
+      }));
+
       const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: model || 'gpt-4o',
           messages: [{ role: 'user', content: userPrompt }],
-          tools: tools.map(t => ({ type: 'function', function: t.function_declarations[0] })),
-          tool_choice: 'auto'
+          tools: openAiTools.length > 0 ? openAiTools : undefined,
+          tool_choice: openAiTools.length > 0 ? 'auto' : undefined
         }),
       });
 

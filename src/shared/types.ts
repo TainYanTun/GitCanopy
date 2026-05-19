@@ -366,6 +366,13 @@ export interface McpServerConfig {
   env?: Record<string, string>;
 }
 
+export interface McpServerStatus {
+  id: string;
+  name: string;
+  status: string;
+  toolCount: number;
+}
+
 export interface GitCanopyAPI {
   // Repository operations
   selectRepository: () => Promise<Repository | null>;
@@ -515,6 +522,7 @@ export interface GitCanopyAPI {
   // MCP
   connectMcpServer: (config: McpServerConfig) => Promise<void>;
   getAllMcpTools: () => Promise<McpTool[]>;
+  getMcpServers: () => Promise<McpServerStatus[]>;
   callMcpTool: (toolName: string, args: any) => Promise<any>;
 }
 
