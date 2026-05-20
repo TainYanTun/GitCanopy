@@ -692,16 +692,17 @@ class GitCanopyApp {
       const initialResponse = await this.gitLabAgentService.triggerAgent(
         prompt,
         context,
-        settings.gitlabToken,
-        settings.gitlabProjectId
+        settings.gitlabToken
       );
 
       // 2. Direct @ Tool Call Formatting
       const mcpCallAction = initialResponse.actions?.find(a => a.type === 'mcp_call');
       if (mcpCallAction && !initialResponse.actions?.find(a => a.type === 'agent_processing')) {
+        let finalMessage = initialResponse.message;
+        
         if (apiKey) {
             try {
-                logInfo("App", `Formatting direct tool output for: ${prompt}`);
+                logInfo("App", `Attempting AI summarization for: ${prompt}`);
                 const { tool, result } = mcpCallAction.payload;
                 const formattedMessage = await this.aiService.summarizeAgentResult(
                     prompt,
@@ -716,10 +717,17 @@ class GitCanopyApp {
                     message: formattedMessage
                 };
             } catch (err) {
-                logWarn("App", `AI formatting failed, returning raw: ${err}`);
-                return initialResponse;
+                logWarn("App", `AI summarization failed: ${err}`);
+                finalMessage = `${initialResponse.message}\n\n---\n**Notice**: AI summarization unavailable (${provider}). The service may be restricted in your region or unreachable. Showing raw tool output.`;
             }
+        } else {
+            finalMessage = `${initialResponse.message}\n\n---\n**Note**: Set up your **${provider.toUpperCase()} API Key** in **Settings** to enable AI summarization and formatting for Mycelia tools.`;
         }
+
+        return {
+            ...initialResponse,
+            message: finalMessage
+        };
       }
 
       // 3. Agentic Loop (for natural language)
@@ -736,17 +744,48 @@ class GitCanopyApp {
           if (!args.project_id && settings.gitlabProjectId) {
               args.project_id = settings.gitlabProjectId;
           }
+          if (!args.projectId && settings.gitlabProjectId) {
+              args.projectId = settings.gitlabProjectId;
+          }
+          if (!args.project_path && settings.gitlabProjectPath) {
+              args.project_path = settings.gitlabProjectPath;
+          }
+          if (!args.projectPath && settings.gitlabProjectPath) {
+              args.projectPath = settings.gitlabProjectPath;
+          }
+
+          // Validation: Ensure required project IDs are present before execution
+          const allTools = await this.mcpService.getAllTools();
+          const toolDef = allTools.find(t => t.name === name);
+          if (toolDef && toolDef.inputSchema?.required) {
+            const projectFields = ["project_id", "projectId", "project_path", "projectPath"];
+            const requiredProjectField = toolDef.inputSchema.required.find((p: string) => projectFields.includes(p));
+            
+            if (requiredProjectField && !args[requiredProjectField]) {
+              return {
+                message: `I'm trying to use the \`${name}\` tool, but I couldn't find a **Project ID** or **Project Path**. \n\nPlease provide your GitLab Project ID or configure it in **Settings** (top bar) so I can automate this for you.`
+              };
+            }
+          }
 
           logInfo("App", `Agent executing tool: ${name} with args: ${JSON.stringify(args)}`);
           const toolResult = await this.mcpService.callTool(name, args);
           
           // 5. Final Turn: Summarize results
-          const summary = await this.aiService.summarizeAgentResult(prompt, name, toolResult, apiKey, provider, model);
-          
-          return {
-            message: summary,
-            actions: [{ type: 'mcp_call', payload: { tool: name, args, result: toolResult } }]
-          };
+          try {
+            const summary = await this.aiService.summarizeAgentResult(prompt, name, toolResult, apiKey, provider, model);
+            
+            return {
+              message: summary,
+              actions: [{ type: 'mcp_call', payload: { tool: name, args, result: toolResult } }]
+            };
+          } catch (err) {
+            logWarn("App", `Agent AI summarization failed, returning raw: ${err}`);
+            return {
+              message: `### tool_execution_result: ${name}\n\n${JSON.stringify(toolResult, null, 2)}\n\n---\n**Notice**: AI summarization unavailable (${provider}). I executed the tool successfully, but the service was unreachable (likely a regional or network restriction). Showing raw data instead.`,
+              actions: [{ type: 'mcp_call', payload: { tool: name, args, result: toolResult } }]
+            };
+          }
         }
 
         return {

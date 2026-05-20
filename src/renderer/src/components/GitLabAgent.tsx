@@ -3,12 +3,9 @@ import { useToast } from "./ToastContext";
 import {
   UserOutlined,
   SendOutlined,
-  InfoCircleOutlined,
   CopyOutlined,
   CheckOutlined,
-  ThunderboltOutlined,
   NodeIndexOutlined,
-  CompassOutlined,
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -59,13 +56,6 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     try {
       const tools = await window.gitcanopyAPI.getAllMcpTools();
       setAvailableTools(tools);
-      if (tools.length > 0) {
-        showToast(
-          `Mycelia discovered ${tools.length} Git tools`,
-          "success",
-          1000,
-        );
-      }
     } catch (e) {
       console.error("Failed to fetch MCP tools", e);
     }
@@ -104,8 +94,23 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     }
   };
 
-  const handleSuggestionClick = (toolName: string) => {
-    setInputValue(`@${toolName} `);
+  const getRequiredParams = (tool: McpTool): string[] => {
+    if (!tool.inputSchema || !tool.inputSchema.required) return [];
+    // Filter out project-related IDs that are automatically injected
+    return tool.inputSchema.required.filter(
+      (p: string) =>
+        !["projectId", "project_id", "projectPath", "project_path"].includes(p),
+    );
+  };
+
+  const handleSuggestionClick = (tool: any, isCommand: boolean = false) => {
+    if (isCommand) {
+      setInputValue(`@${tool.name} `);
+    } else {
+      const params = getRequiredParams(tool);
+      const paramString = params.length > 0 ? params.map(p => `${p}=`).join(' ') : '';
+      setInputValue(`@${tool.name} ${paramString}${paramString ? ' ' : ''}`);
+    }
     setShowSuggestions(false);
     inputRef.current?.focus();
   };
@@ -299,8 +304,8 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                     Autonomous Repository AI
                   </h3>
                   <p className="text-[10px] tracking-wide text-zed-muted dark:text-zed-dark-muted max-w-sm mx-auto leading-relaxed">
-                    Mycelia is interconnected with your local environment,
-                    database schema, and Git actions to automate and inspect
+                    Mycelia is interconnected with your local environment
+                    and Git actions to automate and inspect
                     your workspace.
                   </p>
                 </div>
@@ -354,7 +359,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                           if (isInline) {
                             if (codeText.startsWith("@")) {
                               return (
-                                <span className="px-1.5 py-0.5 rounded-none bg-purple-500/10 dark:bg-purple-500/20 text-purple-500 dark:text-purple-400 font-mono text-[11px] border border-purple-500/20">
+                                <span className="text-purple-500 dark:text-purple-400 font-mono text-[11px] font-bold">
                                   {codeText}
                                 </span>
                               );
@@ -446,7 +451,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
               {filteredCommands.map((cmd) => (
                 <button
                   key={cmd.name}
-                  onClick={() => handleSuggestionClick(cmd.name)}
+                  onClick={() => handleSuggestionClick(cmd, true)}
                   className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-zed-dark-element flex items-center justify-between transition-all group/item border-l-2 border-l-purple-500"
                 >
                   <div className="flex flex-col">
@@ -462,25 +467,39 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                   </span>
                 </button>
               ))}
-              {filteredTools.map((tool) => (
-                <button
-                  key={tool.name}
-                  onClick={() => handleSuggestionClick(tool.name)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-zed-dark-element flex items-center justify-between transition-all group/item border-l-2 border-l-indigo-500"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-mono font-bold tracking-wide text-indigo-500 dark:text-indigo-400 group-hover/item:translate-x-0.5 transition-transform">
-                      @{tool.name}
+              {filteredTools.map((tool) => {
+                const requiredParams = getRequiredParams(tool);
+                return (
+                  <button
+                    key={tool.name}
+                    onClick={() => handleSuggestionClick(tool)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-zed-dark-element flex items-center justify-between transition-all group/item border-l-2 border-l-indigo-500"
+                  >
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono font-bold tracking-wide text-indigo-500 dark:text-indigo-400 group-hover/item:translate-x-0.5 transition-transform">
+                          @{tool.name}
+                        </span>
+                        {requiredParams.length > 0 && (
+                          <div className="flex gap-1 overflow-hidden">
+                            {requiredParams.map(p => (
+                              <span key={p} className="text-[8px] bg-indigo-500/10 text-indigo-500/70 px-1 rounded-sm font-mono border border-indigo-500/10">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-zed-muted/70 truncate max-w-[320px] mt-0.5">
+                        {tool.description || "MCP Git Action"}
+                      </span>
+                    </div>
+                    <span className="text-[8px] font-mono text-indigo-400/40 opacity-0 group-hover/item:opacity-100 transition-all select-none shrink-0">
+                      TAB to insert
                     </span>
-                    <span className="text-[9px] text-zed-muted/70 truncate max-w-[280px] mt-0.5">
-                      {tool.description || "MCP Git Action"}
-                    </span>
-                  </div>
-                  <span className="text-[8px] font-mono text-indigo-400/40 opacity-0 group-hover/item:opacity-100 transition-all select-none">
-                    TAB to insert
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
 

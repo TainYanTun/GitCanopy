@@ -549,6 +549,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
 
         <div className="flex items-center gap-2 no-drag">
+          <button
+            onClick={() => setCurrentView("agent")}
+            className={`flex items-center gap-1.5 px-2 py-1 transition-all duration-200 group ${
+              currentView === "agent"
+                ? "text-zed-accent opacity-100"
+                : "text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text"
+            }`}
+            title="Mycelia AI Agent"
+          >
+            <RobotOutlined
+              className={`text-[11px] transition-colors ${
+                currentView === "agent" ? "text-zed-accent" : "opacity-60 group-hover:opacity-100"
+              }`}
+            />
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]">
+              Mycelia
+            </span>
+          </button>
+
           <GitHubStatus
             repoPath={repository.path}
             currentBranch={repository.currentBranch}
@@ -986,13 +1005,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-            </button>
-            <button
-              onClick={() => setCurrentView("agent")}
-              className={`p-1.5 rounded-none transition-all duration-200 ${currentView === "agent" ? "bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zed-muted/50 dark:text-zed-dark-muted/80 hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element/50 dark:hover:bg-zed-dark-element"}`}
-              title="Mycelia AI Agent"
-            >
-              <RobotOutlined className="text-sm" />
             </button>
             <button
               onClick={() => setCurrentView("help")}

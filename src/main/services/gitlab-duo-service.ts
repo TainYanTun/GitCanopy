@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { logError, logInfo, logWarn } from './logger-service';
+import { logError, logInfo } from './logger-service';
 import { LRUCache } from 'lru-cache';
 import { McpService } from './mcp-service';
 import { AiService } from './ai-service';
@@ -28,8 +28,7 @@ export class GitLabAgentService {
   async triggerAgent(
     prompt: string,
     context: string,
-    gitlabToken: string,
-    gitlabProjectId?: string
+    gitlabToken: string
   ): Promise<GitLabAgentResponse> {
     if (!prompt) throw new Error("prompt_required");
     if (!gitlabToken) throw new Error("token_required");
@@ -43,7 +42,7 @@ export class GitLabAgentService {
       if (prompt.startsWith("@")) {
         const parts = prompt.substring(1).split(" ");
         const toolName = parts[0];
-        let args = {};
+        const args = {};
         
         // Very basic naive parser for @tool name=val
         parts.slice(1).forEach(p => {
@@ -51,12 +50,42 @@ export class GitLabAgentService {
             if (k && v) (args as any)[k] = v;
         });
 
-        // Default project_id if not provided
-        if (!(args as any).project_id && gitlabProjectId) {
-            (args as any).project_id = gitlabProjectId;
+        // 1. Context Auto-Injection:
+        // Automatically inject common variables from context if they are missing
+        let sessionContext: any = {};
+        try {
+          sessionContext = JSON.parse(context);
+        } catch (e) { /* ignore */ }
+
+        if (!(args as any).project_id && sessionContext.gitlabProjectId) {
+            (args as any).project_id = sessionContext.gitlabProjectId;
+        }
+        if (!(args as any).projectId && sessionContext.gitlabProjectId) {
+          (args as any).projectId = sessionContext.gitlabProjectId;
+        }
+        if (!(args as any).project_path && sessionContext.gitlabProjectPath) {
+          (args as any).project_path = sessionContext.gitlabProjectPath;
+        }
+        if (!(args as any).projectPath && sessionContext.gitlabProjectPath) {
+          (args as any).projectPath = sessionContext.gitlabProjectPath;
         }
 
-        logInfo("GitLabAgent", `exec_direct_tool: ${toolName}`);
+        // 2. Check for missing required project identifiers
+        const allTools = await this.mcpService.getAllTools();
+        const toolDef = allTools.find(t => t.name === toolName);
+        if (toolDef && toolDef.inputSchema?.required) {
+          const projectFields = ["project_id", "projectId", "project_path", "projectPath"];
+          const requiredProjectField = toolDef.inputSchema.required.find((p: string) => projectFields.includes(p));
+          
+          if (requiredProjectField && !(args as any)[requiredProjectField]) {
+            return {
+              message: `### project_context_required\n\nI need a **Project ID** or **Project Path** to execute \`@${toolName}\`. \n\nYou can:\n1. Provide it directly: \`@${toolName} ${requiredProjectField}=YOUR_ID\`\n2. Set it globally in **Settings** (top bar) so I can remember it for this repository.`,
+              actions: []
+            };
+          }
+        }
+
+        logInfo("GitLabAgent", `exec_direct_tool: ${toolName} with args: ${JSON.stringify(args)}`);
         const result = await this.mcpService.callTool(toolName, args);
         return {
           message: `### direct_tool_execution: ${toolName}\n\n${JSON.stringify(result, null, 2)}`,
