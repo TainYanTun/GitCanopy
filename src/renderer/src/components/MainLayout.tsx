@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import {
   Repository,
   Branch,
@@ -11,18 +11,11 @@ import { BranchExplorer } from "./BranchExplorer";
 import { CommitMiniLog } from "./CommitMiniLog";
 import { HotFiles } from "./HotFiles";
 import { CommitHistory } from "./CommitHistory";
-import { Contributors } from "./Contributors";
-import { GitObjectsGallery } from "./GitObjectsGallery";
 import { CommitGraph } from "./CommitGraph";
 import { CommitDetails } from "./CommitDetails";
 import { ChangesView } from "./ChangesView";
 import { BranchSwitcherModal } from "./BranchSwitcherModal";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { HelpView } from "./HelpView";
-import { GitConsole } from "./GitConsole";
-import { GitLabAgent } from "./GitLabAgent";
-import { GitHubStatus } from "./GitHubStatus";
-import { WorkflowRuns } from "./WorkflowRuns";
 import { SettingsModal } from "./SettingsModal";
 import { TimeMachineScrubber } from "./TimeMachineScrubber";
 import { GitCommandBar } from "./GitCommandBar";
@@ -31,6 +24,24 @@ import {
   SettingOutlined,
   RobotOutlined,
 } from "@ant-design/icons";
+
+// Lazy-loaded components
+const Contributors = lazy(() => import("./Contributors").then(m => ({ default: m.Contributors })));
+const GitObjectsGallery = lazy(() => import("./GitObjectsGallery").then(m => ({ default: m.GitObjectsGallery })));
+const HelpView = lazy(() => import("./HelpView").then(m => ({ default: m.HelpView })));
+const GitConsole = lazy(() => import("./GitConsole").then(m => ({ default: m.GitConsole })));
+const GitLabAgent = lazy(() => import("./GitLabAgent").then(m => ({ default: m.GitLabAgent })));
+const GitHubStatus = lazy(() => import("./GitHubStatus").then(m => ({ default: m.GitHubStatus })));
+const WorkflowRuns = lazy(() => import("./WorkflowRuns").then(m => ({ default: m.WorkflowRuns })));
+
+const LoadingView = () => (
+  <div className="h-full flex items-center justify-center bg-zed-bg dark:bg-zed-dark-bg">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-8 h-8 border-2 border-zed-accent border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-zed-muted animate-pulse">Loading View...</p>
+    </div>
+  </div>
+);
 
 interface MainLayoutProps {
   repository: Repository;
@@ -345,7 +356,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   }, [isTimeMachineActive, commits, timeMachineIndex, repository.headCommit]);
 
   const renderMainContent = () => {
-    switch (currentView) {
+    return (
+      <Suspense fallback={<LoadingView />}>
+        {(() => {
+          switch (currentView) {
       case "graph":
         return (
           <>
@@ -484,6 +498,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       default:
         return null;
     }
+  })()}
+</Suspense>
+    );
   };
 
   return (
@@ -501,6 +518,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       <SettingsModal
         visible={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        repoPath={repository.path}
       />
 
       <ConfirmDialog

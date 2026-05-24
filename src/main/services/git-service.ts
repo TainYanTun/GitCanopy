@@ -77,8 +77,9 @@ export class GitService {
   private commandHistory: GitCommandLog[] = [];
   private maxHistorySize = 100;
   private avatarCache = new LRUCache<string, string>({ max: 500 });
-  private branchesCache = new LRUCache<string, Branch[]>({ max: 10, ttl: 1000 * 60 }); // 60s cache
-  private tagsCache = new LRUCache<string, Map<string, string[]>>({ max: 10, ttl: 1000 * 60 }); // 60s cache
+  private branchesCache = new LRUCache<string, Branch[]>({ max: 20, ttl: 1000 * 30 }); // 30s cache
+  private repositoryCache = new LRUCache<string, Repository>({ max: 20, ttl: 1000 * 30 }); // 30s cache
+  private tagsCache = new LRUCache<string, Map<string, string[]>>({ max: 20, ttl: 1000 * 60 }); // 60s cache
   
   private authService: AuthService | null = null;
   private askPassScriptPath: string | null = null;
@@ -91,8 +92,28 @@ export class GitService {
     }
   }
 
+  public clearCache(repoPath?: string): void {
+    if (repoPath) {
+      const resolved = path.resolve(repoPath);
+      this.branchesCache.delete(resolved);
+      this.repositoryCache.delete(resolved);
+      this.tagsCache.delete(resolved);
+    } else {
+      this.branchesCache.clear();
+      this.repositoryCache.clear();
+      this.tagsCache.clear();
+    }
+  }
+
   public addAllowedRepository(repoPath: string): void {
     this.allowedRepositories.add(path.resolve(repoPath));
+  }
+
+  public validateRepoPath(repoPath: string): void {
+    const resolvedPath = path.resolve(repoPath);
+    if (!this.allowedRepositories.has(resolvedPath)) {
+      throw new Error(`Security Error: Access to unauthorized repository path blocked: ${repoPath}`);
+    }
   }
 
   public setAuthService(authService: AuthService) {
@@ -170,7 +191,11 @@ export class GitService {
     return writeCommands.has(args[0]);
   }
 
-  private async run(args: string[], cwd: string): Promise<string> {
+  private async run(args: string[], cwd: string, timeoutMs: number = 60000): Promise<string> {
+    if (cwd !== process.cwd()) {
+      this.validateRepoPath(cwd);
+    }
+
     const isWrite = this.isWriteCommand(args);
     const release = isWrite 
       ? await this.commandLock.acquireWrite() 
@@ -196,8 +221,14 @@ export class GitService {
         let stderr = "";
         const MAX_BUFFER_SIZE = 20 * 1024 * 1024; // Increased to 20MB for larger diffs
 
+        const timer = setTimeout(() => {
+          gitProcess.kill();
+          reject(new Error(`Git command timed out after ${timeoutMs / 1000}s: git ${args.join(' ')}`));
+        }, timeoutMs);
+
         gitProcess.stdout.on("data", (data) => {
           if (stdout.length + data.length > MAX_BUFFER_SIZE) {
+            clearTimeout(timer);
             gitProcess.kill();
             reject(new Error(`Git command output exceeded maximum buffer size of ${MAX_BUFFER_SIZE} bytes`));
             return;
@@ -208,22 +239,22 @@ export class GitService {
         gitProcess.stderr.on("data", (data) => (stderr += data));
 
         gitProcess.on("close", (code) => {
+          clearTimeout(timer);
           const duration = Date.now() - startTime;
           this.logCommand(args, code === 0, code || 0, duration);
 
           if (code === 0) {
             resolve(stdout);
           } else {
-            // If the process was killed due to buffer size, the reject is already handled.
-            if (stdout.length <= MAX_BUFFER_SIZE) {
+            // If the process was killed due to buffer size or timeout, the reject is already handled.
+            if (stdout.length <= MAX_BUFFER_SIZE && !gitProcess.killed) {
                reject(new Error(stderr || `Git command failed with code ${code}`));
             }
           }
         });
 
         gitProcess.on("error", (err) => {
-          const duration = Date.now() - startTime;
-          this.logCommand(args, false, -1, duration);
+          clearTimeout(timer);
           reject(err);
         });
       });
@@ -674,6 +705,11 @@ export class GitService {
   }
 
   async getRepository(repoPath: string): Promise<Repository> {
+    const resolved = path.resolve(repoPath);
+    if (this.repositoryCache.has(resolved)) {
+      return this.repositoryCache.get(resolved)!;
+    }
+
     // 0. Check if directory exists
     if (!fs.existsSync(repoPath)) {
       throw new Error(`Directory does not exist: ${repoPath}`);
@@ -688,7 +724,7 @@ export class GitService {
     }
 
     const name = repoPath.split("/").pop() || "Unknown";
-    
+
     // Parallel detection of states and data
     const [currentBranch, headCommit, branches, isRebasing, isMerging, isDetached, totalCommits, conflictOutput] = await Promise.all([
       this.getCurrentBranch(repoPath),
@@ -704,7 +740,7 @@ export class GitService {
 
     const hasConflicts = conflictOutput.trim().length > 0;
 
-    return {
+    const repository: Repository = {
       path: repoPath,
       name,
       isValidGit: true,
@@ -717,8 +753,10 @@ export class GitService {
       isDetached,
       hasConflicts
     };
-  }
 
+    this.repositoryCache.set(resolved, repository);
+    return repository;
+  }
   private async getTotalCommits(repoPath: string): Promise<number> {
     try {
       const output = await this.run(["rev-list", "--all", "--count"], repoPath);
@@ -1087,6 +1125,19 @@ export class GitService {
     await this.run(["config", "--global", key, value], process.cwd());
   }
 
+  async getLocalConfig(repoPath: string, key: string): Promise<string> {
+    try {
+      const output = await this.run(["config", "--local", "--get", key], repoPath);
+      return output.trim();
+    } catch {
+      return "";
+    }
+  }
+
+  async setLocalConfig(repoPath: string, key: string, value: string): Promise<void> {
+    await this.run(["config", "--local", key, value], repoPath);
+  }
+
 
   async getCommitDetails(repoPath: string, commitHash: string): Promise<Commit> {
     const args = ["show", "--pretty=format:%H|%P|%an|%ae|%ad|%s", "--numstat", "--date=raw", commitHash];
@@ -1195,6 +1246,35 @@ export class GitService {
       return output.trim();
     } catch {
       return "";
+    }
+  }
+
+  async inferGitLabProjectPath(repoPath: string): Promise<string | null> {
+    const remoteUrl = await this.getRemoteUrl(repoPath);
+    if (!remoteUrl) return null;
+
+    // Matches:
+    // https://gitlab.com/group/subgroup/project.git
+    // git@gitlab.com:group/subgroup/project.git
+    // https://my-gitlab-instance.com/group/project
+    
+    // 1. Remove .git suffix
+    let cleanUrl = remoteUrl.replace(/\.git$/, '');
+    
+    // 2. Handle SSH format: git@host:path
+    if (cleanUrl.includes('@') && cleanUrl.includes(':')) {
+        const pathPart = cleanUrl.split(':').pop();
+        return pathPart || null;
+    }
+
+    // 3. Handle HTTPS format: https://host/path
+    try {
+        const url = new URL(cleanUrl);
+        // Remove leading slash
+        const path = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+        return path || null;
+    } catch {
+        return null;
     }
   }
 

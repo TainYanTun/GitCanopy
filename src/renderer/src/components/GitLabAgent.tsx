@@ -60,7 +60,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     fetchTools();
     // Load GitLab project identity and AI provider from settings
     window.gitcanopyAPI
-      .getSettings()
+      .getSettings(repoPath)
       .then((s: any) => {
         if (s?.gitlabProjectPath) setGitlabProjectPath(s.gitlabProjectPath);
         if (s?.gitlabProjectId) setGitlabProjectId(s.gitlabProjectId);
@@ -74,7 +74,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [repoPath]);
 
   useEffect(() => {
     if (chatScrollRef.current) {

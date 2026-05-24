@@ -162,7 +162,7 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("unwatch-repository", repoPath),
 
   // Settings
-  getSettings: (): Promise<AppSettings> => ipcRenderer.invoke("get-settings"),
+  getSettings: (repoPath?: string): Promise<AppSettings> => ipcRenderer.invoke("get-settings", repoPath),
 
   saveSettings: (settings: AppSettings): Promise<void> =>
     ipcRenderer.invoke("save-settings", settings),
@@ -172,6 +172,12 @@ const gitcanopyAPI: GitCanopyAPI = {
 
   setGlobalConfig: (key: string, value: string): Promise<void> =>
     ipcRenderer.invoke("git:set-global-config", key, value),
+
+  getLocalConfig: (repoPath: string, key: string): Promise<string> =>
+    ipcRenderer.invoke("git:get-local-config", repoPath, key),
+
+  setLocalConfig: (repoPath: string, key: string, value: string): Promise<void> =>
+    ipcRenderer.invoke("git:set-local-config", repoPath, key, value),
 
   clearRecentRepositories: (): Promise<void> =>
     ipcRenderer.invoke("clear-recent-repositories"),

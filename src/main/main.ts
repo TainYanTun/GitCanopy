@@ -159,6 +159,20 @@ class GitCanopyApp {
           callback(false);
         },
       );
+
+      // 5. Set strict CSP
+      contents.session.webRequest.onHeadersReceived((details, callback) => {
+        const csp = isDev 
+          ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3000 ws://localhost:3000; img-src 'self' data: https:; connect-src 'self' http://localhost:3000 ws://localhost:3000 https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://gitlab.com;"
+          : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://gitlab.com; frame-src 'none'; object-src 'none';";
+        
+        callback({
+          responseHeaders: {
+            ...details.responseHeaders,
+            'Content-Security-Policy': [csp]
+          }
+        });
+      });
     });
   }
 
@@ -897,7 +911,8 @@ class GitCanopyApp {
     ipcMain.handle("get-file-data-url",
       async (_, repoPath: string, filePath: string) => {
         try {
-          // Security: Prevent path traversal
+          // Security: Validate authorized repo and prevent path traversal
+          this.gitService.validateRepoPath(repoPath);
           const absolutePath = path.resolve(repoPath, filePath);
           const resolvedRepoPath = path.resolve(repoPath);
 
@@ -941,7 +956,11 @@ class GitCanopyApp {
 
     // File system operations
     ipcMain.handle("watch-repository", (_, repoPath: string) => {
+      this.gitService.validateRepoPath(repoPath);
       this.repositoryWatcher.watchRepository(repoPath, (event) => {
+        // Clear GitService cache for this repository on any change
+        this.gitService.clearCache(repoPath);
+        
         // Send specific event type to renderer
         this.mainWindow?.webContents.send(event.type, event);
       });
@@ -951,7 +970,31 @@ class GitCanopyApp {
     );
 
     // Settings
-    ipcMain.handle("get-settings", () => this.settingsService.getSettings());
+    ipcMain.handle("get-settings", async (_, repoPath?: string) => {
+      const settings = await this.settingsService.getSettings();
+
+      if (repoPath) {
+        try {
+          const [localProjectId, localProjectPath, inferredPath] = await Promise.all([
+            this.gitService.getLocalConfig(repoPath, "gitcanopy.gitlabProjectId"),
+            this.gitService.getLocalConfig(repoPath, "gitcanopy.gitlabProjectPath"),
+            this.gitService.inferGitLabProjectPath(repoPath)
+          ]);
+
+          if (localProjectId) settings.gitlabProjectId = localProjectId;
+          if (localProjectPath) {
+            settings.gitlabProjectPath = localProjectPath;
+          } else if (inferredPath && !settings.gitlabProjectPath) {
+            // Use inferred path if no local OR global path is set
+            settings.gitlabProjectPath = inferredPath;
+          }
+        } catch (e) {
+          logWarn("App", `Failed to load local settings for ${repoPath}: ${e}`);
+        }
+      }
+
+      return settings;
+    });
     ipcMain.handle("save-settings", (_, settings) =>
       this.settingsService.saveSettings(settings),
     );
@@ -961,7 +1004,12 @@ class GitCanopyApp {
     ipcMain.handle("git:set-global-config", (_, key: string, value: string) =>
       this.gitService.setGlobalConfig(key, value),
     );
-    ipcMain.handle("execute-raw-git-command", (_, repoPath: string, command: string) =>
+    ipcMain.handle("git:get-local-config", (_, repoPath: string, key: string) =>
+      this.gitService.getLocalConfig(repoPath, key),
+    );
+    ipcMain.handle("git:set-local-config", (_, repoPath: string, key: string, value: string) =>
+      this.gitService.setLocalConfig(repoPath, key, value),
+    );    ipcMain.handle("execute-raw-git-command", (_, repoPath: string, command: string) =>
       this.gitService.executeRawCommand(repoPath, command),
     );
     ipcMain.handle("clear-recent-repositories", () =>

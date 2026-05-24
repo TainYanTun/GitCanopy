@@ -486,10 +486,12 @@ export interface GitCanopyAPI {
   unwatchRepository: (repoPath: string) => Promise<void>;
 
   // Settings
-  getSettings: () => Promise<AppSettings>;
+  getSettings: (repoPath?: string) => Promise<AppSettings>;
   saveSettings: (settings: AppSettings) => Promise<void>;
   getGlobalConfig: (key: string) => Promise<string>;
   setGlobalConfig: (key: string, value: string) => Promise<void>;
+  getLocalConfig: (repoPath: string, key: string) => Promise<string>;
+  setLocalConfig: (repoPath: string, key: string, value: string) => Promise<void>;
   clearRecentRepositories: () => Promise<void>;
   executeRawGitCommand: (repoPath: string, command: string) => Promise<{ success: boolean; stdout: string; stderr: string }>;
 

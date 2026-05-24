@@ -136,7 +136,7 @@ ${cleanDiff}
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { responseMimeType: "application/json" }
         }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     } else if (provider === 'openai') {
@@ -148,7 +148,7 @@ ${cleanDiff}
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' }
         }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       content = data.choices[0].message.content;
     } else if (provider === 'claude') {
@@ -160,7 +160,7 @@ ${cleanDiff}
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }]
         }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       content = data.content[0].text;
     }
@@ -260,7 +260,7 @@ ${cleanDiff}
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { responseMimeType: "application/json" }
         }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     } else if (provider === 'openai') {
@@ -272,7 +272,7 @@ ${cleanDiff}
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' }
         }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       content = data.choices[0].message.content;
     } else if (provider === 'claude') {
@@ -284,7 +284,7 @@ ${cleanDiff}
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }]
         }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       content = data.content[0].text;
     }
@@ -406,11 +406,12 @@ ${this.filterDiff(diff)}
     }
   }
 
-  private async fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000): Promise<any> {
+  private async fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000, timeoutMs = 60000): Promise<any> {
+    const timeoutSec = Math.round(timeoutMs / 1000);
     for (let i = 0; i < retries; i++) {
-      // Create a fresh AbortController per attempt so the 30s timeout resets between retries
+      // Create a fresh AbortController per attempt so the timeout resets between retries
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
         const response = await fetch(url, { ...options, signal: controller.signal });
@@ -425,7 +426,7 @@ ${this.filterDiff(diff)}
         return response;
       } catch (err: any) {
         clearTimeout(timeout);
-        if (err.name === 'AbortError') throw new Error("Request timed out after 30 seconds.");
+        if (err.name === 'AbortError') throw new Error(`Request timed out after ${timeoutSec} seconds.`);
         if (i === retries - 1) throw err;
         await new Promise(resolve => setTimeout(resolve, backoff));
         backoff *= 2;
@@ -433,7 +434,7 @@ ${this.filterDiff(diff)}
     }
     // Final fallback attempt
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await fetch(url, { ...options, signal: controller.signal });
     } finally {
@@ -531,7 +532,7 @@ ${diff.substring(0, 30000)}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "No explanation.";
     } else if (provider === 'openai') {
@@ -539,7 +540,7 @@ ${diff.substring(0, 30000)}
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({ model: model || 'gpt-4o', messages: [{ role: 'user', content: prompt }] }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       return data.choices[0].message.content;
     } else if (provider === 'claude') {
@@ -547,7 +548,7 @@ ${diff.substring(0, 30000)}
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ model: model || 'claude-3-5-sonnet-latest', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),
-      });
+      }, 3, 1000, 120000);
       const data = await response.json();
       return data.content[0].text;
     }
@@ -702,7 +703,7 @@ Response: git reset --soft HEAD~1
             parts: [{ text: systemInstructionText }]
           }
         }),
-      });
+      }, 3, 1000, 120000);
 
       if (!response.ok) {
         let errorDetail = "";
@@ -767,7 +768,7 @@ Response: git reset --soft HEAD~1
           tools: openAiTools.length > 0 ? openAiTools : undefined,
           tool_choice: openAiTools.length > 0 ? 'auto' : undefined
         }),
-      });
+      }, 3, 1000, 120000);
 
       if (!response.ok) {
         let errorDetail = "";
@@ -842,7 +843,7 @@ Rules:
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }]
         }),
-      });
+      }, 3, 1000, 120000);
       
       if (!response.ok) {
         let errorDetail = "";
@@ -867,7 +868,7 @@ Rules:
           model: model || 'gpt-4o',
           messages: [{ role: 'user', content: prompt }]
         }),
-      });
+      }, 3, 1000, 120000);
       
       if (!response.ok) {
         let errorDetail = "";
@@ -893,7 +894,7 @@ Rules:
           max_tokens: 2048,
           messages: [{ role: 'user', content: prompt }]
         }),
-      });
+      }, 3, 1000, 120000);
       
       if (!response.ok) {
         let errorDetail = "";

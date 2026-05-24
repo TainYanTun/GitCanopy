@@ -15,22 +15,37 @@ import { useTheme } from "./ThemeContext";
 interface SettingsModalProps {
   visible: boolean;
   onClose: () => void;
+  repoPath?: string;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose, repoPath }) => {
   const { setTheme: setAppTheme } = useTheme();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'github' | 'gitlab'>('general');
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Local override state
+  const [isLocalProjectId, setIsLocalProjectId] = useState(false);
+  const [isLocalProjectPath, setIsLocalProjectPath] = useState(false);
 
   // Identity state
   const [identity, setIdentity] = useState({ name: '', email: '' });
 
   useEffect(() => {
     if (visible) {
-      window.gitcanopyAPI.getSettings().then(setSettings);
+      window.gitcanopyAPI.getSettings(repoPath).then(setSettings);
       
+      if (repoPath) {
+        Promise.all([
+          window.gitcanopyAPI.getLocalConfig(repoPath, 'gitcanopy.gitlabProjectId'),
+          window.gitcanopyAPI.getLocalConfig(repoPath, 'gitcanopy.gitlabProjectPath')
+        ]).then(([projectId, projectPath]) => {
+          setIsLocalProjectId(!!projectId);
+          setIsLocalProjectPath(!!projectPath);
+        });
+      }
+
       // Fetch git identity
       Promise.all([
         window.gitcanopyAPI.getGlobalConfig('user.name'),
@@ -39,13 +54,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         setIdentity({ name, email });
       });
     }
-  }, [visible]);
+  }, [visible, repoPath]);
 
   const handleSave = async () => {
     if (!settings) return;
     setSaving(true);
     try {
-      await window.gitcanopyAPI.saveSettings(settings);
+      // 1. Save global settings (minus local overrides)
+      const globalSettings = { ...settings };
+      
+      // If saving as local, don't update global settings with these values
+      // Wait, getSettings already merges local into the object. 
+      // If we want to save them LOCALLY, we should write them to git config and 
+      // possibly NOT save them to settings.json if the user intended for them to be local only.
+      
+      await window.gitcanopyAPI.saveSettings(globalSettings);
+      
+      // 2. Handle local overrides
+      if (repoPath) {
+        if (isLocalProjectId) {
+          await window.gitcanopyAPI.setLocalConfig(repoPath, 'gitcanopy.gitlabProjectId', settings.gitlabProjectId || '');
+        } else {
+          // If unchecked, clear local config so it falls back to global
+          await window.gitcanopyAPI.setLocalConfig(repoPath, 'gitcanopy.gitlabProjectId', '');
+        }
+
+        if (isLocalProjectPath) {
+          await window.gitcanopyAPI.setLocalConfig(repoPath, 'gitcanopy.gitlabProjectPath', settings.gitlabProjectPath || '');
+        } else {
+          await window.gitcanopyAPI.setLocalConfig(repoPath, 'gitcanopy.gitlabProjectPath', '');
+        }
+      }
       
       // Sync theme with context
       if (settings.theme) {
@@ -359,7 +398,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                       
                       <div className="grid grid-cols-2 gap-4 pt-2">
                         <div className="space-y-1">
-                          <label className="text-xs font-bold opacity-70">Project ID</label>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold opacity-70">Project ID</label>
+                            {repoPath && (
+                              <label className="flex items-center gap-1.5 cursor-pointer group select-none">
+                                <input 
+                                  type="checkbox" 
+                                  checked={isLocalProjectId}
+                                  onChange={(e) => setIsLocalProjectId(e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded-sm border-zed-border bg-zed-bg text-zed-accent focus:ring-zed-accent focus:ring-offset-0 dark:border-zed-dark-border dark:bg-zed-dark-bg transition-all cursor-pointer"
+                                />
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-zed-muted group-hover:text-zed-accent transition-colors">Repo Only</span>
+                              </label>
+                            )}
+                          </div>
                           <input
                             type="text"
                             value={settings.gitlabProjectId || ''}
@@ -372,7 +424,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold opacity-70">Project Path</label>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold opacity-70">Project Path</label>
+                            {repoPath && (
+                              <label className="flex items-center gap-1.5 cursor-pointer group select-none">
+                                <input 
+                                  type="checkbox" 
+                                  checked={isLocalProjectPath}
+                                  onChange={(e) => setIsLocalProjectPath(e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded-sm border-zed-border bg-zed-bg text-zed-accent focus:ring-zed-accent focus:ring-offset-0 dark:border-zed-dark-border dark:bg-zed-dark-bg transition-all cursor-pointer"
+                                />
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-zed-muted group-hover:text-zed-accent transition-colors">Repo Only</span>
+                              </label>
+                            )}
+                          </div>
                           <input
                             type="text"
                             value={settings.gitlabProjectPath || ''}

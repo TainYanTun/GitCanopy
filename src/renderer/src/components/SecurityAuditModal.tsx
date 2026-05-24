@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Modal } from "antd";
 import {
   SafetyCertificateOutlined,
   CloseOutlined,
-  WarningOutlined,
   CopyOutlined,
   CheckOutlined,
   ExclamationCircleOutlined,
@@ -11,6 +10,7 @@ import {
   GlobalOutlined,
   CheckCircleOutlined,
   GitlabOutlined,
+  CaretRightOutlined,
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import { SecurityAuditResult } from "@shared/types";
@@ -23,6 +23,60 @@ interface SecurityAuditModalProps {
   loading: boolean;
 }
 
+// ── Severity config ────────────────────────────────────────────────────────────
+const SEV = {
+  critical: {
+    border: "border-l-red-500",
+    dot: "bg-red-500",
+    text: "text-red-500 dark:text-red-400",
+    chip: "text-red-500 dark:text-red-400 bg-red-500/8 border-red-500/20 hover:bg-red-500/15",
+    chipActive: "bg-red-500 text-white border-red-500",
+  },
+  high: {
+    border: "border-l-orange-400",
+    dot: "bg-orange-400",
+    text: "text-orange-400",
+    chip: "text-orange-400 bg-orange-400/8 border-orange-400/20 hover:bg-orange-400/15",
+    chipActive: "bg-orange-400 text-white border-orange-400",
+  },
+  medium: {
+    border: "border-l-yellow-400",
+    dot: "bg-yellow-400",
+    text: "text-yellow-500 dark:text-yellow-400",
+    chip: "text-yellow-500 dark:text-yellow-400 bg-yellow-400/8 border-yellow-400/20 hover:bg-yellow-400/15",
+    chipActive: "bg-yellow-400 text-white border-yellow-400",
+  },
+  low: {
+    border: "border-l-blue-400",
+    dot: "bg-blue-400",
+    text: "text-blue-400",
+    chip: "text-blue-400 bg-blue-400/8 border-blue-400/20 hover:bg-blue-400/15",
+    chipActive: "bg-blue-400 text-white border-blue-400",
+  },
+} as const;
+
+type Severity = keyof typeof SEV;
+
+const getSev = (s: string) =>
+  SEV[(s as Severity) in SEV ? (s as Severity) : "low"];
+
+const LOADING_STEPS = [
+  "Scanning hardcoded secrets...",
+  "Checking SQL injection vectors...",
+  "Detecting XSS surfaces...",
+  "Auditing dependency chain...",
+  "Validating compliance (GDPR / HIPAA)...",
+  "Generating report...",
+];
+
+const TYPE_ICON: Record<string, React.ReactNode> = {
+  secret: <LockOutlined />,
+  vulnerability: <ExclamationCircleOutlined />,
+  compliance: <GlobalOutlined />,
+  default: <SafetyCertificateOutlined />,
+};
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({
   visible,
   onClose,
@@ -32,303 +86,478 @@ export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({
   const [loadingStep, setLoadingStep] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
   const [isCreatingIssue, setIsCreatingIssue] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<Severity | "all">("all");
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
-  const steps = [
-    "Scanning for hardcoded secrets...",
-    "Analyzing for SQL injection...",
-    "Checking XSS vulnerabilities...",
-    "Validating dependency security...",
-    "Checking compliance (GDPR/HIPAA)...",
-    "Finalizing security report...",
-  ];
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (visible) {
+      setActiveFilter("all");
+      setExpandedIds(new Set());
+      setAllExpanded(false);
+      setMounted(false);
+      // Stagger mount for entrance animation
+      const t = setTimeout(() => setMounted(true), 50);
+      return () => clearTimeout(t);
+    }
+  }, [visible]);
 
+  // Loading step ticker
   useEffect(() => {
     if (!loading) {
       setLoadingStep(0);
       return;
     }
-
     const interval = setInterval(() => {
-      setLoadingStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev));
-    }, 1000);
-
+      setLoadingStep((prev) =>
+        prev < LOADING_STEPS.length - 1 ? prev + 1 : prev,
+      );
+    }, 900);
     return () => clearInterval(interval);
   }, [loading]);
 
+  // ── Derived values ───────────────────────────────────────────────────────────
+  const findings = result?.findings ?? [];
+
+  const severityCounts = findings.reduce<Record<string, number>>((acc, f) => {
+    acc[f.severity] = (acc[f.severity] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const presentSeverities = (
+    ["critical", "high", "medium", "low"] as Severity[]
+  ).filter((s) => severityCounts[s]);
+
+  const filteredFindings =
+    activeFilter === "all"
+      ? findings
+      : findings.filter((f) => f.severity === activeFilter);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+  const toggleExpand = (i: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allExpanded) {
+      setExpandedIds(new Set());
+    } else {
+      setExpandedIds(new Set(filteredFindings.map((_, i) => i)));
+    }
+    setAllExpanded((v) => !v);
+  };
+
   const handleCopyReport = async () => {
     if (!result) return;
-
-    const reportText = `
-# AI Security Audit Report
-Status: ${result.isSafe ? "SAFE" : "RISKS DETECTED"}
-
-## Summary
-${result.summary}
-
-## Findings (${result.findings.length})
-${result.findings
-  .map(
-    (f) =>
-      `- [${f.type.toUpperCase()}] (${f.severity}): ${f.message}\n  File: ${f.file}\n  Remediation: ${f.remediation}`,
-  )
-  .join("\n\n")}
-    `.trim();
+    const text = [
+      "# Security Audit Report",
+      `Status: ${result.isSafe ? "SAFE" : "RISKS DETECTED"}`,
+      "",
+      "## Summary",
+      result.summary,
+      "",
+      `## Findings (${findings.length})`,
+      ...findings.map(
+        (f) =>
+          `\n### [${f.severity.toUpperCase()}] ${f.message}\nType: ${f.type}\nFile: ${f.file}\nRemediation: ${f.remediation}`,
+      ),
+    ].join("\n");
 
     try {
-      await window.gitcanopyAPI.copyToClipboard(reportText);
+      await window.gitcanopyAPI.copyToClipboard(text);
       setIsCopied(true);
-      showToast("Security report copied", "success", 2000);
+      showToast("Report copied", "success", 2000);
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      showToast("Failed to copy report", "error");
+    } catch {
+      showToast("Failed to copy", "error");
     }
   };
 
   const handleCreateIssue = async () => {
-    if (!result || !result.findings.length) return;
+    if (!result || !findings.length) return;
     setIsCreatingIssue(true);
-
     try {
-      const title = `Security Audit Findings: ${result.findings.length} Issues Detected`;
-      const description = `
-# Automated Security Audit Report
-
-**Summary:** ${result.summary}
-
-## Findings
-
-${result.findings
-  .map(
-    (f) => `### ${f.message}
-- **Type:** ${f.type}
-- **Severity:** ${f.severity}
-- **File:** \`${f.file}\`
-- **Remediation:** ${f.remediation}
-
-\`\`\`javascript
-${f.snippet || "// No snippet provided"}
-\`\`\`
-`,
-  )
-  .join("\n")}
-
----
-*Report generated by GitCanopy Guardian Agent*
-      `.trim();
+      const title = `Security Audit: ${findings.length} Issue${findings.length !== 1 ? "s" : ""} Detected`;
+      const description = [
+        "# Automated Security Audit Report",
+        "",
+        `**Summary:** ${result.summary}`,
+        "",
+        "## Findings",
+        "",
+        ...findings.map(
+          (f) =>
+            `### ${f.message}\n- **Type:** ${f.type}\n- **Severity:** ${f.severity}\n- **File:** \`${f.file}\`\n- **Remediation:** ${f.remediation}\n\n\`\`\`javascript\n${f.snippet ?? "// No snippet"}\n\`\`\``,
+        ),
+        "",
+        "---",
+        "*Generated by GitCanopy Guardian Agent*",
+      ].join("\n");
 
       const { webUrl } = await window.gitcanopyAPI.createGitLabIssue(
         title,
         description,
       );
-      showToast("GitLab Issue Created Successfully!", "success");
+      showToast("GitLab issue created", "success");
       window.gitcanopyAPI.openExternal(webUrl);
-    } catch (error: any) {
-      showToast(error.message || "Failed to create issue", "error");
+    } catch (err: any) {
+      showToast(err.message || "Failed to create issue", "error");
     } finally {
       setIsCreatingIssue(false);
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "text-red-600 bg-red-600/10 border-red-600/20";
-      case "high":
-        return "text-orange-600 bg-orange-600/10 border-orange-600/20";
-      case "medium":
-        return "text-yellow-600 bg-yellow-600/10 border-yellow-600/20";
-      default:
-        return "text-blue-600 bg-blue-600/10 border-blue-600/20";
-    }
-  };
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "secret":
-        return <LockOutlined />;
-      case "vulnerability":
-        return <ExclamationCircleOutlined />;
-      case "compliance":
-        return <GlobalOutlined />;
-      default:
-        return <SafetyCertificateOutlined />;
-    }
-  };
-
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <Modal
       title={null}
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={640}
       centered
       classNames={{
         content:
-          "p-0 overflow-hidden bg-white dark:bg-zed-dark-bg rounded-xl border border-zed-border dark:border-zed-dark-border shadow-2xl",
-        mask: "backdrop-blur-md bg-black/50",
+          "!p-0 overflow-hidden !bg-white dark:!bg-[#181a1f] !rounded-lg !border !border-zed-border dark:!border-zed-dark-border !shadow-2xl",
+        mask: "backdrop-blur-sm bg-black/40",
       }}
       closeIcon={null}
     >
+      {/* ══ LOADING ══════════════════════════════════════════════════════════ */}
       {loading ? (
-        <div className="h-96 flex flex-col items-center justify-center bg-zed-bg dark:bg-zed-dark-bg">
-          <div className="relative mb-8">
-            <div className="w-16 h-16 border-2 border-zed-accent/20 rounded-full animate-ping absolute" />
-            <div className="w-16 h-16 border-b-2 border-zed-accent rounded-full animate-spin" />
-            <SafetyCertificateOutlined className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl text-zed-accent" />
+        <div className="h-64 flex flex-col items-center justify-center gap-5 px-8">
+          {/* Thin ring spinner */}
+          <div className="relative w-7 h-7">
+            <div className="absolute inset-0 rounded-full border border-zed-border dark:border-zed-dark-border" />
+            <div className="absolute inset-0 rounded-full border-t border-zed-accent dark:border-zed-dark-accent animate-spin" />
           </div>
-          <div className="text-center space-y-3">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zed-accent">
-              Pre-Push Guardian Active
-            </h3>
-            <p className="text-sm font-medium text-zed-text dark:text-zed-dark-text animate-pulse">
-              {steps[loadingStep]}
+
+          <div className="text-center space-y-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-zed-muted dark:text-zed-dark-muted">
+              Security Guard
             </p>
+            <p
+              key={loadingStep}
+              className="text-[12px] text-zed-text dark:text-zed-dark-text tabular-nums transition-all"
+              style={{ animation: "fadeSlideIn 0.3s ease" }}
+            >
+              {LOADING_STEPS[loadingStep]}
+            </p>
+
+            {/* Progress bar */}
+            <div className="w-40 h-px bg-zed-border dark:bg-zed-dark-border rounded-full overflow-hidden mx-auto mt-1">
+              <div
+                className="h-full bg-zed-accent dark:bg-zed-dark-accent rounded-full transition-all duration-700"
+                style={{
+                  width: `${((loadingStep + 1) / LOADING_STEPS.length) * 100}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : result ? (
-        <div className="flex flex-col max-h-[90vh]">
-          {/* Header */}
-          <div
-            className={`px-8 py-6 border-b border-zed-border dark:border-zed-dark-border flex items-start justify-between ${result.isSafe ? "bg-emerald-50/50 dark:bg-emerald-500/5" : "bg-red-50/50 dark:bg-red-500/5"}`}
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  className={`p-2 rounded-lg ${result.isSafe ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}`}
-                >
-                  {result.isSafe ? (
-                    <CheckCircleOutlined className="text-2xl" />
-                  ) : (
-                    <WarningOutlined className="text-2xl" />
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text">
-                    {result.isSafe
-                      ? "Security Audit Passed"
-                      : "Security Risks Detected"}
-                  </h2>
-                  <p className="text-xs text-zed-muted opacity-70">
-                    {result.findings.length} findings identified in staged
-                    changes
-                  </p>
-                </div>
-              </div>
-              <div className="prose dark:prose-invert prose-sm max-w-none text-zed-text/80 dark:text-zed-dark-text/80">
-                <ReactMarkdown>{result.summary}</ReactMarkdown>
+        /* ══ RESULT ════════════════════════════════════════════════════════ */
+        <div
+          className="flex flex-col max-h-[88vh]"
+          style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? "none" : "translateY(4px)",
+            transition: "opacity 0.2s ease, transform 0.2s ease",
+          }}
+        >
+          {/* ── Header ────────────────────────────────────────────────────── */}
+          <div className="px-5 py-4 flex items-center justify-between border-b border-zed-border dark:border-zed-dark-border">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Pulsing status dot */}
+              <span className="relative flex h-2 w-2 shrink-0">
+                {!result.isSafe && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-60" />
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${result.isSafe ? "bg-emerald-500" : "bg-red-500"}`}
+                />
+              </span>
+
+              <div className="min-w-0">
+                <h2 className="text-[13px] font-semibold text-zed-text dark:text-zed-dark-text leading-none">
+                  {result.isSafe ? "No risks detected" : "Security risks found"}
+                </h2>
+                <p className="text-[11px] text-zed-muted dark:text-zed-dark-muted mt-0.5">
+                  {findings.length === 0
+                    ? "All staged changes passed"
+                    : `${findings.length} finding${findings.length !== 1 ? "s" : ""} · staged changes`}
+                </p>
               </div>
             </div>
+
+            {/* Severity summary pills (header-right) */}
+            {findings.length > 0 && (
+              <div className="flex items-center gap-1.5 mr-3">
+                {presentSeverities.map((s) => (
+                  <span
+                    key={s}
+                    className={`text-[9px] font-bold tabular-nums px-1.5 py-0.5 rounded ${getSev(s).text} bg-current/10`}
+                    style={{ background: "transparent" }}
+                  >
+                    <span
+                      className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${getSev(s).dot}`}
+                      style={{ display: "inline-block", verticalAlign: "middle", marginBottom: 1 }}
+                    />
+                    {severityCounts[s]}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <button
               onClick={onClose}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zed-muted transition-colors"
+              className="p-1 rounded text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text hover:bg-zed-element dark:hover:bg-zed-dark-element transition-colors"
             >
-              <CloseOutlined />
+              <CloseOutlined className="text-[11px]" />
             </button>
           </div>
 
-          {/* Findings List */}
-          <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-black/20">
-            {result.findings.length === 0 ? (
-              <div className="py-20 flex flex-col items-center justify-center opacity-40">
-                <SafetyCertificateOutlined className="text-4xl mb-4 text-emerald-500" />
-                <span className="text-xs font-bold uppercase tracking-widest">
-                  No vulnerabilities found
-                </span>
+          {/* ── Summary strip ─────────────────────────────────────────────── */}
+          {result.summary && (
+            <div className="px-5 py-2.5 border-b border-zed-border dark:border-zed-dark-border bg-zed-surface dark:bg-zed-dark-surface">
+              <div className="text-[11px] text-zed-muted dark:text-zed-dark-muted leading-relaxed [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-zed-text dark:[&_strong]:text-zed-dark-text">
+                <ReactMarkdown>{result.summary}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+
+          {/* ── Filter bar ────────────────────────────────────────────────── */}
+          {findings.length > 0 && (
+            <div className="px-5 py-2 border-b border-zed-border dark:border-zed-dark-border flex items-center gap-2">
+              {/* All chip */}
+              <button
+                onClick={() => setActiveFilter("all")}
+                className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${
+                  activeFilter === "all"
+                    ? "bg-zed-text dark:bg-zed-dark-text text-white dark:text-zed-dark-bg border-transparent"
+                    : "text-zed-muted dark:text-zed-dark-muted border-zed-border dark:border-zed-dark-border hover:text-zed-text dark:hover:text-zed-dark-text"
+                }`}
+              >
+                All ({findings.length})
+              </button>
+
+              {/* Per-severity chips */}
+              {presentSeverities.map((s) => {
+                const cfg = getSev(s);
+                const isActive = activeFilter === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setActiveFilter(isActive ? "all" : s)}
+                    className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${
+                      isActive ? cfg.chipActive : cfg.chip
+                    }`}
+                  >
+                    {s} ({severityCounts[s]})
+                  </button>
+                );
+              })}
+
+              {/* Spacer + expand-all toggle */}
+              <button
+                onClick={toggleAll}
+                className="ml-auto text-[9px] font-medium text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors"
+              >
+                {allExpanded ? "Collapse all" : "Expand all"}
+              </button>
+            </div>
+          )}
+
+          {/* ── Findings list ─────────────────────────────────────────────── */}
+          <div
+            ref={listRef}
+            className="flex-1 overflow-y-auto divide-y divide-zed-border/40 dark:divide-zed-dark-border/40"
+          >
+            {filteredFindings.length === 0 && findings.length === 0 ? (
+              /* All clear */
+              <div className="py-16 flex flex-col items-center justify-center gap-4">
+                <div className="relative">
+                  <span className="animate-ping absolute inset-0 rounded-full bg-emerald-400/30" />
+                  <CheckCircleOutlined className="relative text-3xl text-emerald-500" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-[12px] font-semibold text-zed-text dark:text-zed-dark-text">
+                    Clean
+                  </p>
+                  <p className="text-[10px] text-zed-muted dark:text-zed-dark-muted">
+                    No vulnerabilities found in staged changes
+                  </p>
+                </div>
+              </div>
+            ) : filteredFindings.length === 0 ? (
+              /* Filter returned nothing */
+              <div className="py-12 flex flex-col items-center justify-center gap-2 opacity-50">
+                <p className="text-[11px] text-zed-muted dark:text-zed-dark-muted">
+                  No {activeFilter} findings
+                </p>
               </div>
             ) : (
-              <div className="divide-y divide-zed-border/30 dark:divide-zed-dark-border/30">
-                {result.findings.map((f, i) => (
+              filteredFindings.map((f, i) => {
+                const sev = getSev(f.severity);
+                const isOpen = expandedIds.has(i);
+                const hasDetails = !!(f.snippet || f.remediation);
+
+                return (
                   <div
                     key={i}
-                    className="px-8 py-6 hover:bg-white dark:hover:bg-white/[0.02] transition-colors group"
+                    className={`border-l-2 ${sev.border} transition-colors hover:bg-zed-surface dark:hover:bg-zed-dark-surface`}
+                    style={{
+                      animation: `fadeSlideIn 0.2s ease ${i * 40}ms both`,
+                    }}
                   >
-                    <div className="flex items-start gap-5">
-                      <div
-                        className={`mt-1 p-2 rounded-lg text-lg ${getSeverityColor(f.severity)}`}
-                      >
-                        {getIcon(f.type)}
-                      </div>
+                    {/* ── Collapsed row (always visible) ── */}
+                    <button
+                      className="w-full px-4 py-3 flex items-start gap-3 text-left"
+                      onClick={() => hasDetails && toggleExpand(i)}
+                      style={{ cursor: hasDetails ? "pointer" : "default" }}
+                    >
+                      {/* Expand caret */}
+                      <CaretRightOutlined
+                        className={`text-[9px] mt-[3px] shrink-0 text-zed-muted dark:text-zed-dark-muted transition-transform duration-150 ${
+                          isOpen ? "rotate-90" : ""
+                        } ${!hasDetails ? "opacity-0" : ""}`}
+                      />
+
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-zed-muted/60">
-                            {f.type}
+                        {/* Meta row */}
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-zed-muted dark:text-zed-dark-muted">
+                            {TYPE_ICON[f.type] ?? TYPE_ICON.default}
+                            <span className="ml-1">{f.type}</span>
                           </span>
                           <span
-                            className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${getSeverityColor(f.severity)}`}
+                            className={`text-[9px] font-bold uppercase ${sev.text}`}
                           >
                             {f.severity}
                           </span>
                           <span
-                            className="text-[10px] font-mono opacity-40 ml-auto truncate"
+                            className="ml-auto text-[9px] font-mono text-zed-muted dark:text-zed-dark-muted opacity-50 truncate max-w-[180px]"
                             title={f.file}
                           >
                             {f.file}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold mb-2 text-zed-text dark:text-zed-dark-text">
-                          {f.message}
-                        </h4>
 
-                        {f.snippet && (
-                          <div className="mb-3 bg-black/5 dark:bg-black/40 rounded p-2 font-mono text-[11px] overflow-x-auto border border-black/5 dark:border-white/5">
-                            <code className="text-red-500 dark:text-red-400">
-                              {f.snippet}
-                            </code>
-                          </div>
-                        )}
-
-                        {f.remediation && (
-                          <div className="flex items-start gap-2 text-xs bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-lg text-emerald-700 dark:text-emerald-400">
-                            <CheckCircleOutlined className="mt-0.5 shrink-0" />
-                            <div>
-                              <span className="font-bold mr-1">
-                                Remediation:
-                              </span>
-                              {f.remediation}
-                            </div>
-                          </div>
-                        )}
+                        {/* Message — clamped when collapsed, full when expanded */}
+                        <div className="relative">
+                          <p
+                            className={`text-[12px] font-medium text-zed-text dark:text-zed-dark-text leading-snug transition-all ${
+                              !isOpen && hasDetails
+                                ? "line-clamp-2"
+                                : ""
+                            }`}
+                          >
+                            {f.message}
+                          </p>
+                          {/* Fade + expand hint when clamped */}
+                          {!isOpen && hasDetails && (
+                            <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white dark:from-[#181a1f] to-transparent pointer-events-none" />
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </button>
+
+                    {/* ── Expanded details ── */}
+                    {hasDetails && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateRows: isOpen ? "1fr" : "0fr",
+                          transition: "grid-template-rows 0.18s ease",
+                        }}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="px-4 pb-3 ml-5 space-y-2.5">
+                            {/* Full message (visible only when expanded, only if it was clamped) */}
+                            {hasDetails && (
+                              <p className="text-[12px] font-medium text-zed-text dark:text-zed-dark-text leading-relaxed">
+                                {f.message}
+                              </p>
+                            )}
+
+                            {/* Snippet */}
+                            {f.snippet && (
+                              <div className="rounded bg-zed-element dark:bg-black/40 border border-zed-border dark:border-zed-dark-border px-3 py-2 overflow-x-auto">
+                                <code className="text-[10px] font-mono text-red-500 dark:text-red-400 whitespace-pre">
+                                  {f.snippet}
+                                </code>
+                              </div>
+                            )}
+
+                            {/* Remediation */}
+                            {f.remediation && (
+                              <div className="rounded bg-zed-surface dark:bg-zed-dark-surface border border-zed-border dark:border-zed-dark-border px-3 py-2.5 flex items-start gap-2.5">
+                                <CheckCircleOutlined className="text-[10px] mt-[3px] shrink-0 text-emerald-500 dark:text-emerald-400" />
+                                <div>
+                                  <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
+                                    Remediation
+                                  </p>
+                                  <p className="text-[11px] text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                                    {f.remediation}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })
             )}
           </div>
 
-          {/* Footer */}
-          <div className="px-8 py-4 border-t border-zed-border dark:border-zed-dark-border bg-white dark:bg-zed-dark-bg flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[10px] font-medium text-zed-muted opacity-60">
-              <SafetyCertificateOutlined className="text-emerald-500" />
-              <span>Automated Security Guard powered by Google Gemini</span>
-            </div>
-            <div className="flex items-center gap-4">
-              {result.findings.length > 0 && (
+          {/* ── Footer ────────────────────────────────────────────────────── */}
+          <div className="px-5 py-2.5 border-t border-zed-border dark:border-zed-dark-border flex items-center justify-between">
+            <span className="text-[9px] text-zed-muted dark:text-zed-dark-muted opacity-40 select-none">
+              Security Guard · Gemini
+            </span>
+
+            <div className="flex items-center gap-3">
+              {findings.length > 0 && (
                 <button
                   onClick={handleCreateIssue}
                   disabled={isCreatingIssue}
-                  className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-zed-muted hover:text-zed-accent transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-[10px] font-medium text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text transition-colors disabled:opacity-40"
                 >
                   {isCreatingIssue ? (
-                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <GitlabOutlined />
                   )}
-                  {isCreatingIssue ? "Creating..." : "Create Issue"}
+                  {isCreatingIssue ? "Creating..." : "Create issue"}
                 </button>
               )}
+
               <button
                 onClick={handleCopyReport}
-                className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest transition-all ${isCopied ? "text-emerald-500" : "text-zed-muted hover:text-zed-text"}`}
+                className={`flex items-center gap-1.5 text-[10px] font-medium transition-colors ${
+                  isCopied
+                    ? "text-emerald-500"
+                    : "text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text"
+                }`}
               >
                 {isCopied ? <CheckOutlined /> : <CopyOutlined />}
-                {isCopied ? "Copied" : "Copy Report"}
+                {isCopied ? "Copied" : "Copy"}
               </button>
+
               <button
                 onClick={onClose}
-                className="bg-zed-text dark:bg-white text-zed-bg dark:text-black px-4 py-1.5 rounded text-[11px] font-bold uppercase tracking-widest hover:opacity-90 transition-all shadow-sm"
+                className="text-[10px] font-medium px-3 py-1 rounded bg-zed-element dark:bg-zed-dark-element text-zed-text dark:text-zed-dark-text hover:bg-zed-border dark:hover:bg-zed-dark-border transition-colors"
               >
                 Done
               </button>
@@ -336,6 +565,14 @@ ${f.snippet || "// No snippet provided"}
           </div>
         </div>
       ) : null}
+
+      {/* ── Keyframes (injected once) ────────────────────────────────────────── */}
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </Modal>
   );
 };
