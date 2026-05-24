@@ -8,13 +8,13 @@ GitCanopy is a hyper-minimalist, high-performance Git visualizer and client desi
 
 GitCanopy is built around the philosophy that **tools should understand code, not just text**. I leverage the Gemini 3 model (and support OpenAI/Claude) to provide three distinct cognitive services:
 
-### 1. AI Code Reviewer (Pre-Commit Audit)
-Before you push code, GitCanopy acts as a virtual Senior Engineer. It scans your staged diffs and generates a comprehensive audit report.
+### 1. Quality Reviewer (Pre-Commit Audit)
+Before you commit code, GitCanopy acts as a virtual Senior Engineer. It scans your staged diffs and generates a comprehensive quality report.
 
-*   **Quality Score (0-100):** A heuristic metric based on security, stability, and maintainability.
-*   **Security Scanning:** Detects hardcoded secrets, API keys, and unsafe input handling patterns.
+*   **Quality Score (0-100):** A heuristic metric based on logic, stability, and maintainability.
 *   **Bug Detection:** Identifies logical fallacies, potential null reference exceptions, and race conditions.
 *   **Performance:** Highlights suboptimal loops or heavy computations.
+*   **Clean Code:** Checks architectural integrity and style consistency.
 
 ### 2. Semantic Context Extraction
 GitCanopy parses raw code changes to extract the "intent" behind a delta. It ignores whitespace and trivial changes to focus on the architectural impact, generating semantic commit messages that adhere to the **Conventional Commits** specification.
@@ -60,14 +60,13 @@ Go to **Settings (⌘,)** and navigate to the **AI Assistant** tab.
 - **Model:** Choose from a wide range of models including `gemini-3-flash`, `gemini-3-pro`, `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`, and `gemini-1.5-flash` to best suit your performance and intelligence needs.
 - **API Key:** Enter your key (it will be encrypted on disk).
 
-### 2. AI Code Reviewer (New!)
-Before you commit, click the purple **"Review Changes"** button in the Source Control header.
+### 2. Quality Reviewer (New!)
+Before you commit, click the purple **"Quality Review"** button in the Source Control header.
 - **Score:** You will receive a score from 0-100. Aim for >90.
 - **Analysis:** Review the categorized issues.
-    - 🛡️ **Security:** Caught hardcoded secrets or unsafe inputs.
     - 🐛 **Bugs:** Logic errors or potential crashes.
     - ⚡ **Optimization:** Performance bottlenecks.
-    - 🎨 **Style:** Code consistency issues.
+    - 🎨 **Style:** Code consistency and clean principles.
 
 ### 3. Smart Commit Generation
 1. Stage your files.

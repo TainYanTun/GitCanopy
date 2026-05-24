@@ -676,7 +676,7 @@ class GitCanopyApp {
       return this.aiService.auditSecurity(diff, apiKey, provider, model);
     });
 
-    ipcMain.handle("git:trigger-duo-agent", async (_, prompt: string, context: string) => {
+    ipcMain.handle("git:trigger-duo-agent", async (_, prompt: string, context: string, history?: any[]) => {
       const settings = await this.settingsService.getSettings();
       if (!settings.gitlabToken) throw new Error("GitLab Personal Access Token not configured.");
 
@@ -692,7 +692,8 @@ class GitCanopyApp {
       const initialResponse = await this.gitLabAgentService.triggerAgent(
         prompt,
         context,
-        settings.gitlabToken
+        settings.gitlabToken,
+        history
       );
 
       // 2. Direct @ Tool Call Formatting
@@ -716,9 +717,10 @@ class GitCanopyApp {
                     ...initialResponse,
                     message: formattedMessage
                 };
-            } catch (err) {
+            } catch (err: any) {
                 logWarn("App", `AI summarization failed: ${err}`);
-                finalMessage = `${initialResponse.message}\n\n---\n**Notice**: AI summarization unavailable (${provider}). The service may be restricted in your region or unreachable. Showing raw tool output.`;
+                const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+                finalMessage = `${initialResponse.message}\n\n---\n**Notice**: ${providerName} summarization unavailable. ${err.message || "The service may be unreachable or misconfigured."} Showing raw tool output.`;
             }
         } else {
             finalMessage = `${initialResponse.message}\n\n---\n**Note**: Set up your **${provider.toUpperCase()} API Key** in **Settings** to enable AI summarization and formatting for Mycelia tools.`;
@@ -735,7 +737,7 @@ class GitCanopyApp {
         if (!apiKey) throw new Error(`${provider} API Key not configured for Agent usage.`);
 
         const geminiTools = this.mcpService.getGeminiTools();
-        const cycleResult = await this.aiService.runAgentCycle(prompt, geminiTools, apiKey, provider, model);
+        const cycleResult = await this.aiService.runAgentCycle(prompt, geminiTools, apiKey, provider, model, context, history);
 
         // 4. Handle Tool Calling
         if (cycleResult.toolCall) {
@@ -779,10 +781,11 @@ class GitCanopyApp {
               message: summary,
               actions: [{ type: 'mcp_call', payload: { tool: name, args, result: toolResult } }]
             };
-          } catch (err) {
+          } catch (err: any) {
             logWarn("App", `Agent AI summarization failed, returning raw: ${err}`);
+            const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
             return {
-              message: `### tool_execution_result: ${name}\n\n${JSON.stringify(toolResult, null, 2)}\n\n---\n**Notice**: AI summarization unavailable (${provider}). I executed the tool successfully, but the service was unreachable (likely a regional or network restriction). Showing raw data instead.`,
+              message: `### tool_execution_result: ${name}\n\n${JSON.stringify(toolResult, null, 2)}\n\n---\n**Notice**: ${providerName} summarization unavailable. ${err.message || "I executed the tool successfully, but the summarization service was unreachable."} Showing raw data instead.`,
               actions: [{ type: 'mcp_call', payload: { tool: name, args, result: toolResult } }]
             };
           }

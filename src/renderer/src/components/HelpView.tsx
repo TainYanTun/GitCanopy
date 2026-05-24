@@ -521,11 +521,127 @@ export const HelpView: React.FC = () => {
           </div>
         </section>
 
-        {/* 09. Data Integrity & Security */}
-        <section className="space-y-8 pb-12">
+        {/* 09. Mycelia AI Agent & MCP */}
+        <section className="space-y-8">
           <div className="flex items-baseline gap-4">
             <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
               09
+            </span>
+            <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
+              Mycelia AI Agent & MCP
+            </h2>
+          </div>
+
+          <div className="space-y-8 pl-8 text-sm">
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                What is Mycelia?
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                Mycelia is GitCanopy&apos;s integrated AI Agent designed to connect your local Git workspace with external tools and platforms. Using the Model Context Protocol (MCP), Mycelia automates cross-platform workflows, inspects system states, and runs advanced repository operations in response to simple prompts.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                Connecting GitLab MCP Server
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                Mycelia includes native support for the official GitLab MCP server. By linking your GitLab account, Mycelia can query and create issues, inspect merge requests, trigger CI/CD pipelines, and manage projects directly.
+              </p>
+              <div className="bg-zed-element/30 dark:bg-zed-dark-element/30 p-4 rounded-lg border border-zed-border dark:border-zed-dark-border text-xs space-y-2 mt-4">
+                <p className="font-bold text-zed-text dark:text-zed-dark-text">Connecting GitLab:</p>
+                <ol className="list-decimal list-inside space-y-1 text-zed-muted dark:text-zed-dark-muted ml-1">
+                  <li>Go to <strong>Settings</strong> in the top bar.</li>
+                  <li>Paste your <strong>GitLab Personal Access Token</strong> under the GitLab Agent configuration section.</li>
+                  <li>Provide your <strong>GitLab Project ID</strong> or <strong>Project Path</strong> to auto-inject repository context.</li>
+                  <li>The application will automatically launch and register the GitLab MCP server in the background.</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                AI Formatting & Summarization
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                By default, executing tools directly (e.g., using <code className="font-mono bg-zed-element dark:bg-zed-dark-element px-1 py-0.5 rounded text-zed-accent">@</code> commands) prints the raw JSON response. To transform this data into a professional, beautifully structured Markdown summary, you can configure an AI provider in Settings. Mycelia will automatically intercept and format the raw outputs.
+              </p>
+              <div className="bg-zed-element/30 dark:bg-zed-dark-element/30 p-4 rounded-lg border border-zed-border dark:border-zed-dark-border text-xs space-y-2 mt-4">
+                <p className="font-bold text-zed-text dark:text-zed-dark-text">How to Enable Summarization:</p>
+                <ol className="list-decimal list-inside space-y-1 text-zed-muted dark:text-zed-dark-muted ml-1">
+                  <li>Go to <strong>Settings</strong> in the top bar.</li>
+                  <li>Under <strong>AI Engine Configuration</strong>, choose your preferred AI Provider (e.g., <strong>Gemini</strong>, <strong>OpenAI</strong>, or <strong>Claude</strong>).</li>
+                  <li>Paste the corresponding AI API Key (Gemini, OpenAI, or Claude depending on your chosen provider) and save the settings.</li>
+                  <li>Subsequent tool outputs will automatically be summarized and decorated in the chat pane.</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                Interaction Modes
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                You can engage Mycelia in two ways inside the agent pane:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-zed-muted dark:text-zed-dark-muted pl-1">
+                <li>
+                  <strong>Agentic Chat (Natural Language):</strong> Describe your goal in plain English. Mycelia will use LLM-based reasoning to determine the optimal tool path, query the required parameters, call the tool locally, and format raw JSON into rich, elegant Markdown summaries.
+                </li>
+                <li>
+                  <strong>Direct Command Syntax:</strong> Prefix commands with <code className="font-mono bg-zed-element dark:bg-zed-dark-element px-1.5 py-0.5 rounded text-zed-accent">@</code> to skip AI reasoning and call tools directly. Example: <code className="font-mono bg-zed-element dark:bg-zed-dark-element px-1.5 py-0.5 rounded">@gitlab_get_issue project_id=123 issue_id=456</code>.
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                AI Assistance Tools
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                GitCanopy provides two specialized AI tools to inspect your changes before committing. While they both use AI, they serve distinct purposes:
+              </p>
+              <div className="grid grid-cols-2 gap-6 mt-4">
+                <div className="bg-zed-element/20 dark:bg-zed-dark-element/20 p-4 rounded border border-zed-border/30 dark:border-zed-dark-border/30">
+                  <h4 className="text-[11px] font-bold text-zed-accent uppercase tracking-wider mb-2">Quality Review</h4>
+                  <p className="text-[11px] leading-relaxed text-zed-muted dark:text-zed-dark-muted">
+                    Acts as a <strong>Senior Engineer</strong>. Focuses on logic, performance, and clean code. Use this to catch architectural flaws, redundant logic, or style inconsistencies.
+                  </p>
+                </div>
+                <div className="bg-zed-element/20 dark:bg-zed-dark-element/20 p-4 rounded border border-zed-border/30 dark:border-zed-dark-border/30">
+                  <h4 className="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2">AI Security Audit</h4>
+                  <p className="text-[11px] leading-relaxed text-zed-muted dark:text-zed-dark-muted">
+                    Acts as a <strong>Security Auditor</strong>. Focuses exclusively on safety. Use this to catch hardcoded secrets, SQL injections, or compliance violations before they leak.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-bold text-zed-text dark:text-zed-dark-text uppercase text-[10px] tracking-widest">
+                Session Memory & Context
+              </h3>
+              <p className="text-zed-muted dark:text-zed-dark-muted leading-relaxed">
+                Mycelia maintains a <strong>short-term memory</strong> of your active conversation to provide contextually relevant assistance.
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-zed-muted dark:text-zed-dark-muted pl-1">
+                <li>
+                  <strong>Sliding Window:</strong> The agent remembers the last 10 messages in your current session. This allows you to ask follow-up questions or refer to previous results without re-explaining yourself.
+                </li>
+                <li>
+                  <strong>Resetting Memory:</strong> You can clear the agent&apos;s memory at any time by typing <code className="font-mono bg-zed-element dark:bg-zed-dark-element px-1.5 py-0.5 rounded text-zed-accent">@clear</code> in the chat input. This wipes the chat history and starts a fresh session with no prior context.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* 10. Data Integrity & Security */}
+        <section className="space-y-8 pb-12">
+          <div className="flex items-baseline gap-4">
+            <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
+              10
             </span>
             <h2 className="text-lg font-bold tracking-tight text-zed-text dark:text-zed-dark-text border-b border-zed-border dark:border-zed-dark-border pb-2 flex-grow">
               Data Integrity & Security
@@ -584,7 +700,7 @@ export const HelpView: React.FC = () => {
             </button>
           </div>
           <div className="text-[9px] font-mono uppercase tracking-[0.5em] text-zed-muted dark:text-zed-dark-muted opacity-40">
-            GitCanopy Visualizer / Technical Manual / Rev 2025.12.28
+            GitCanopy Visualizer / Technical Manual / Rev 2026.05.23
           </div>
         </footer>
       </div>

@@ -102,18 +102,20 @@ export class AiService {
     const cleanDiff = this.filterDiff(diff);
     
     const prompt = `
-You are a strict Senior Software Engineer performing a code review.
-Analyze the following git diff for bugs, security vulnerabilities, performance issues, and code style.
+You are a strict Senior Software Engineer performing a quality review.
+Analyze the following git diff for architectural integrity, logical bugs, performance bottlenecks, and adherence to clean code principles.
+
+IMPORTANT: Do NOT focus on security vulnerabilities or hardcoded secrets (these are handled by a separate auditor). Focus entirely on "how" the code is written and if it works correctly.
 
 Return ONLY a raw JSON object (no markdown, no backticks) with this structure:
 {
   "score": number, // 0-100 (100 is perfect)
-  "summary": "Short markdown summary of the changes quality",
+  "summary": "Short markdown summary of the architectural and logic quality",
   "issues": [
     {
-      "type": "security" | "bug" | "optimization" | "style",
+      "type": "bug" | "optimization" | "style" | "refactor",
       "file": "filename (guess if unknown)",
-      "message": "concise explanation",
+      "message": "concise explanation of the logical or structural issue",
       "severity": "high" | "medium" | "low"
     }
   ]
@@ -216,7 +218,11 @@ Rules:
     
     const prompt = `
 You are a highly paranoid Security Auditor and Automated Guard Agent.
-Analyze the following git diff for critical security risks, specifically looking for:
+Analyze the following git diff EXCLUSIVELY for critical security risks and safety violations.
+
+IMPORTANT: Do NOT review general code logic, performance, or style (these are handled by a separate reviewer). Focus entirely on "safety" and preventing data leaks or attacks.
+
+Specifically look for:
 1. Hardcoded secrets (API keys, tokens, passwords).
 2. Vulnerabilities (SQL injection, XSS, insecure dependencies, buffer overflows).
 3. Compliance violations (GDPR, HIPAA, SOC2).
@@ -224,7 +230,7 @@ Analyze the following git diff for critical security risks, specifically looking
 Return ONLY a raw JSON object (no markdown, no backticks) with this structure:
 {
   "isSafe": boolean, // false if ANY finding is 'high' or 'critical'
-  "summary": "Brief executive summary of findings",
+  "summary": "Brief executive summary of security findings",
   "findings": [
     {
       "type": "secret" | "vulnerability" | "compliance",
@@ -647,20 +653,59 @@ Response: git reset --soft HEAD~1
     tools: any[],
     apiKey: string,
     provider: 'gemini' | 'openai' | 'claude' = 'gemini',
-    model?: string
+    model?: string,
+    context?: string,
+    history?: any[]
   ): Promise<{ message: string; toolCall?: any }> {
     if (provider === 'gemini') {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.normalizeModel(model)}:generateContent?key=${apiKey}`;
+      
+      let systemInstructionText = `You are Mycelia, the intelligent developer assistant for GitCanopy. Assist the user by executing external tools using Model Context Protocol (MCP). Use your reasoning ability to decide which tool is best suited for the user's prompt.`;
+      
+      if (context) {
+        try {
+          const parsed = JSON.parse(context);
+          if (parsed.gitlabProjectId || parsed.gitlabProjectPath) {
+            systemInstructionText += `\n\nActive GitLab Repository Context:\n`;
+            if (parsed.gitlabProjectId) {
+              systemInstructionText += `- GitLab Project ID: "${parsed.gitlabProjectId}"\n`;
+            }
+            if (parsed.gitlabProjectPath) {
+              systemInstructionText += `- GitLab Project Path: "${parsed.gitlabProjectPath}"\n`;
+            }
+            systemInstructionText += `IMPORTANT: When calling any tools that require a project_id, projectId, project_path, or projectPath parameter, use these active context values automatically instead of asking the user for them!`;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      const contents = history ? history.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+      })) : [];
+      contents.push({ role: 'user', parts: [{ text: userPrompt }] });
+
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          tools: tools
+          contents,
+          tools: tools,
+          systemInstruction: {
+            parts: [{ text: systemInstructionText }]
+          }
         }),
       });
 
-      if (!response.ok) throw new Error(`Gemini Agent Error: ${await response.text()}`);
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const data = await response.json();
+          errorDetail = data.error?.message || JSON.stringify(data);
+        } catch {
+          errorDetail = await response.text();
+        }
+        throw new Error(`Gemini Error (${response.status}): ${errorDetail}`);
+      }
       const data = await response.json();
       const part = data.candidates?.[0]?.content?.parts?.[0];
 
@@ -677,18 +722,55 @@ Response: git reset --soft HEAD~1
         function: f
       }));
 
+      let systemPrompt = `You are Mycelia, the intelligent developer assistant for GitCanopy. Assist the user by executing external tools using Model Context Protocol (MCP).`;
+      if (context) {
+        try {
+          const parsed = JSON.parse(context);
+          if (parsed.gitlabProjectId || parsed.gitlabProjectPath) {
+            systemPrompt += `\n\nActive GitLab Repository Context:\n`;
+            if (parsed.gitlabProjectId) {
+              systemPrompt += `- GitLab Project ID: "${parsed.gitlabProjectId}"\n`;
+            }
+            if (parsed.gitlabProjectPath) {
+              systemPrompt += `- GitLab Project Path: "${parsed.gitlabProjectPath}"\n`;
+            }
+            systemPrompt += `\nIMPORTANT: Use these active context values automatically when calling tools that require project identification instead of asking the user for them.`;
+          }
+        } catch (e) {}
+      }
+
+      const messages: any[] = [{ role: 'system', content: systemPrompt }];
+      if (history) {
+        history.forEach(m => {
+          messages.push({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.content
+          });
+        });
+      }
+      messages.push({ role: 'user', content: userPrompt });
+
       const response = await this.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: model || 'gpt-4o',
-          messages: [{ role: 'user', content: userPrompt }],
+          messages,
           tools: openAiTools.length > 0 ? openAiTools : undefined,
           tool_choice: openAiTools.length > 0 ? 'auto' : undefined
         }),
       });
 
-      if (!response.ok) throw new Error(`OpenAI Agent Error: ${await response.text()}`);
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const data = await response.json();
+          errorDetail = data.error?.message || JSON.stringify(data);
+        } catch {
+          errorDetail = await response.text();
+        }
+        throw new Error(`OpenAI Error (${response.status}): ${errorDetail}`);
+      }
       const data = await response.json();
       const message = data.choices[0].message;
 
@@ -753,7 +835,18 @@ Rules:
           contents: [{ role: 'user', parts: [{ text: prompt }] }]
         }),
       });
-      if (!response.ok) throw new Error(`Gemini Summary Error: ${await response.text()}`);
+      
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const data = await response.json();
+          errorDetail = data.error?.message || JSON.stringify(data);
+        } catch {
+          errorDetail = await response.text();
+        }
+        throw new Error(`Gemini Error (${response.status}): ${errorDetail}`);
+      }
+      
       const data = await response.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "No summary.";
     }
@@ -767,7 +860,18 @@ Rules:
           messages: [{ role: 'user', content: prompt }]
         }),
       });
-      if (!response.ok) throw new Error(`OpenAI Summary Error: ${await response.text()}`);
+      
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const data = await response.json();
+          errorDetail = data.error?.message || JSON.stringify(data);
+        } catch {
+          errorDetail = await response.text();
+        }
+        throw new Error(`OpenAI Error (${response.status}): ${errorDetail}`);
+      }
+      
       const data = await response.json();
       return data.choices[0].message.content;
     }
@@ -782,7 +886,18 @@ Rules:
           messages: [{ role: 'user', content: prompt }]
         }),
       });
-      if (!response.ok) throw new Error(`Claude Summary Error: ${await response.text()}`);
+      
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const data = await response.json();
+          errorDetail = data.error?.message || JSON.stringify(data);
+        } catch {
+          errorDetail = await response.text();
+        }
+        throw new Error(`Claude Error (${response.status}): ${errorDetail}`);
+      }
+      
       const data = await response.json();
       return data.content[0].text;
     }

@@ -373,6 +373,12 @@ export interface McpServerStatus {
   toolCount: number;
 }
 
+export interface ChatMessage {
+  role: "user" | "agent";
+  content: string;
+  timestamp: number;
+}
+
 export interface GitCanopyAPI {
   // Repository operations
   selectRepository: () => Promise<Repository | null>;
@@ -464,7 +470,7 @@ export interface GitCanopyAPI {
   translateNaturalLanguageToGit: (query: string, context: string) => Promise<string>;
   analyzeGitError: (error: string, context: string) => Promise<string>;
   auditSecurity: (repoPath: string) => Promise<SecurityAuditResult>;
-  triggerDuoAgent: (prompt: string, context: string) => Promise<{ message: string; actions?: any[] }>;
+  triggerDuoAgent: (prompt: string, context: string, history?: ChatMessage[]) => Promise<{ message: string; actions?: any[] }>;
   checkDuoAgentStatus: () => Promise<boolean>;
   createGitLabIssue: (title: string, description: string) => Promise<{ webUrl: string }>;
 

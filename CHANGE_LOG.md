@@ -45,7 +45,7 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0] - 2026-01-21
 
 ### AI & Automation
-- **AI Code Review:** Added an intelligent pre-commit reviewer. Gemini analyzes staged changes and provides a quality score (0-100) with categorized feedback on security, bugs, and performance.
+- **Quality Review:** Added an intelligent pre-commit reviewer. Gemini analyzes staged changes and provides a quality score (0-100) with categorized feedback on logic, bugs, and performance.
 - **AI-Powered Commit Generation:** Introduced `AiService` to automatically generate semantic commit messages based on staged changes using Gemini, OpenAI, or Claude.
 - **Smart Conflict Resolution:** Added AI-assisted merge conflict resolution with a dedicated UI. Users can now provide specific instructions to guide the AI's merging decisions.
 - **Secure Key Management:** Implemented secure storage for AI API keys (Gemini, OpenAI, Claude) and GitHub Personal Access Tokens in the application settings.

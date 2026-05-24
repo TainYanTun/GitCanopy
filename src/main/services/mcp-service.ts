@@ -258,8 +258,7 @@ export class McpService {
     if (functionDeclarations.length === 0) return [];
 
     return [{
-      functionDeclarations: functionDeclarations,
-      function_declarations: functionDeclarations
+      functionDeclarations: functionDeclarations
     }];
   }
 

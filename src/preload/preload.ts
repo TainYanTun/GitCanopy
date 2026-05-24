@@ -123,8 +123,8 @@ const gitcanopyAPI: GitCanopyAPI = {
     ipcRenderer.invoke("git:analyze-error", error, context),
   auditSecurity: (repoPath: string) =>
     ipcRenderer.invoke("git:audit-security", repoPath),
-  triggerDuoAgent: (prompt: string, context: string) =>
-    ipcRenderer.invoke("git:trigger-duo-agent", prompt, context),
+  triggerDuoAgent: (prompt: string, context: string, history?: any[]) =>
+    ipcRenderer.invoke("git:trigger-duo-agent", prompt, context, history),
   checkDuoAgentStatus: () =>
     ipcRenderer.invoke("git:check-duo-agent-status"),
   createGitLabIssue: (title: string, description: string) =>

@@ -28,7 +28,8 @@ export class GitLabAgentService {
   async triggerAgent(
     prompt: string,
     context: string,
-    gitlabToken: string
+    gitlabToken: string,
+    _history?: any[]
   ): Promise<GitLabAgentResponse> {
     if (!prompt) throw new Error("prompt_required");
     if (!gitlabToken) throw new Error("token_required");

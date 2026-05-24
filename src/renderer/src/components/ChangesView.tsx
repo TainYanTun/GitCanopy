@@ -58,7 +58,7 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranc
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["."]));
   const [conflictFile, setConflictFile] = useState<StatusFile | null>(null);
 
-  // AI Code Review State
+  // Quality Review State
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewResult, setReviewResult] = useState<CodeReviewResult | null>(null);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
@@ -452,7 +452,7 @@ export const ChangesView: React.FC<ChangesViewProps> = ({ repoPath, currentBranc
                 disabled={isReviewing}
                 className="h-6 px-3 text-[9px] font-bold uppercase tracking-wider bg-zed-accent text-white rounded-sm hover:opacity-90 disabled:opacity-30 transition-all flex items-center gap-2 shadow-sm"
               >
-                <RobotOutlined /> {isReviewing ? "Reviewing..." : "AI Review"}
+                <RobotOutlined /> {isReviewing ? "Reviewing..." : "Quality Review"}
               </button>
             </>
           )}

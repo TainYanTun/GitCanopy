@@ -9,7 +9,7 @@ import {
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { McpTool } from "@shared/types";
+import { McpTool, ChatMessage } from "@shared/types";
 import { McpStatusPanel } from "./McpStatusPanel";
 
 const formatMentions = (text: string): string => {
@@ -21,12 +21,6 @@ interface GitLabAgentProps {
   repoPath: string;
   projectName: string;
   currentBranch: string;
-}
-
-interface ChatMessage {
-  role: "user" | "agent";
-  content: string;
-  timestamp: number;
 }
 
 export const GitLabAgent: React.FC<GitLabAgentProps> = ({
@@ -48,6 +42,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     undefined,
   );
   const [showMcpStatus, setShowMcpStatus] = useState(false);
+  const [aiProvider, setAiProvider] = useState<string>("Gemini");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -63,12 +58,20 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
 
   useEffect(() => {
     fetchTools();
-    // Load GitLab project identity from settings for context-aware agent calls
+    // Load GitLab project identity and AI provider from settings
     window.gitcanopyAPI
       .getSettings()
       .then((s: any) => {
         if (s?.gitlabProjectPath) setGitlabProjectPath(s.gitlabProjectPath);
         if (s?.gitlabProjectId) setGitlabProjectId(s.gitlabProjectId);
+        if (s?.aiProvider) {
+          const providerMap: Record<string, string> = {
+            gemini: "Gemini",
+            openai: "OpenAI",
+            claude: "Claude",
+          };
+          setAiProvider(providerMap[s.aiProvider] || "Gemini");
+        }
       })
       .catch(() => {});
   }, []);
@@ -108,11 +111,40 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
       setInputValue(`@${tool.name} `);
     } else {
       const params = getRequiredParams(tool);
-      const paramString = params.length > 0 ? params.map(p => `${p}=`).join(' ') : '';
-      setInputValue(`@${tool.name} ${paramString}${paramString ? ' ' : ''}`);
+      // Pre-fill parameters with empty quotes for easier filling
+      const paramString = params.length > 0 ? params.map(p => `${p}=""`).join(' ') : '';
+      const newVal = `@${tool.name} ${paramString}${paramString ? ' ' : ''}`;
+      setInputValue(newVal);
+      
+      // Smart cursor placement: Move cursor inside the first set of quotes
+      setTimeout(() => {
+        if (inputRef.current && params.length > 0) {
+          const firstQuotePos = newVal.indexOf('""') + 1;
+          inputRef.current.setSelectionRange(firstQuotePos, firstQuotePos);
+        }
+      }, 0);
     }
     setShowSuggestions(false);
     inputRef.current?.focus();
+  };
+
+  const renderHighlightedInput = () => {
+    // Basic regex-based syntax highlighter for the input display
+    const tokens = inputValue.split(/(\s+|@\w+|\w+=|"(?:[^"\\]|\\.)*")/g);
+    
+    return tokens.map((token, i) => {
+      if (!token) return null;
+      if (token.startsWith("@")) {
+        return <span key={i} className="text-purple-500 dark:text-purple-400">{token}</span>;
+      }
+      if (token.endsWith("=")) {
+        return <span key={i} className="text-pink-500 dark:text-pink-400">{token}</span>;
+      }
+      if (token.startsWith("\"") && token.endsWith("\"")) {
+        return <span key={i} className="text-emerald-500 dark:text-emerald-400">{token}</span>;
+      }
+      return <span key={i} className="text-zed-text dark:text-zed-dark-text opacity-90">{token}</span>;
+    });
   };
 
   const handleCopy = async (content: string, index: number) => {
@@ -162,6 +194,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
       const response = await window.gitcanopyAPI.triggerDuoAgent(
         prompt,
         context,
+        chatHistory.slice(-10) // Pass last 10 messages for short-term memory awareness
       );
 
       const agentMsg: ChatMessage = {
@@ -226,11 +259,17 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-4 text-zed-muted dark:text-zed-dark-muted">
-          {/* Gemini Status Indicator */}
+          {/* Dynamic AI Status Indicator */}
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-purple-400 animate-pulse"></span>
+            <span 
+              className={`w-1.5 h-1.5 animate-pulse ${
+                aiProvider === 'OpenAI' ? 'bg-emerald-400' : 
+                aiProvider === 'Claude' ? 'bg-orange-400' : 
+                'bg-purple-400'
+              }`}
+            ></span>
             <span className="text-[9px] font-black uppercase tracking-[0.2em] select-none opacity-50">
-              Gemini
+              {aiProvider}
             </span>
           </div>
 
@@ -455,7 +494,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                   className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-zed-dark-element flex items-center justify-between transition-all group/item border-l-2 border-l-purple-500"
                 >
                   <div className="flex flex-col">
-                    <span className="text-[11px] font-mono font-bold tracking-wide text-purple-500 dark:text-purple-400 group-hover/item:translate-x-0.5 transition-transform">
+                    <span className="text-[11px] font-mono tracking-wide text-purple-500 dark:text-purple-400 group-hover/item:translate-x-0.5 transition-transform">
                       @{cmd.name}
                     </span>
                     <span className="text-[9px] text-zed-muted/70 truncate max-w-[280px] mt-0.5">
@@ -477,14 +516,14 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                   >
                     <div className="flex flex-col flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono font-bold tracking-wide text-indigo-500 dark:text-indigo-400 group-hover/item:translate-x-0.5 transition-transform">
+                        <span className="text-[11px] font-mono tracking-wide text-indigo-500 dark:text-indigo-400 group-hover/item:translate-x-0.5 transition-transform">
                           @{tool.name}
                         </span>
                         {requiredParams.length > 0 && (
                           <div className="flex gap-1 overflow-hidden">
                             {requiredParams.map(p => (
-                              <span key={p} className="text-[8px] bg-indigo-500/10 text-indigo-500/70 px-1 rounded-sm font-mono border border-indigo-500/10">
-                                {p}
+                              <span key={p} className="text-[8px] bg-pink-500/10 text-pink-500/70 px-1 rounded-sm font-mono border border-pink-500/10">
+                                {p}=
                               </span>
                             ))}
                           </div>
@@ -504,7 +543,15 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
           )}
 
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="relative">
+            {/* Syntax Highlight Overlay */}
+            <div 
+              className="absolute inset-0 px-5 py-4 text-sm font-sans pointer-events-none whitespace-pre break-all overflow-hidden flex items-center"
+              style={{ paddingRight: '3rem' }}
+            >
+              {renderHighlightedInput()}
+            </div>
+
             <input
               ref={inputRef}
               type="text"
@@ -515,7 +562,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
               }}
               disabled={isAgentTyping}
               placeholder="Query repository details, or type @ to invoke specific tools..."
-              className="w-full bg-zed-element/25 dark:bg-zed-dark-element/25 border border-zed-border dark:border-zed-dark-border rounded-md px-5 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/30 focus:border-purple-500/30 transition-all placeholder:opacity-30 text-zed-text dark:text-zed-dark-text shadow-sm"
+              className="w-full bg-zed-element/25 dark:bg-zed-dark-element/25 border border-zed-border dark:border-zed-dark-border rounded-md px-5 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/30 focus:border-purple-500/30 transition-all placeholder:opacity-30 text-transparent caret-zed-text dark:caret-zed-dark-text shadow-sm selection:bg-purple-500/20"
               autoFocus
             />
             <button
@@ -536,3 +583,4 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     </div>
   );
 };
+

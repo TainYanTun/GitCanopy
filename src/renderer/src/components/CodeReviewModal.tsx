@@ -36,7 +36,7 @@ export const CodeReviewModal: React.FC<CodeReviewModalProps> = ({
     if (!result) return;
 
     const reportText = `
-# AI Code Review Report
+# Quality Review Report
 Score: ${result.score}/100
 
 ## Summary
@@ -69,9 +69,9 @@ ${result.issues
 
     const steps = [
       "Parsing diff...",
-      "Auditing security...",
-      "Analyzing logic...",
-      "Checking performance...",
+      "Analyzing architecture...",
+      "Checking logic...",
+      "Optimizing performance...",
       "Finalizing report...",
     ];
 
@@ -128,15 +128,15 @@ ${result.issues
           <div className="w-12 h-12 border-[3px] border-zed-border dark:border-zed-dark-border border-t-zed-accent rounded-full animate-spin mb-8" />
           <div className="space-y-2 text-center z-10">
             <h3 className="text-sm font-mono uppercase tracking-widest text-zed-muted animate-pulse">
-              AI Audit in Progress
+              Quality Review in Progress
             </h3>
             <p className="text-xs font-medium text-zed-text dark:text-zed-dark-text transition-all duration-300 min-h-[1.5em]">
               {
                 [
                   "Parsing diff...",
-                  "Auditing security...",
-                  "Analyzing logic...",
-                  "Checking performance...",
+                  "Analyzing architecture...",
+                  "Checking logic...",
+                  "Optimizing performance...",
                   "Finalizing report...",
                 ][loadingStep]
               }
