@@ -35,8 +35,9 @@ export class RepositoryWatcher {
         setTimeout(() => {
           callback(event);
           this.debounceTimers.delete(key);
-        }, 100),
-      ); // 100ms debounce
+        }, 300),
+      ); // 300ms debounce — absorbs rapid file-save bursts
+
     };
 
     try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ConfigProvider, theme as antdTheme, App as AntdApp } from "antd";
 import { Repository } from "../../shared/types";
 import { WelcomeScreen } from "./components/WelcomeScreen";
@@ -55,8 +55,10 @@ const App: React.FC = () => {
       setAuthPrompt(prompt);
     });
 
+    // Use a stable ref so this subscription (registered once) always calls
+    // the latest handleSelectRepository without capturing a stale closure.
     const unsubscribeMenu = window.gitcanopyAPI.onMenuOpenRepository(() => {
-      handleSelectRepository();
+      handleSelectRepositoryRef.current();
     });
 
     return () => {
@@ -89,8 +91,12 @@ const App: React.FC = () => {
     }
   };
 
+  // Stable ref so the IPC subscription (registered once) always calls
+  // the latest version of handleSelectRepository without re-subscribing.
+  const handleSelectRepositoryRef = useRef<(repoPath?: string) => Promise<void>>(null as any);
+
   // Handle repository selection
-  const handleSelectRepository = async (repoPath?: string) => {
+  const handleSelectRepository = useCallback(async (repoPath?: string) => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -129,7 +135,10 @@ const App: React.FC = () => {
         error: errorMessage,
       });
     }
-  };
+  }, [showToast]);
+
+  // Keep the ref in sync with the latest callback
+  handleSelectRepositoryRef.current = handleSelectRepository;
 
   // Handle repository close
   const handleCloseRepository = async () => {

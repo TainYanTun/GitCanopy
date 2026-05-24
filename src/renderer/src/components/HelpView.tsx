@@ -552,8 +552,9 @@ export const HelpView: React.FC = () => {
               <div className="bg-zed-element/30 dark:bg-zed-dark-element/30 p-4 rounded-lg border border-zed-border dark:border-zed-dark-border text-xs space-y-2 mt-4">
                 <p className="font-bold text-zed-text dark:text-zed-dark-text">Connecting GitLab:</p>
                 <ol className="list-decimal list-inside space-y-1 text-zed-muted dark:text-zed-dark-muted ml-1">
+                  <li>Generate a <strong>Personal Access Token</strong> on GitLab. Ensure the <code className="font-mono bg-zed-element dark:bg-zed-dark-element px-1 rounded text-zed-accent">api</code> scope is checked so GitCanopy can read data and create automated issues.</li>
                   <li>Go to <strong>Settings</strong> in the top bar.</li>
-                  <li>Paste your <strong>GitLab Personal Access Token</strong> under the GitLab Agent configuration section.</li>
+                  <li>Paste your token under the GitLab Agent configuration section.</li>
                   <li>Provide your <strong>GitLab Project ID</strong> or <strong>Project Path</strong> to auto-inject repository context.</li>
                   <li>The application will automatically launch and register the GitLab MCP server in the background.</li>
                 </ol>

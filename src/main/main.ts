@@ -65,6 +65,10 @@ class GitCanopyApp {
         }
 
         const settings = await this.settingsService.getSettings();
+        if (settings.recentRepositories) {
+          settings.recentRepositories.forEach(repo => this.gitService.addAllowedRepository(repo));
+        }
+
         if (settings.gitlabToken) {
           logInfo("App", "Connecting to GitLab MCP server...");
           this.mcpService.connectGitLab(settings.gitlabToken).catch(err => {
@@ -125,15 +129,14 @@ class GitCanopyApp {
       // 1. Block navigation to external sites (only allow 'self')
       contents.on("will-navigate", (event, navigationUrl) => {
         const parsedUrl = new URL(navigationUrl);
-        const origin = parsedUrl.origin;
         
         if (isDev) {
-          if (origin !== "http://localhost:3000") {
+          if (parsedUrl.origin !== "http://localhost:3000") {
             event.preventDefault();
           }
         } else {
-          // In production, allow file:// origin
-          if (origin !== "file://" && origin !== "null") {
+          // In production, ensure the navigation is strictly to the local file schema
+          if (parsedUrl.protocol !== "file:") {
             event.preventDefault();
           }
         }
@@ -190,9 +193,13 @@ class GitCanopyApp {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
         preload: preloadPath,
         webSecurity: true,
         allowRunningInsecureContent: false,
+        // Prevent Chromium from throttling JS timers (including watcher debounce)
+        // when the window is moved to the background, but only in Dev.
+        backgroundThrottling: !isDev,
       },
     });
     // Load the renderer
@@ -387,6 +394,7 @@ class GitCanopyApp {
     ipcMain.handle("select-repository", () => this.handleSelectRepository());
     ipcMain.handle("select-directory", () => this.handleSelectDirectory());
     ipcMain.handle("get-repository", async (_, path: string) => {
+      this.gitService.addAllowedRepository(path);
       const repository = await this.gitService.getRepository(path);
       await this.settingsService.addRecentRepository(path);
       return repository;
@@ -540,6 +548,7 @@ class GitCanopyApp {
           fs.existsSync(absolutePath) &&
           fs.statSync(absolutePath).isDirectory()
         ) {
+          this.gitService.addAllowedRepository(absolutePath);
           return absolutePath;
         }
       }
@@ -1007,6 +1016,7 @@ class GitCanopyApp {
 
     const repoPath = result.filePaths[0];
     try {
+      this.gitService.addAllowedRepository(repoPath);
       const repository = await this.gitService.getRepository(repoPath);
       await this.settingsService.addRecentRepository(repoPath);
       return repository;

@@ -77,17 +77,22 @@ export class GitService {
   private commandHistory: GitCommandLog[] = [];
   private maxHistorySize = 100;
   private avatarCache = new LRUCache<string, string>({ max: 500 });
-  private branchesCache = new LRUCache<string, Branch[]>({ max: 10, ttl: 1000 * 30 }); // 30s cache
+  private branchesCache = new LRUCache<string, Branch[]>({ max: 10, ttl: 1000 * 60 }); // 60s cache
   private tagsCache = new LRUCache<string, Map<string, string[]>>({ max: 10, ttl: 1000 * 60 }); // 60s cache
   
   private authService: AuthService | null = null;
   private askPassScriptPath: string | null = null;
   private commandLock = new ReadWriteLock();
+  private allowedRepositories: Set<string> = new Set();
 
   constructor(authService?: AuthService) {
     if (authService) {
       this.authService = authService;
     }
+  }
+
+  public addAllowedRepository(repoPath: string): void {
+    this.allowedRepositories.add(path.resolve(repoPath));
   }
 
   public setAuthService(authService: AuthService) {
@@ -354,9 +359,14 @@ export class GitService {
         .map(l => parseInt(l.split('|')[2], 10));
       
       if (allTimestamps.length === 0) return [];
-      
-      const projectStart = Math.min(...allTimestamps);
-      const projectEnd = Math.max(...allTimestamps);
+
+      // Use reduce instead of spread to avoid RangeError on large arrays (>~10k elements)
+      let projectStart = Infinity;
+      let projectEnd = -Infinity;
+      for (const ts of allTimestamps) {
+        if (ts < projectStart) projectStart = ts;
+        if (ts > projectEnd) projectEnd = ts;
+      }
       const duration = projectEnd - projectStart || 1;
 
       for (const line of lines) {
@@ -364,8 +374,9 @@ export class GitService {
           const [name, email, timestampStr] = line.split('|');
           const timestamp = parseInt(timestampStr, 10);
           currentAuthor = { name, email, timestamp };
-          
+
           if (!statsMap.has(email)) {
+            // getAvatarUrl is called once per unique email, not per commit
             statsMap.set(email, {
               name,
               email,
@@ -378,11 +389,11 @@ export class GitService {
               activity: new Array(20).fill(0)
             });
           }
-          
+
           const stats = statsMap.get(email)!;
           stats.commitCount++;
-          stats.firstCommit = Math.min(stats.firstCommit, timestamp);
-          stats.lastCommit = Math.max(stats.lastCommit, timestamp);
+          if (timestamp < stats.firstCommit) stats.firstCommit = timestamp;
+          if (timestamp > stats.lastCommit) stats.lastCommit = timestamp;
 
           // Assign to bucket
           const bucketIndex = Math.min(
@@ -395,7 +406,7 @@ export class GitService {
             const stats = statsMap.get(currentAuthor.email)!;
             const addMatch = line.match(/(\d+) insertion/);
             const delMatch = line.match(/(\d+) deletion/);
-            
+
             if (addMatch) stats.additions += parseInt(addMatch[1], 10);
             if (delMatch) stats.deletions += parseInt(delMatch[1], 10);
           }
@@ -1326,6 +1337,11 @@ export class GitService {
   private validatePath(repoPath: string, filePath: string): string {
     const absoluteRepoPath = path.resolve(repoPath);
     const absoluteFilePath = path.resolve(repoPath, filePath);
+
+    // Security Check: Ensure repoPath is explicitly allowed
+    if (this.allowedRepositories.size > 0 && !this.allowedRepositories.has(absoluteRepoPath)) {
+      throw new Error(`Security Violation: Repository path '${repoPath}' is not authorized.`);
+    }
 
     if (!absoluteFilePath.startsWith(absoluteRepoPath)) {
       throw new Error("Security Violation: Path traversal attempt detected.");

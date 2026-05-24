@@ -407,27 +407,35 @@ ${this.filterDiff(diff)}
   }
 
   private async fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000): Promise<any> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    for (let i = 0; i < retries; i++) {
+      // Create a fresh AbortController per attempt so the 30s timeout resets between retries
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
 
-    try {
-      for (let i = 0; i < retries; i++) {
-        try {
-          const response = await fetch(url, { ...options, signal: controller.signal });
-          if (response.status === 503 || response.status === 429) {
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeout);
+        if (response.status === 503 || response.status === 429) {
+          if (i < retries - 1) {
             await new Promise(resolve => setTimeout(resolve, backoff));
             backoff *= 2;
             continue;
           }
-          return response;
-        } catch (err: any) {
-          if (err.name === 'AbortError') throw new Error("Request timed out after 30 seconds.");
-          if (i === retries - 1) throw err;
-          await new Promise(resolve => setTimeout(resolve, backoff));
-          backoff *= 2;
         }
+        return response;
+      } catch (err: any) {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError') throw new Error("Request timed out after 30 seconds.");
+        if (i === retries - 1) throw err;
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        backoff *= 2;
       }
-      return fetch(url, { ...options, signal: controller.signal });
+    }
+    // Final fallback attempt
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
     } finally {
       clearTimeout(timeout);
     }
