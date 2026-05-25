@@ -1,6 +1,7 @@
 import { ChildProcess, spawn } from 'child_process';
-import { logError } from './logger-service';
+import { logError, logInfo } from './logger-service';
 import { JSONRPCClient } from 'json-rpc-2.0';
+import { getEnvWithFixedPath } from '../utils';
 
 interface McpTool {
   name: string;
@@ -26,8 +27,9 @@ export class McpService {
    */
   async connectServer(config: McpServerConfig): Promise<void> {
     try {
+      logInfo("McpService", `Connecting to ${config.name} with command: ${config.command} ${config.args?.join(' ')}`);
       const serverProcess = spawn(config.command, config.args || [], {
-        env: { ...process.env, ...config.env, npm_config_yes: 'true' },
+        env: { ...getEnvWithFixedPath(), ...config.env, npm_config_yes: 'true' },
         stdio: ['pipe', 'pipe', 'inherit'],
         shell: true
       });

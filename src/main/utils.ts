@@ -184,3 +184,24 @@ export const logWithTimestamp = (level: 'info' | 'warn' | 'error', message: stri
   const timestamp = new Date().toISOString();
   console[level](`[${timestamp}] ${message}`, ...args);
 };
+
+// Ensure common binary paths are in the PATH environment variable
+// This is essential for Electron apps on macOS to find 'git', 'npx', etc.
+export const getEnvWithFixedPath = () => {
+  const env = { ...process.env };
+  if (process.platform === 'darwin') {
+    const commonPaths = [
+      '/usr/local/bin',
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+      '/opt/homebrew/bin',
+      '/opt/local/bin'
+    ];
+    const currentPath = env.PATH || '';
+    const uniquePaths = new Set([...currentPath.split(':'), ...commonPaths]);
+    env.PATH = Array.from(uniquePaths).filter(Boolean).join(':');
+  }
+  return env;
+};

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.5] - 2026-05-26
+
+### Bug Fixes
+- **Production Environment Hardening**: Implemented `PATH` resolution for macOS production environments. This ensures that the application can find `npx`, `git`, and other system binaries when packaged as a standalone app.
+- **Dynamic Reconnection**: The GitLab MCP server now automatically reconnects whenever Settings are saved, eliminating the need to restart the app after updating your Personal Access Token.
+
 ## [1.3.4] - 2026-05-26
 
 ### Features

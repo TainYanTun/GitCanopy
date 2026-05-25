@@ -995,9 +995,19 @@ class GitCanopyApp {
 
       return settings;
     });
-    ipcMain.handle("save-settings", (_, settings) =>
-      this.settingsService.saveSettings(settings),
-    );
+     ipcMain.handle("save-settings", async (_, settings) => {
+       const oldSettings = await this.settingsService.getSettings();
+       await this.settingsService.saveSettings(settings);
+
+       // Reconnect GitLab MCP if token or API URL changed
+       if (settings.gitlabToken && (settings.gitlabToken !== oldSettings.gitlabToken || settings.gitlabApiUrl !== oldSettings.gitlabApiUrl)) {
+         logInfo("App", "GitLab configuration updated, reconnecting MCP...");
+         this.mcpService.connectGitLab(settings.gitlabToken, settings.gitlabApiUrl).catch(err => {
+           logError("App", `Auto-reconnect GitLab MCP failed: ${err}`);
+         });
+       }
+       return;
+     });
     ipcMain.handle("git:get-global-config", (_, key: string) =>
       this.gitService.getGlobalConfig(key),
     );
