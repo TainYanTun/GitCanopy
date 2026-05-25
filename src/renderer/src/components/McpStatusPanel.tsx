@@ -9,12 +9,6 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { McpServerStatus, McpTool } from "@shared/types";
-import { List } from "react-window";
-import { AutoSizer } from "react-virtualized-auto-sizer";
-
-interface ToolRowProps {
-  toolRows: any[][];
-}
 
 interface McpStatusPanelProps {
   visible: boolean;
@@ -55,42 +49,6 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
       (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [tools, searchQuery]);
-
-  // Group tools into pairs for 2-column virtualization
-  const toolRows = useMemo(() => {
-    const rows = [];
-    for (let i = 0; i < filteredTools.length; i += 2) {
-      rows.push(filteredTools.slice(i, i + 2));
-    }
-    return rows;
-  }, [filteredTools]);
-
-  const ToolRow = React.useCallback(
-    ({ index, style, toolRows }: { index: number; style: React.CSSProperties } & ToolRowProps) => {
-      const rowItems = toolRows[index];
-      if (!rowItems) return null;
-
-      return (
-        <div style={style} className="flex gap-6 px-1">
-          {rowItems.map((tool: any) => (
-            <div
-              key={tool.name}
-              className="flex-1 flex flex-col gap-0.5 px-3 py-2 hover:bg-zed-element dark:hover:bg-zed-dark-element transition-colors rounded group min-w-0"
-            >
-              <span className="text-[11px] font-mono font-bold text-pink-500 dark:text-pink-400 group-hover:text-pink-400 truncate">
-                @{tool.name}
-              </span>
-              <span className="text-[10px] text-zed-muted leading-relaxed line-clamp-2">
-                {tool.description || "Experimental Git action"}
-              </span>
-            </div>
-          ))}
-          {rowItems.length === 1 && <div className="flex-1" />}
-        </div>
-      );
-    },
-    [toolRows],
-  );
 
   if (!visible) return null;
 
@@ -133,9 +91,7 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col bg-zed-surface dark:bg-zed-dark-surface">
-          {/* Static Headers + Search */}
           <div className="p-6 pb-0 space-y-6">
-            {/* Servers Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 opacity-60">
                 <CloudServerOutlined className="text-xs" />
@@ -178,7 +134,6 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
               )}
             </div>
 
-            {/* Tools Header + Search Bar */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 opacity-60">
@@ -199,8 +154,7 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
             </div>
           </div>
 
-          {/* Virtualized Tools List */}
-          <div className="flex-1 px-6 mt-4 mb-2">
+          <div className="flex-1 px-6 mt-4 mb-2 overflow-y-auto custom-scrollbar">
             {loading ? (
                <div className="space-y-2">
                  {[1,2,3,4].map(i => (
@@ -212,18 +166,21 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
                     {searchQuery ? "No tools match your filter" : "No tools discovered"}
                 </div>
             ) : (
-                <AutoSizer
-                  Child={({ height, width }: any) => (
-                    <List
-                      style={{ height: height || 0, width: width || 0 }}
-                      rowCount={toolRows.length}
-                      rowHeight={64}
-                      rowComponent={ToolRow}
-                      rowProps={{ toolRows } as any}
-                      className="custom-scrollbar"
-                    />
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-6 px-1 pb-4">
+                  {filteredTools.map((tool) => (
+                    <div
+                      key={tool.name}
+                      className="flex flex-col gap-0.5 px-3 py-2 hover:bg-zed-element dark:hover:bg-zed-dark-element transition-colors rounded group min-w-0"
+                    >
+                      <span className="text-[11px] font-mono font-bold text-pink-500 dark:text-pink-400 group-hover:text-pink-400 truncate">
+                        @{tool.name}
+                      </span>
+                      <span className="text-[10px] text-zed-muted leading-relaxed line-clamp-2">
+                        {tool.description || "Experimental Git action"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
             )}
           </div>
         </div>

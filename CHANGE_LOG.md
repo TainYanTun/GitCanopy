@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-05-26
+
+### Bug Fixes
+- **Runtime Stability**: Resolved a critical `TypeError` in the Ant Design bundle by optimizing component initialization and import structures.
+- **Dependency Optimization**: Replaced experimental virtualization in the MCP panel with a stable high-performance grid to prevent bundle-splitting conflicts.
+
 ## [1.3.0] - 2026-05-24
 
 ### Mycelia AI Agent (New Core Feature)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { ConfigProvider, theme as antdTheme, App as AntdApp } from "antd";
+import { ConfigProvider, theme, App as AntdApp } from "antd";
 import { Repository } from "../../shared/types";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { MainLayout } from "./components/MainLayout";
@@ -312,10 +312,9 @@ const App: React.FC = () => {
   return (
     <ConfigProvider
       theme={{
-        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
       }}
     >
-      <AntdApp style={{ height: '100%' }}>
         <ErrorBoundary>
           <div className="h-full w-full bg-zed-bg dark:bg-zed-dark-bg text-zed-text dark:text-zed-dark-text relative overflow-hidden">
             <WhatsNewModal 
@@ -341,7 +340,6 @@ const App: React.FC = () => {
             )}
           </div>
         </ErrorBoundary>
-      </AntdApp>
     </ConfigProvider>
   );
 };
