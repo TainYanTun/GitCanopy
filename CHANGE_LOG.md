@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3] - 2026-05-26
+
+### Bug Fixes
+- **Asset Loading**: Fixed an issue where the Mycelia SVG icon failed to load in production due to an absolute path reference. Switched to relative path resolution.
+
 ## [1.3.2] - 2026-05-26
 
 ### Bug Fixes

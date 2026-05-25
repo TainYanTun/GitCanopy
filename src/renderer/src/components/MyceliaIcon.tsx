@@ -6,7 +6,7 @@ export const MyceliaIcon: React.FC<{ className?: string; style?: React.CSSProper
 }) => {
   return (
     <img
-      src="/mycelia.svg"
+      src="mycelia.svg"
       className={className}
       style={{ ...style, display: "block" }}
       alt="Mycelia"
