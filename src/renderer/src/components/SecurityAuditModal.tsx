@@ -565,14 +565,6 @@ export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({
           </div>
         </div>
       ) : null}
-
-      {/* ── Keyframes (injected once) ────────────────────────────────────────── */}
-      <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </Modal>
   );
 };

@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { GitCommandLog } from "@shared/types";
 import { useToast } from "./ToastContext";
-import { RobotOutlined, CodeOutlined, SendOutlined } from "@ant-design/icons";
-import ReactMarkdown from "react-markdown";
+import { CodeOutlined, SendOutlined } from "@ant-design/icons";
 
 interface GitConsoleProps {
   repoPath: string;
-}
-
-interface ChatMessage {
-  role: "user" | "agent";
-  content: string;
-  timestamp: number;
 }
 
 export const GitConsole: React.FC<GitConsoleProps> = ({ repoPath }) => {

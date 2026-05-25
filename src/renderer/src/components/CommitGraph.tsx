@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useMemo, useCallback, memo } from "react";
 import * as d3 from "d3";
-import { RobotOutlined, DragOutlined, SelectOutlined } from "@ant-design/icons";
+import { DragOutlined, SelectOutlined } from "@ant-design/icons";
 import {
   Commit,
   Branch,

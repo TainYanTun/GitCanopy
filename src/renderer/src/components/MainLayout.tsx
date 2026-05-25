@@ -325,11 +325,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     };
   }, []);
 
-  const handleAiToggle = useCallback(() => {
-    setCurrentView("graph");
-    setIsCommandBarOpen((prev) => !prev);
-  }, []);
-
   const handleTimeMachineToggle = useCallback(() => {
     setCurrentView("graph");
     setIsTimeMachineActive((prev) => {

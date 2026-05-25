@@ -1259,7 +1259,7 @@ export class GitService {
     // https://my-gitlab-instance.com/group/project
     
     // 1. Remove .git suffix
-    let cleanUrl = remoteUrl.replace(/\.git$/, '');
+    const cleanUrl = remoteUrl.replace(/\.git$/, '');
     
     // 2. Handle SSH format: git@host:path
     if (cleanUrl.includes('@') && cleanUrl.includes(':')) {

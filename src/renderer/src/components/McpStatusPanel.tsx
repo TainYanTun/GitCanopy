@@ -12,6 +12,10 @@ import { McpServerStatus, McpTool } from "@shared/types";
 import { List } from "react-window";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 
+interface ToolRowProps {
+  toolRows: any[][];
+}
+
 interface McpStatusPanelProps {
   visible: boolean;
   onClose: () => void;
@@ -62,7 +66,7 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
   }, [filteredTools]);
 
   const ToolRow = React.useCallback(
-    ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    ({ index, style, toolRows }: { index: number; style: React.CSSProperties } & ToolRowProps) => {
       const rowItems = toolRows[index];
       if (!rowItems) return null;
 
@@ -215,7 +219,7 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
                       rowCount={toolRows.length}
                       rowHeight={64}
                       rowComponent={ToolRow}
-                      rowProps={{ toolRows }}
+                      rowProps={{ toolRows } as any}
                       className="custom-scrollbar"
                     />
                   )}

@@ -745,7 +745,9 @@ Response: git reset --soft HEAD~1
             }
             systemPrompt += `\nIMPORTANT: Use these active context values automatically when calling tools that require project identification instead of asking the user for them.`;
           }
-        } catch (e) {}
+        } catch (e) {
+          // Ignore parse errors for optional context
+        }
       }
 
       const messages: any[] = [{ role: 'system', content: systemPrompt }];
