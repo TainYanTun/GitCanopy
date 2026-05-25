@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-05-26
+
+### Bug Fixes
+- **Critical Runtime Fix**: Disabled manual chunk splitting for Ant Design and React. This resolves a `TypeError` where Ant Design failed to detect the React version due to chunk initialization order.
+
 ## [1.3.1] - 2026-05-26
 
 ### Bug Fixes

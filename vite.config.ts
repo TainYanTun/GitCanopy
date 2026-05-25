@@ -45,31 +45,6 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: resolve(__dirname, 'src/renderer/index.html'),
       },
-      output: {
-        // Split vendor libraries into separate cached chunks
-        manualChunks(id) {
-          // Ant Design — largest dependency (~2MB)
-          if (id.includes('node_modules/antd') || id.includes('node_modules/@ant-design')) {
-            return 'vendor-antd';
-          }
-          // D3 visualisation library
-          if (id.includes('node_modules/d3') || id.includes('node_modules/d3-')) {
-            return 'vendor-d3';
-          }
-          // Markdown rendering
-          if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark')) {
-            return 'vendor-markdown';
-          }
-          // React virtualised list
-          if (id.includes('node_modules/react-window') || id.includes('node_modules/react-virtualized-auto-sizer')) {
-            return 'vendor-virtualized';
-          }
-          // Core React runtime
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'vendor-react';
-          }
-        },
-      },
     },
   },
   resolve: {
