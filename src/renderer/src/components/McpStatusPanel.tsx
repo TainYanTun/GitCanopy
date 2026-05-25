@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { MyceliaIcon } from "./MyceliaIcon";
 import {
-  NodeIndexOutlined,
   CheckCircleFilled,
   ExclamationCircleFilled,
   ToolOutlined,
@@ -100,8 +100,8 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
       <div className="w-[600px] h-[80vh] bg-zed-surface dark:bg-zed-dark-surface border border-zed-border dark:border-zed-dark-border shadow-2xl rounded-lg overflow-hidden flex flex-col font-sans animate-in zoom-in-95 duration-200">
         <div className="px-6 py-4 border-b border-zed-border dark:border-zed-dark-border bg-zed-bg dark:bg-zed-dark-bg flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-              <NodeIndexOutlined className="text-indigo-500 text-lg" />
+            <div className="w-8 h-8 flex items-center justify-center">
+              <MyceliaIcon className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-zed-text dark:text-zed-dark-text">

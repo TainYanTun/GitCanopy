@@ -27,6 +27,28 @@ The AI synthesizes a new block of code that satisfies both requirements, turning
 
 ---
 
+## 🍄 Mycelia: The Agentic Core
+
+**Mycelia** is the next evolution of GitCanopy's AI integration. While previous versions focused on passive assistance (summaries, reviews), Mycelia is an **active agent** capable of executing complex workflows by connecting your local environment to external platforms.
+
+### 1. Model Context Protocol (MCP) Support
+Mycelia is built on the **Model Context Protocol**, an open standard that allows AI models to safely and structuredly interact with external tools. 
+- **Tool Discovery:** Mycelia automatically discovers available tools from connected MCP servers.
+- **Dynamic Execution:** Using LLM reasoning, Mycelia determines which tools to call, what parameters are needed, and how to sequence them to fulfill your request.
+
+### 2. GitLab Agent Integration
+Version 1.3.0 introduces native support for **GitLab**. By linking your account, Mycelia becomes your personal GitLab operator:
+- **Issue Management:** Query, create, and comment on issues without leaving the app.
+- **Merge Requests:** Inspect MR status, review changes, and manage approvals.
+- **CI/CD Control:** Trigger pipelines and monitor build status via natural language.
+
+### 3. Agentic Chat Interface
+Access the Mycelia pane to engage in a context-aware dialogue.
+- **Natural Language Intents:** "What's the status of the login-fix issue on GitLab?" or "Create a new issue for the bug I just found."
+- **Professional Summarization:** Mycelia doesn't just show raw JSON. It uses your configured AI provider to transform tool outputs into structured, beautiful Markdown reports.
+
+---
+
 ## 🏗 Architecture Overview
 
 ```mermaid
@@ -34,18 +56,22 @@ graph TD
     subgraph "Renderer Process (React)"
         UI[Minimalist UI] --> Hook[Custom Hooks/Context]
         Hook --> Worker[Web Worker: Layout Engine]
+        UI --> MyceliaUI[Mycelia Agent Pane]
     end
 
     subgraph "Main Process (Electron/Node.js)"
         IPC[IPC Bridge] --> GitS[Git Service]
         IPC --> AIS[AI Service]
+        IPC --> MCPS[MCP Service]
         GitS --> Binary[Local Git Binary]
         AIS --> Gemini[Google Gemini API]
+        MCPS --> MCPServers[External MCP Servers]
         Watcher[chokidar Watcher] --> IPC
     end
 
     Binary -.-> FS[(Local Filesystem)]
     Watcher -.-> FS
+    MCPServers -.-> GitLab[(GitLab API)]
 ```
 
 ---
@@ -57,10 +83,15 @@ GitCanopy supports **Gemini** (Primary), **OpenAI**, and **Claude** as backend p
 ### 1. Configuration
 Go to **Settings (⌘,)** and navigate to the **AI Assistant** tab.
 - **Provider:** Select Google Gemini (Recommended).
-- **Model:** Choose from a wide range of models including `gemini-3-flash`, `gemini-3-pro`, `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`, and `gemini-1.5-flash` to best suit your performance and intelligence needs.
+- **Model:** Choose from a wide range of models including `gemini-2.0-flash`, `gemini-1.5-pro`, and more.
 - **API Key:** Enter your key (it will be encrypted on disk).
 
-### 2. Quality Reviewer (New!)
+### 2. Mycelia & MCP Setup
+1. Enable the **Mycelia Agent** in the sidebar.
+2. Configure your MCP server endpoints (e.g., GitLab) in the Settings panel.
+3. Mycelia will automatically handshake with these servers to learn their capabilities.
+
+### 3. Quality Reviewer
 Before you commit, click the purple **"Quality Review"** button in the Source Control header.
 - **Score:** You will receive a score from 0-100. Aim for >90.
 - **Analysis:** Review the categorized issues.
@@ -68,17 +99,17 @@ Before you commit, click the purple **"Quality Review"** button in the Source Co
     - ⚡ **Optimization:** Performance bottlenecks.
     - 🎨 **Style:** Code consistency and clean principles.
 
-### 3. Smart Commit Generation
+### 4. Smart Commit Generation
 1. Stage your files.
 2. Click the **Robot Icon** next to the commit message input.
 3. The AI will generate a Summary and Description based on the *intent* of your changes, not just the file names.
 
-### 4. AI Command Bar (Natural Language CLI)
+### 5. AI Command Bar (Natural Language CLI)
 The flagship feature of GitCanopy. Press `⌘J` to open a centered, Arc-style command palette. Type any Git intent in plain English, and the AI will translate it into a safe Git command for execution.
 - **Intent-Based:** "Switch to my work on the header" or "Undo my last commit."
 - **Context-Aware:** Understands your current branch and repository state.
 
-### 5. Smart Conflict Resolution
+### 6. Smart Conflict Resolution
 When a merge conflict occurs:
 1. Click the conflicted file in the Changes view.
 2. You will see a 3-pane view: Current, Incoming, and Result.
@@ -169,5 +200,5 @@ When a merge conflict occurs:
 ## 🎨 Philosophy
 GitCanopy is built on the principle of **"Developer First"** and prioritize speed and data density over decorative UI elements. Every pixel should serve a functional purpose.
 
-**Build Version:** 1.2.0 Stable
+**Build Version:** 1.3.0 Stable
 **Platform:** macOS / Windows / Linux

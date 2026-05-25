@@ -1,11 +1,10 @@
 import React from "react";
 import { Modal } from "antd";
+import { MyceliaIcon } from "./MyceliaIcon";
 import {
-  RocketOutlined,
-  SelectOutlined,
-  BranchesOutlined,
-  BgColorsOutlined,
-  ThunderboltOutlined,
+  ApiOutlined,
+  DeploymentUnitOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 
 interface WhatsNewModalProps {
@@ -43,7 +42,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
               backgroundSize: "16px 16px",
             }}
           />
-          <RocketOutlined className="text-5xl text-zed-accent animate-pulse" />
+          <MyceliaIcon className="w-16 h-16 relative animate-pulse" />
         </div>
 
         <div className="p-8">
@@ -59,67 +58,68 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
           <div className="space-y-6">
             {/* Feature 1 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <SelectOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 flex items-center justify-center text-purple-500">
+                <MyceliaIcon className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Marquee Selection
+                  Mycelia AI Agent
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Bulk operations are here. Switch to **Select Mode (V)** and
-                  drag a marquee box over commits to copy hashes or prepare for
-                  squashing.
+                  A native AI assistant that bridges your local workspace with
+                  external tools. Automate workflows and run complex Git
+                  operations using natural language.
                 </p>
               </div>
             </div>
 
             {/* Feature 2 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
-                <BranchesOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <ApiOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Origin Tracking & Noise Reduction
+                  Model Context Protocol
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  The graph now displays inferred branch origins for every
-                  commit. Branch lists are now grouped into **Primary** and
-                  **Ancestors** to eliminate merged-branch clutter.
+                  Full MCP support allows Mycelia to connect with external
+                  servers, inspect system states, and execute specialized tools
+                  directly from the agent pane.
                 </p>
               </div>
             </div>
 
             {/* Feature 3 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-red-500/10 flex items-center justify-center text-red-500">
-                <ThunderboltOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-orange-500/10 flex items-center justify-center text-orange-500">
+                <DeploymentUnitOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Safe Force Push
+                  GitLab Intelligence
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  GitCanopy now offers a smart **Force Push** option when
-                  history diverges. It uses safe leases and dynamic remote
-                  detection to keep your work synchronized.
+                  Native support for GitLab MCP. Query issues, manage merge
+                  requests, and trigger CI/CD pipelines without leaving
+                  GitCanopy.
                 </p>
               </div>
             </div>
 
             {/* Feature 4 */}
             <div className="flex gap-4">
-              <div className="w-8 h-8 shrink-0 rounded bg-zinc-500/10 flex items-center justify-center text-zinc-500">
-                <BgColorsOutlined className="text-base" />
+              <div className="w-8 h-8 shrink-0 rounded bg-green-500/10 flex items-center justify-center text-green-500">
+                <FileTextOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zed-text dark:text-zed-dark-text uppercase tracking-wider mb-1">
-                  Hyper-Minimalist UI
+                  AI Summaries & Formatting
                 </h3>
                 <p className="text-xs text-zed-muted dark:text-zed-dark-muted leading-relaxed">
-                  Refined glass-morphism, ultra-fine 0.5px borders, and
-                  invisible scrollbars. Designed to stay out of your way.
+                  Raw tool outputs are automatically transformed into
+                  professional Markdown reports, providing clarity and structure
+                  to complex data.
                 </p>
               </div>
             </div>

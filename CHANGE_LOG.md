@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-05-24
+
+### Mycelia AI Agent (New Core Feature)
+- **Integrated AI Agent:** Introduced Mycelia, a native AI assistant designed to bridge your local Git workspace with external tools and platforms.
+- **Model Context Protocol (MCP):** Full support for MCP, allowing Mycelia to automate cross-platform workflows, inspect system states, and execute advanced repository operations.
+- **GitLab MCP Integration:** Native support for the official GitLab MCP server. Link your GitLab account to query/create issues, manage merge requests, and trigger CI/CD pipelines directly from the agent pane.
+- **Agentic Reasoning:** Mycelia uses LLM-based reasoning to determine the optimal tool path and execute complex tasks in response to natural language prompts.
+- **Beautiful Markdown Summaries:** AI-powered formatting that transforms raw JSON tool outputs into elegant, structured reports.
+- **Short-term Memory:** Mycelia maintains conversation context to provide relevant assistance throughout your active session.
+
 ## [1.2.2] - 2026-01-27
 
 ### Interaction Engine

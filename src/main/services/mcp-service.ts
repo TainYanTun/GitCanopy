@@ -72,7 +72,7 @@ export class McpService {
         await client.request('initialize', {
           protocolVersion: "2024-11-05",
           capabilities: {},
-          clientInfo: { name: "GitCanopy", version: "1.2.2" }
+          clientInfo: { name: "GitCanopy", version: "1.3.0" }
         });
         
         // Notify that initialization is complete

@@ -19,10 +19,10 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingsModal } from "./SettingsModal";
 import { TimeMachineScrubber } from "./TimeMachineScrubber";
 import { GitCommandBar } from "./GitCommandBar";
+import { MyceliaIcon } from "./MyceliaIcon";
 import {
   SyncOutlined,
   SettingOutlined,
-  RobotOutlined,
 } from "@ant-design/icons";
 
 // Lazy-loaded components
@@ -360,146 +360,146 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       <Suspense fallback={<LoadingView />}>
         {(() => {
           switch (currentView) {
-      case "graph":
-        return (
-          <>
-            {isCommandBarOpen && (
-              <GitCommandBar
-                repoPath={repository.path}
-                branches={branches}
-                onCommandExecuted={() => {
-                  setIsCommandBarOpen(false);
-                  refreshData();
-                }}
-              />
-            )}
-            <CommitGraph
-              commits={graphCommits}
-              branches={branches}
-              stashes={stashes}
-              headCommitHash={timeMachineHeadHash}
-              selectedCommitHash={selectedCommit?.hash}
-              onCommitSelect={handleCommitSelect}
-              onLoadMore={loadMoreCommits}
-              hasMore={hasMore}
-              onLoadAll={loadAllCommits}
-              isTimeMachineActive={isTimeMachineActive}
-              onTimeMachineToggle={handleTimeMachineToggle}
-              repoPath={repository.path}
-              onViewChanges={() => setCurrentView("changes")}
-            />
-            {isTimeMachineActive && (
-              <TimeMachineScrubber
-                commits={commits}
-                currentIndex={timeMachineIndex}
-                onChange={setTimeMachineIndex}
-                onClose={handleTimeMachineToggle}
-              />
-            )}
-          </>
-        );
-      case "history":
-        return (
-          <CommitHistory
-            repoPath={repository.path}
-            commits={commits}
-            totalCommits={repository.totalCommits}
-            branches={branches}
-            headCommitHash={repository.headCommit}
-            onCommitSelect={handleCommitSelect}
-            selectedCommitHash={selectedCommit?.hash}
-            filters={commitFilters}
-            onFilterChange={handleFilterChange}
-            onClearFilters={clearFilters}
-            onLoadMore={loadMoreCommits}
-            hasMore={hasMore}
-          />
-        );
-      case "changes":
-        return (
-          <ChangesView
-            repoPath={repository.path}
-            currentBranch={repository.currentBranch}
-          />
-        );
-      case "contributors":
-        return (
-          <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">
-            <div className="p-12 max-w-6xl mx-auto">
-              <div className="mb-10">
-                <h1 className="text-2xl font-bold text-zed-text dark:text-zed-dark-text tracking-tight">
-                  Team Insights
-                </h1>
-                <p className="text-sm text-zed-muted dark:text-zed-dark-muted opacity-70">
-                  Analysis of contributor activity, development impact, and
-                  chronological engagement.
-                </p>
-              </div>
-              <Contributors repoPath={repository.path} />
-            </div>
-          </div>
-        );
-      case "insights":
-        return (
-          <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">
-            <div className="p-12 max-w-5xl mx-auto">
-              <div className="mb-10">
-                <h1 className="text-2xl font-bold text-zed-text dark:text-zed-dark-text tracking-tight">
-                  Repository Insights
-                </h1>
-                <p className="text-sm text-zed-muted dark:text-zed-dark-muted opacity-70">
-                  Analysis of file modification frequency and repository
-                  hotspots.
-                </p>
-              </div>
-              <div className="bg-zed-surface dark:bg-zed-dark-surface border border-zed-border dark:border-zed-dark-border relative overflow-hidden shadow-sm">
-                <div className="p-1 border-b border-zed-border dark:border-zed-dark-border bg-zed-element/30 dark:bg-zed-dark-element/30 flex items-center justify-between px-4 py-2">
-                  <h2 className="text-[10px] font-bold uppercase tracking-wider text-zed-muted dark:text-zed-dark-muted">
-                    Hotspots / Top Modified
-                  </h2>
-                </div>
-                <HotFiles
+            case "graph":
+              return (
+                <>
+                  {isCommandBarOpen && (
+                    <GitCommandBar
+                      repoPath={repository.path}
+                      branches={branches}
+                      onCommandExecuted={() => {
+                        setIsCommandBarOpen(false);
+                        refreshData();
+                      }}
+                    />
+                  )}
+                  <CommitGraph
+                    commits={graphCommits}
+                    branches={branches}
+                    stashes={stashes}
+                    headCommitHash={timeMachineHeadHash}
+                    selectedCommitHash={selectedCommit?.hash}
+                    onCommitSelect={handleCommitSelect}
+                    onLoadMore={loadMoreCommits}
+                    hasMore={hasMore}
+                    onLoadAll={loadAllCommits}
+                    isTimeMachineActive={isTimeMachineActive}
+                    onTimeMachineToggle={handleTimeMachineToggle}
+                    repoPath={repository.path}
+                    onViewChanges={() => setCurrentView("changes")}
+                  />
+                  {isTimeMachineActive && (
+                    <TimeMachineScrubber
+                      commits={commits}
+                      currentIndex={timeMachineIndex}
+                      onChange={setTimeMachineIndex}
+                      onClose={handleTimeMachineToggle}
+                    />
+                  )}
+                </>
+              );
+            case "history":
+              return (
+                <CommitHistory
                   repoPath={repository.path}
-                  onFileClick={handleFileHistorySelect}
+                  commits={commits}
+                  totalCommits={repository.totalCommits}
+                  branches={branches}
+                  headCommitHash={repository.headCommit}
+                  onCommitSelect={handleCommitSelect}
+                  selectedCommitHash={selectedCommit?.hash}
                   filters={commitFilters}
+                  onFilterChange={handleFilterChange}
+                  onClearFilters={clearFilters}
+                  onLoadMore={loadMoreCommits}
+                  hasMore={hasMore}
                 />
-              </div>
-            </div>
-          </div>
-        );
-      case "objects":
-        return (
-          <GitObjectsGallery
-            repoPath={repository.path}
-            headCommit={repository.headCommit}
-            onViewChanges={() => setCurrentView("changes")}
-            onRefreshRepo={refreshData}
-          />
-        );
-      case "help":
-        return <HelpView />;
-      case "console":
-        return <GitConsole repoPath={repository.path} />;
-      case "agent":
-        return (
-          <GitLabAgent
-            repoPath={repository.path}
-            projectName={repository.name}
-            currentBranch={repository.currentBranch}
-          />
-        );
-      case "actions":
-        return (
-          <WorkflowRuns
-            repoPath={repository.path}
-            currentBranch={repository.currentBranch}
-          />
-        );
-      default:
-        return null;
-    }
-  })()}
-</Suspense>
+              );
+            case "changes":
+              return (
+                <ChangesView
+                  repoPath={repository.path}
+                  currentBranch={repository.currentBranch}
+                />
+              );
+            case "contributors":
+              return (
+                <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">
+                  <div className="p-12 max-w-6xl mx-auto">
+                    <div className="mb-10">
+                      <h1 className="text-2xl font-bold text-zed-text dark:text-zed-dark-text tracking-tight">
+                        Team Insights
+                      </h1>
+                      <p className="text-sm text-zed-muted dark:text-zed-dark-muted opacity-70">
+                        Analysis of contributor activity, development impact, and
+                        chronological engagement.
+                      </p>
+                    </div>
+                    <Contributors repoPath={repository.path} />
+                  </div>
+                </div>
+              );
+            case "insights":
+              return (
+                <div className="max-w-none w-full h-full overflow-y-auto animate-in fade-in slide-in-from-bottom-4 scrollbar-hide bg-zed-surface dark:bg-zed-dark-surface">
+                  <div className="p-12 max-w-5xl mx-auto">
+                    <div className="mb-10">
+                      <h1 className="text-2xl font-bold text-zed-text dark:text-zed-dark-text tracking-tight">
+                        Repository Insights
+                      </h1>
+                      <p className="text-sm text-zed-muted dark:text-zed-dark-muted opacity-70">
+                        Analysis of file modification frequency and repository
+                        hotspots.
+                      </p>
+                    </div>
+                    <div className="bg-zed-surface dark:bg-zed-dark-surface border border-zed-border dark:border-zed-dark-border relative overflow-hidden shadow-sm">
+                      <div className="p-1 border-b border-zed-border dark:border-zed-dark-border bg-zed-element/30 dark:bg-zed-dark-element/30 flex items-center justify-between px-4 py-2">
+                        <h2 className="text-[10px] font-bold uppercase tracking-wider text-zed-muted dark:text-zed-dark-muted">
+                          Hotspots / Top Modified
+                        </h2>
+                      </div>
+                      <HotFiles
+                        repoPath={repository.path}
+                        onFileClick={handleFileHistorySelect}
+                        filters={commitFilters}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            case "objects":
+              return (
+                <GitObjectsGallery
+                  repoPath={repository.path}
+                  headCommit={repository.headCommit}
+                  onViewChanges={() => setCurrentView("changes")}
+                  onRefreshRepo={refreshData}
+                />
+              );
+            case "help":
+              return <HelpView />;
+            case "console":
+              return <GitConsole repoPath={repository.path} />;
+            case "agent":
+              return (
+                <GitLabAgent
+                  repoPath={repository.path}
+                  projectName={repository.name}
+                  currentBranch={repository.currentBranch}
+                />
+              );
+            case "actions":
+              return (
+                <WorkflowRuns
+                  repoPath={repository.path}
+                  currentBranch={repository.currentBranch}
+                />
+              );
+            default:
+              return null;
+          }
+        })()}
+      </Suspense>
     );
   };
 
@@ -569,17 +569,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="flex items-center gap-2 no-drag">
           <button
             onClick={() => setCurrentView("agent")}
-            className={`flex items-center gap-1.5 px-2 py-1 transition-all duration-200 group ${
-              currentView === "agent"
-                ? "text-zed-accent opacity-100"
-                : "text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text"
-            }`}
+            className={`flex items-center gap-1.5 px-2 py-1 transition-all duration-200 group ${currentView === "agent"
+              ? "text-zed-accent opacity-100"
+              : "text-zed-muted dark:text-zed-dark-muted hover:text-zed-text dark:hover:text-zed-dark-text"
+              }`}
             title="Mycelia AI Agent"
           >
-            <RobotOutlined
-              className={`text-[11px] transition-colors ${
-                currentView === "agent" ? "text-zed-accent" : "opacity-60 group-hover:opacity-100"
-              }`}
+            <MyceliaIcon
+              className={`w-4 h-4 transition-all ${currentView === "agent" ? "opacity-100" : "opacity-60 group-hover:opacity-100"
+                }`}
             />
             <span className="text-[10px] font-bold uppercase tracking-[0.12em]">
               Mycelia
