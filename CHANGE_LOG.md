@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.4] - 2026-05-26
+
+### Features
+- **Self-Hosted GitLab Support**: Added configuration for custom GitLab API URLs in Settings.
+- **Enhanced Connection Stability**: Improved MCP server spawning logic with shell execution and automatic dependency confirmation.
+
 ## [1.3.3] - 2026-05-26
 
 ### Bug Fixes

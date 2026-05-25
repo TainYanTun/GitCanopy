@@ -193,6 +193,7 @@ export interface AppSettings {
   githubToken?: string;
   githubTokenCreated?: number;
   gitlabToken?: string;
+  gitlabApiUrl?: string;
   gitlabAgentId?: string;
   gitlabProjectPath?: string;
   gitlabProjectId?: string;

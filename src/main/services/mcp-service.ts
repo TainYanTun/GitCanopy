@@ -27,8 +27,9 @@ export class McpService {
   async connectServer(config: McpServerConfig): Promise<void> {
     try {
       const serverProcess = spawn(config.command, config.args || [], {
-        env: { ...process.env, ...config.env },
-        stdio: ['pipe', 'pipe', 'inherit']
+        env: { ...process.env, ...config.env, npm_config_yes: 'true' },
+        stdio: ['pipe', 'pipe', 'inherit'],
+        shell: true
       });
 
       const client: JSONRPCClient = new JSONRPCClient((request) => {

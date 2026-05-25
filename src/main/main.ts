@@ -71,7 +71,7 @@ class GitCanopyApp {
 
         if (settings.gitlabToken) {
           logInfo("App", "Connecting to GitLab MCP server...");
-          this.mcpService.connectGitLab(settings.gitlabToken).catch(err => {
+          this.mcpService.connectGitLab(settings.gitlabToken, settings.gitlabApiUrl).catch(err => {
             logError("App", `Auto-connect GitLab MCP failed: ${err}`);
           });
         }

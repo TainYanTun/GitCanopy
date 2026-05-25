@@ -157,6 +157,9 @@ export class SettingsService {
     if (settings.gitlabToken && typeof settings.gitlabToken === 'string') {
         validated.gitlabToken = settings.gitlabToken;
     }
+    if (settings.gitlabApiUrl && typeof settings.gitlabApiUrl === 'string') {
+        validated.gitlabApiUrl = settings.gitlabApiUrl;
+    }
     if (settings.gitlabAgentId && typeof settings.gitlabAgentId === 'string') {
         validated.gitlabAgentId = settings.gitlabAgentId;
     }

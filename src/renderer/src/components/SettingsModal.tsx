@@ -395,6 +395,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose, 
                           Scopes: <code>api, read_api, read_repository, write_repository</code>.
                         </p>
                       </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold opacity-70">GitLab API URL (Optional)</label>
+                        <input
+                          type="text"
+                          value={settings.gitlabApiUrl || ''}
+                          onChange={(e) => setSettings({ ...settings, gitlabApiUrl: e.target.value })}
+                          placeholder="https://gitlab.example.com/api/v4"
+                          className="w-full bg-zed-bg dark:bg-zed-dark-bg border border-zed-border dark:border-zed-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-zed-accent dark:text-zed-dark-text"
+                        />
+                        <p className="text-[10px] text-zed-muted mt-1 leading-relaxed">
+                          Only needed for <strong>self-hosted</strong> GitLab instances. Leave empty for GitLab.com.
+                        </p>
+                      </div>
                       
                       <div className="grid grid-cols-2 gap-4 pt-2">
                         <div className="space-y-1">
