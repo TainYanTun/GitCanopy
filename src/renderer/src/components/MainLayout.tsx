@@ -75,6 +75,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const [isTimeMachineActive, setIsTimeMachineActive] = useState(false);
   const [timeMachineIndex, setTimeMachineIndex] = useState(0);
   const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
+  const [helpAnchor, setHelpAnchor] = useState<string | undefined>(undefined);
   const PAGE_SIZE = 50;
   const [currentView, setCurrentView] = useState<
     | "graph"
@@ -477,7 +478,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 />
               );
             case "help":
-              return <HelpView />;
+              return <HelpView anchor={helpAnchor} />;
             case "console":
               return <GitConsole repoPath={repository.path} />;
             case "agent":
@@ -486,6 +487,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   repoPath={repository.path}
                   projectName={repository.name}
                   currentBranch={repository.currentBranch}
+                  onHelpClick={() => { setHelpAnchor("mycelia-section"); setCurrentView("help"); }}
                 />
               );
             case "actions":

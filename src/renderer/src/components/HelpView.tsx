@@ -1,8 +1,19 @@
 import React from "react";
 
-export const HelpView: React.FC = () => {
+export const HelpView: React.FC<{ anchor?: string }> = ({ anchor }) => {
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? 'Cmd' : 'Ctrl';
+
+  React.useEffect(() => {
+    if (anchor) {
+      setTimeout(() => {
+        const element = document.getElementById(anchor);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+  }, [anchor]);
 
   return (
     <div className="h-full overflow-y-auto bg-zed-bg dark:bg-zed-dark-bg selection:bg-zed-accent/30 animate-in fade-in duration-500">
@@ -522,7 +533,7 @@ export const HelpView: React.FC = () => {
         </section>
 
         {/* 09. Mycelia AI Agent & MCP */}
-        <section className="space-y-8">
+        <section id="mycelia-section" className="space-y-8">
           <div className="flex items-baseline gap-4">
             <span className="text-xs font-mono text-zed-accent/50 dark:text-zed-dark-accent/50 font-bold">
               09

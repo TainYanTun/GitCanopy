@@ -22,12 +22,14 @@ interface GitLabAgentProps {
   repoPath: string;
   projectName: string;
   currentBranch: string;
+  onHelpClick?: () => void;
 }
 
 export const GitLabAgent: React.FC<GitLabAgentProps> = ({
   repoPath,
   projectName,
   currentBranch,
+  onHelpClick,
 }) => {
   const { showToast } = useToast();
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -45,6 +47,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [aiProvider, setAiProvider] = useState<string>("Gemini");
   const [workspaceStatus, setWorkspaceStatus] = useState<{ staged: number, unstaged: number, ahead: number, behind: number } | null>(null);
+  const [suggestionSelectedIndex, setSuggestionSelectedIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -103,6 +106,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     setInputValue(value);
     if (value.startsWith("@") && !value.includes(" ")) {
       setShowSuggestions(true);
+      setSuggestionSelectedIndex(0);
     } else {
       setShowSuggestions(false);
     }
@@ -228,7 +232,32 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     t.name.toLowerCase().includes(inputValue.substring(1).toLowerCase()),
   );
 
-  const hasSuggestions = filteredCommands.length > 0 || filteredTools.length > 0;
+  const combinedSuggestions = [
+    ...filteredCommands.map(c => ({ ...c, isCommand: true })),
+    ...filteredTools.map(t => ({ ...t, isCommand: false }))
+  ];
+  const hasSuggestions = combinedSuggestions.length > 0;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+      return;
+    }
+
+    if (showSuggestions && hasSuggestions) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSuggestionSelectedIndex((prev) => (prev + 1) % combinedSuggestions.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSuggestionSelectedIndex((prev) => (prev - 1 + combinedSuggestions.length) % combinedSuggestions.length);
+      } else if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        const selected = combinedSuggestions[suggestionSelectedIndex];
+        handleSuggestionClick(selected, selected.isCommand);
+      }
+    }
+  };
 
   const renderInputSection = (isCentered: boolean) => (
     <div className={`w-full max-w-3xl mx-auto relative ${isCentered ? 'scale-100 transition-all duration-500' : ''}`}>
@@ -239,23 +268,20 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
             <span className="text-[9px] opacity-30 dark:opacity-20 font-mono tracking-tighter">TAB_SELECT</span>
           </div>
           <div className="overflow-y-auto custom-scrollbar">
-            {filteredCommands.map((cmd) => (
-              <button key={cmd.name} onClick={() => handleSuggestionClick(cmd, true)} className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-white/5 flex items-center justify-between group transition-colors">
-                <div className="flex flex-col">
-                  <span className="text-[12px] font-mono font-bold text-purple-700 dark:text-purple-400">@{cmd.name}</span>
-                  <span className="text-[10px] font-sans font-medium opacity-50 dark:opacity-40 tracking-tight">{cmd.description}</span>
-                </div>
-              </button>
-            ))}
-            {filteredTools.map((tool) => (
-              <button key={tool.name} onClick={() => handleSuggestionClick(tool)} className="w-full text-left px-4 py-2.5 hover:bg-zed-element dark:hover:bg-white/5 flex items-center justify-between group transition-colors">
+            {combinedSuggestions.map((item, index) => (
+              <button 
+                key={item.name} 
+                onClick={() => handleSuggestionClick(item, item.isCommand)} 
+                className={`w-full text-left px-4 py-2.5 flex items-center justify-between group transition-colors ${index === suggestionSelectedIndex ? 'bg-zed-accent/10 dark:bg-white/10' : 'hover:bg-zed-element dark:hover:bg-white/5'}`}
+              >
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-mono font-bold text-zed-accent dark:text-zed-dark-accent">@{tool.name}</span>
-                    {getRequiredParams(tool).map(p => <span key={p} className="text-[8px] font-mono bg-pink-500/10 text-pink-700 dark:text-pink-400 px-1 rounded-sm border border-pink-500/20">{p}</span>)}
+                    <span className={`text-[12px] font-mono font-bold ${item.isCommand ? 'text-purple-700 dark:text-purple-400' : 'text-zed-accent dark:text-zed-dark-accent'}`}>@{item.name}</span>
+                    {!item.isCommand && getRequiredParams(item as any).map(p => <span key={p} className="text-[8px] font-mono bg-pink-500/10 text-pink-700 dark:text-pink-400 px-1 rounded-sm border border-pink-500/20">{p}</span>)}
                   </div>
-                  <span className="text-[10px] font-sans font-medium opacity-50 dark:opacity-40 truncate tracking-tight">{tool.description || "Git Action"}</span>
+                  <span className="text-[10px] font-sans font-medium opacity-50 dark:opacity-40 tracking-tight">{item.description || "Git Action"}</span>
                 </div>
+                {index === suggestionSelectedIndex && <span className="text-[9px] font-mono opacity-40 animate-pulse">SELECT</span>}
               </button>
             ))}
           </div>
@@ -279,9 +305,9 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          onKeyDown={(e) => { if (e.key === "Escape") setShowSuggestions(false); }}
+          onKeyDown={handleKeyDown}
           disabled={isAgentTyping}
-          placeholder="Enter command..."
+          placeholder="Command..."
           className="relative w-full bg-transparent px-12 py-4 text-[14px] font-sans font-medium tracking-tight border-none focus:outline-none focus:ring-0 placeholder:opacity-50 dark:placeholder:opacity-30 text-transparent caret-zed-accent dark:caret-zed-dark-accent min-h-[54px] rounded-2xl"
           autoFocus
         />
@@ -353,6 +379,13 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
         </div>
 
         <div className="flex items-center gap-4">
+          <button
+            onClick={onHelpClick}
+            className="text-[10px] font-mono font-black uppercase tracking-widest opacity-20 hover:opacity-60 hover:text-zed-accent transition-all"
+          >
+            How_it_works?
+          </button>
+
           <button
             onClick={() => setShowMcpStatus(true)}
             className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/5 transition-colors group"
