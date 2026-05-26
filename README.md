@@ -27,6 +27,9 @@ GitCanopy isn't just a wrapper around `git`. It is an **active development partn
 ### 🛡️ Proactive Quality Control
 Most clients let you push bad code. GitCanopy's **Quality Reviewer** analyzes your staged diffs against performance standards and architectural patterns, giving you a **Quality Score (0-100)** before you ever hit commit.
 
+### 🍄 Mycelia: The Agentic Core (New)
+Mycelia is an active development agent that bridges the gap between your local repository and external platforms. Powered by the **Model Context Protocol (MCP)**, it can manage GitLab issues, trigger CI/CD pipelines, and automate cross-platform workflows using natural language.
+
 ### ✨ AI Command Center (Arc-style CLI)
 Stop memorizing complex Git flags. Press `⌘J` to open a centered, immersive command palette. Type your intent in plain English (e.g., *"undo my last commit but keep changes"* or *"delete branches already merged into main"*) and the AI will translate and execute the command safely.
 
@@ -38,6 +41,7 @@ History is a living thing. Use the **Time Machine** scrubber to travel back to a
 ## ✨ Features
 
 - **🤖 AI & Automation:**
+    - **Mycelia AI Agent:** Native support for MCP to automate repository tasks and integrate with GitLab/external services.
     - **AI Command Center (⌘J):** Centered, Spotlight-style natural language CLI for repository management.
     - **Smart Commit Generator:** Generate semantic messages from diffs using Gemini, OpenAI, or Claude.
     - **Intelligent Conflict Resolver:** Resolve complex merge conflicts with natural language instructions.
@@ -91,42 +95,56 @@ graph TD
     subgraph "Core Services (Main)"
         GitService["📂 Git Service"]
         AiService["🧠 AI Service"]
-        Settings["🔧 Settings"]
-        Watcher["👀 Repo Watcher"]
+        Mycelia["🍄 Mycelia Agent"]
+        McpService["🧩 MCP Service"]
         
         Main --> GitService
         Main --> AiService
-        Main --> Settings
-        Main --> Watcher
+        Main --> Mycelia
+        Mycelia --> McpService
     end
 
     subgraph "External Integrations"
         GitCLI["Build-in Git Binary"]
-        GeminiAPI["✨ Google Gemini API<br/>(v1beta)"]
+        GeminiAPI["✨ Google Gemini API"]
         OpenAI_API["OpenAI API"]
         Claude_API["Anthropic Claude API"]
         GitHubAPI["GitHub API"]
+        GitLabAPI["GitLab API (via MCP)"]
+        McpServers["🔌 External MCP Servers"]
         
         GitService <--> GitCLI
         AiService <--> GeminiAPI
         AiService <--> OpenAI_API
         AiService <--> Claude_API
         Main <--> GitHubAPI
+        McpService <--> GitLabAPI
+        McpService <--> McpServers
     end
 
     style Renderer fill:#0891b2,stroke:#06b6d4,stroke-width:2px,color:#fff
     style Main fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#fff
     style AiService fill:#7c3aed,stroke:#a78bfa,stroke-width:2px,color:#fff
-    style GeminiAPI fill:#ea4335,stroke:#fca5a5,stroke-width:2px,color:#fff
+    style Mycelia fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    style McpService fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
 ```
+
+### 🍄 Mycelia & MCP (Model Context Protocol)
+
+GitCanopy v1.3.0 introduces **Mycelia**, an agentic core built on the [Model Context Protocol](https://modelcontextprotocol.io).
+
+- **Native GitLab Integration:** Link your GitLab account to manage issues, merge requests, and pipelines directly from the Mycelia agent pane.
+- **Agentic Reasoning:** Mycelia uses LLMs to plan and execute multi-step tasks (e.g., *"Find the latest failing pipeline on GitLab and summarize the error logs"*).
+- **Extensible Architecture:** Connect any MCP-compliant server to give Mycelia new "superpowers" like database inspection, cloud resource management, or local file system automation.
 
 ### 🧠 AI Integration Flow
 
-1.  **Renderer** sends a request (e.g., "Generate Commit Message") via IPC.
-2.  **Main Process** captures the current context (staged diffs, conflict markers).
-3.  **AI Service** constructs a prompt and selects the provider (Gemini 2.5/2.0, OpenAI, or Claude) based on user settings.
-4.  **External API** processes the request and returns semantic text or code.
-5.  **Response** flows back to the UI for user review.
+1.  **Renderer** sends a request (e.g., "Generate Commit Message" or an Agent prompt) via IPC.
+2.  **Main Process** captures the current context (staged diffs, repository state, MCP tool definitions).
+3.  **AI Service** constructs a prompt and selects the provider (Gemini, OpenAI, or Claude).
+4.  **Mycelia Agent** (if invoked) reasons about which MCP tools to call and executes them.
+5.  **External API** processes the request and returns semantic text or tool results.
+6.  **Response** is summarized by the AI and flows back to the UI for user review.
 
 ---
 

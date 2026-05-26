@@ -2,6 +2,25 @@
 
 This document tracks the features and fixes implemented in the GitCanopy codebase.
 
+## [2026-05-26] - Mycelia AI Agent Integration (v1.3.0)
+
+### Features
+
+- **Mycelia AI Agent:** Introduced a native AI assistant designed to bridge the local Git workspace with external platforms.
+  - **Model Context Protocol (MCP):** Implemented full support for MCP, allowing the agent to discover and execute tools from external servers.
+  - **GitLab MCP Integration:** Added native support for GitLab operations (Issues, MRs, CI/CD) via the GitLab MCP server.
+  - **Agentic Reasoning:** Integrated an LLM-based reasoning loop that determines the optimal tool path for natural language prompts.
+  - **Short-term Memory:** Added conversation context management to enable multi-turn dialogues.
+- **Agent UI Pane:** Created a dedicated sidebar panel for interacting with Mycelia.
+  - **Markdown Rendering:** AI responses are beautifully formatted using professional Markdown.
+  - **Loading Feedback:** Integrated high-fidelity spinners and skeleton loaders for asynchronous agent tasks.
+
+### Technical Improvements
+
+- **MCP Service:** Developed a new core service to manage the lifecycle of MCP server connections (stdio/http).
+- **AI Service Expansion:** Added `runAgentCycle` and `summarizeAgentResult` to handle complex agentic workflows and tool output summarization.
+- **IPC Handlers:** Expanded the bridge with `triggerDuoAgent` and `checkDuoAgentStatus`.
+
 ## [2026-01-08] - Integrated Conflict Resolution
 
 ### Features

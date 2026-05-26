@@ -60,18 +60,16 @@
 - [x] **Vite** for fast development and building
 - [x] **ESLint** and TypeScript for code quality
 - [x] **Electron Builder** for cross-platform packaging
-
-### 🚧 Core Services (Basic Implementation)
+### 🚧 Core Services (Advanced Implementation)
 - [x] **GitService** - Executes git commands and parses output
 - [x] **RepositoryWatcher** - Monitors git repository changes  
-- [x] **SettingsService** - Manages app configuration
-- [x] **Error Boundary** - React error handling
-- [x] **Basic Components** - Welcome screen, main layout, loading states
+- [x] **Mycelia Agent** - LLM-powered agentic core with MCP support
+- [x] **MCP Service** - Handshakes and executes tools from external servers
+- [x] **SettingsService** - Manages app configuration and API keys
 
 ### 🎯 Next Steps to Complete
 
 1. **Enhanced Git Integration**:
-   - Add more robust git command error handling
    - Implement commit graph layout algorithms
    - Add branch lane assignment logic
 
@@ -89,6 +87,26 @@
    - Add remaining components (CommitDetails, Toolbar, etc.)
    - Implement dark/light theme switching
    - Add keyboard shortcuts and accessibility
+
+## 🤖 Agent & MCP Setup
+
+To enable the **Mycelia Agent**, you need to configure at least one AI provider and optionally an MCP server.
+
+### 1. AI Provider
+1. Obtain an API Key from [Google AI Studio](https://aistudio.google.com/) (Gemini), OpenAI, or Anthropic.
+2. Open GitCanopy **Settings (⌘,)** -> **AI Assistant**.
+3. Select your provider and enter the API Key.
+
+### 2. MCP Servers (e.g., GitLab)
+GitCanopy supports the Model Context Protocol to extend Mycelia's capabilities.
+1. Install an MCP server (e.g., `@modelcontextprotocol/server-gitlab`).
+2. In GitCanopy **Settings** -> **Mycelia Agent**, add the server configuration:
+   - **Name:** GitLab
+   - **Transport:** stdio
+   - **Command:** `npx`
+   - **Args:** `["-y", "@modelcontextprotocol/server-gitlab"]`
+   - **Env:** `{"GITLAB_PERSONAL_ACCESS_TOKEN": "your_token_here"}`
+3. Restart the agent to handshake and discover tools.
 
 ## 🛠️ Development Commands
 

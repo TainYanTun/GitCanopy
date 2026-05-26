@@ -45,7 +45,9 @@ Version 1.3.0 introduces native support for **GitLab**. By linking your account,
 ### 3. Agentic Chat Interface
 Access the Mycelia pane to engage in a context-aware dialogue.
 - **Natural Language Intents:** "What's the status of the login-fix issue on GitLab?" or "Create a new issue for the bug I just found."
+- **Short-term Memory:** Mycelia maintains conversation context throughout your active session, allowing for follow-up questions and complex, multi-turn reasoning.
 - **Professional Summarization:** Mycelia doesn't just show raw JSON. It uses your configured AI provider to transform tool outputs into structured, beautiful Markdown reports.
+- **Standardized Loading States:** High-fidelity spinners and skeleton loaders provide real-time feedback during long-running agentic tasks.
 
 ---
 
