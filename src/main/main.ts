@@ -45,6 +45,12 @@ class GitCanopyApp {
     this.gitLabAgentService = new GitLabAgentService();
     this.mcpService = new McpService();
     this.gitLabAgentService.setMcpService(this.mcpService);
+    
+    // Listen for MCP tools updates and forward to renderer
+    this.mcpService.on('tools-updated', (tools) => {
+      this.mainWindow?.webContents.send('mcp:tools-updated', tools);
+    });
+
     this.initializeApp();
   }
 

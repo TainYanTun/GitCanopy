@@ -515,6 +515,7 @@ export interface GitCanopyAPI {
   onMenuSyncRepository: (callback: () => void) => () => void;
   onPushCompleted: (callback: () => void) => () => void;
   onCloneProgress: (callback: (progress: string) => void) => () => void;
+  onMcpToolsUpdated: (callback: (tools: McpTool[]) => void) => () => void;
 
   // Utility
   showItemInFolder: (path: string) => Promise<void>;

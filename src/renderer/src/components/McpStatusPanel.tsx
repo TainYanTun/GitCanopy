@@ -41,6 +41,12 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
     if (visible) {
       fetchData();
     }
+
+    const unsubscribe = window.gitcanopyAPI.onMcpToolsUpdated(() => {
+      if (visible) fetchData();
+    });
+
+    return () => unsubscribe();
   }, [visible]);
 
   const filteredTools = useMemo(() => {
@@ -187,7 +193,7 @@ export const McpStatusPanel: React.FC<McpStatusPanelProps> = ({ visible, onClose
 
         <div className="px-6 py-4 bg-zed-bg/50 dark:bg-zed-dark-bg/50 border-t border-zed-border dark:border-zed-dark-border flex items-center justify-between">
             <p className="text-[9px] text-zed-muted leading-relaxed uppercase tracking-wider opacity-60 font-bold">
-              Secure Stdio Transport Protocol v2024-11-05
+              Secure Stdio Transport Protocol
             </p>
             <button 
               onClick={onClose}

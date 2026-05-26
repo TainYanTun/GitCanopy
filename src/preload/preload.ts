@@ -263,6 +263,14 @@ const gitcanopyAPI: GitCanopyAPI = {
     };
   },
 
+  onMcpToolsUpdated: (callback: (tools: any[]) => void): (() => void) => {
+    const wrappedCallback = (_: any, tools: any[]) => callback(tools);
+    ipcRenderer.on("mcp:tools-updated", wrappedCallback);
+    return () => {
+      ipcRenderer.removeListener("mcp:tools-updated", wrappedCallback);
+    };
+  },
+
   // Utility functions
   showItemInFolder: (path: string): Promise<void> =>
     ipcRenderer.invoke("show-item-in-folder", path),

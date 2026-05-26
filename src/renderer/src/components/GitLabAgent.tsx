@@ -45,6 +45,7 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
     undefined,
   );
   const [showMcpStatus, setShowMcpStatus] = useState(false);
+  const [loadingTools, setLoadingTools] = useState(true);
   const [aiProvider, setAiProvider] = useState<string>("Gemini");
   const [workspaceStatus, setWorkspaceStatus] = useState<{ staged: number, unstaged: number, ahead: number, behind: number } | null>(null);
   const [suggestionSelectedIndex, setSuggestionSelectedIndex] = useState(0);
@@ -65,16 +66,25 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
 
   const fetchTools = async () => {
     try {
+      setLoadingTools(true);
       const tools = await window.gitcanopyAPI.getAllMcpTools();
       setAvailableTools(tools);
     } catch (e) {
       console.error("Failed to fetch MCP tools", e);
+    } finally {
+      setLoadingTools(false);
     }
   };
 
   useEffect(() => {
     fetchTools();
     fetchWorkspaceContext();
+
+    const unsubscribeTools = window.gitcanopyAPI.onMcpToolsUpdated((tools) => {
+      setAvailableTools(tools);
+      setLoadingTools(false);
+    });
+
     window.gitcanopyAPI
       .getSettings(repoPath)
       .then((s: any) => {
@@ -90,6 +100,10 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
         }
       })
       .catch(() => { });
+
+    return () => {
+      unsubscribeTools();
+    };
   }, [repoPath]);
 
   useEffect(() => {
@@ -320,7 +334,17 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
   );
 
   const getWorkspacePulse = () => {
-    if (!workspaceStatus) return <span className="animate-pulse opacity-30 dark:opacity-20 font-mono tracking-[0.2em] text-[10px] font-black uppercase">Analysing_Context...</span>;
+    if (!workspaceStatus) return (
+      <div className="flex items-center gap-3">
+        <div className="w-3 h-3 text-zed-accent opacity-40">
+          <svg className="animate-spin w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <span className="animate-pulse opacity-30 dark:opacity-20 font-mono tracking-[0.2em] text-[10px] font-black uppercase">Analysing_Context...</span>
+      </div>
+    );
     
     return (
       <div className="flex flex-col items-center gap-5">
@@ -421,7 +445,27 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                   {renderInputSection(true)}
                 </div>
 
-                {availableTools.length > 0 && (
+                {loadingTools ? (
+                  <div className="flex flex-col items-center gap-6 animate-in fade-in duration-500">
+                    <div className="flex items-center gap-4 px-1 w-full max-w-3xl">
+                      <div className="h-[1px] flex-1 bg-black/10 dark:bg-white/10 opacity-30" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 text-zed-accent opacity-40">
+                          <svg className="animate-spin w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        </div>
+                        <span className="text-[9px] font-mono font-black uppercase tracking-[0.5em] opacity-20 dark:opacity-15 animate-pulse">Syncing_Modules</span>
+                      </div>
+                      <div className="h-[1px] flex-1 bg-black/10 dark:bg-white/10 opacity-30" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 w-full max-w-3xl">
+                      <div className="h-[60px] rounded border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] animate-pulse" />
+                      <div className="h-[60px] rounded border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] animate-pulse" />
+                    </div>
+                  </div>
+                ) : availableTools.length > 0 && (
                   <div className="flex flex-col items-center gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
                     <div className="flex items-center gap-4 px-1 w-full max-w-3xl">
                       <div className="h-[1px] flex-1 bg-black/10 dark:bg-white/10 opacity-30" />
@@ -512,10 +556,14 @@ export const GitLabAgent: React.FC<GitLabAgentProps> = ({
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <span className="text-[9px] font-mono font-black uppercase tracking-[0.2em] opacity-25 dark:opacity-15">Mycelia</span>
-                  <div className="flex gap-1 py-2">
-                    <div className="w-1 h-1 rounded-full bg-zed-accent/40 dark:bg-zed-dark-accent/40 animate-bounce" />
-                    <div className="w-1 h-1 rounded-full bg-zed-accent/40 dark:bg-zed-dark-accent/40 animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-1 h-1 rounded-full bg-zed-accent/40 dark:bg-zed-dark-accent/40 animate-bounce [animation-delay:0.4s]" />
+                  <div className="flex items-center gap-3 py-2">
+                    <div className="w-3.5 h-3.5 text-zed-accent opacity-60">
+                      <svg className="animate-spin w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-30 animate-pulse">Processing</span>
                   </div>
                 </div>
               </div>

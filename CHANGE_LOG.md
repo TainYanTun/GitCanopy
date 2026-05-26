@@ -1,36 +1,4 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-## [1.3.5] - 2026-05-26
-
-### Bug Fixes
-- **Production Environment Hardening**: Implemented `PATH` resolution for macOS production environments. This ensures that the application can find `npx`, `git`, and other system binaries when packaged as a standalone app.
-- **Dynamic Reconnection**: The GitLab MCP server now automatically reconnects whenever Settings are saved, eliminating the need to restart the app after updating your Personal Access Token.
-
-## [1.3.4] - 2026-05-26
-
-### Features
-- **Self-Hosted GitLab Support**: Added configuration for custom GitLab API URLs in Settings.
-- **Enhanced Connection Stability**: Improved MCP server spawning logic with shell execution and automatic dependency confirmation.
-
-## [1.3.3] - 2026-05-26
-
-### Bug Fixes
-- **Asset Loading**: Fixed an issue where the Mycelia SVG icon failed to load in production due to an absolute path reference. Switched to relative path resolution.
-
-## [1.3.2] - 2026-05-26
-
-### Bug Fixes
-- **Critical Runtime Fix**: Disabled manual chunk splitting for Ant Design and React. This resolves a `TypeError` where Ant Design failed to detect the React version due to chunk initialization order.
-
-## [1.3.1] - 2026-05-26
-
-### Bug Fixes
-- **Runtime Stability**: Resolved a critical `TypeError` in the Ant Design bundle by optimizing component initialization and import structures.
-- **Dependency Optimization**: Replaced experimental virtualization in the MCP panel with a stable high-performance grid to prevent bundle-splitting conflicts.
-
-## [1.3.0] - 2026-05-24
+## [1.3.0] - 2026-05-26
 
 ### Mycelia AI Agent (New Core Feature)
 - **Integrated AI Agent:** Introduced Mycelia, a native AI assistant designed to bridge your local Git workspace with external tools and platforms.
@@ -39,6 +7,14 @@ All notable changes to this project will be documented in this file.
 - **Agentic Reasoning:** Mycelia uses LLM-based reasoning to determine the optimal tool path and execute complex tasks in response to natural language prompts.
 - **Beautiful Markdown Summaries:** AI-powered formatting that transforms raw JSON tool outputs into elegant, structured reports.
 - **Short-term Memory:** Mycelia maintains conversation context to provide relevant assistance throughout your active session.
+
+### Improvements & Fixes
+- **Real-time Tool Discovery:** Improved the MCP service to proactively notify the UI when new tools are discovered, ensuring the command autocomplete is always up-to-date.
+- **Standardized Loading States:** Unified the visual language for background processing. The GitLab Agent now uses high-fidelity spinners and skeleton loaders that match the primary GitCanopy aesthetic.
+- **Production Environment Hardening:** Implemented `PATH` resolution for macOS production environments to ensure system binaries like `npx` and `git` are correctly located.
+- **Dynamic Reconnection:** The GitLab MCP server now automatically reconnects whenever Settings are saved, eliminating the need for application restarts.
+- **Self-Hosted GitLab Support:** Added configuration for custom GitLab API URLs in Settings.
+- **Asset Stability:** Fixed icon loading issues in production and optimized Ant Design bundle initialization for better runtime performance.
 
 ## [1.2.2] - 2026-01-27
 

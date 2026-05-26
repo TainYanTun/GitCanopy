@@ -2,6 +2,7 @@ import { ChildProcess, spawn } from 'child_process';
 import { logError, logInfo } from './logger-service';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import { getEnvWithFixedPath } from '../utils';
+import { EventEmitter } from 'events';
 
 interface McpTool {
   name: string;
@@ -17,10 +18,14 @@ interface McpServerConfig {
   env?: Record<string, string>;
 }
 
-export class McpService {
+export class McpService extends EventEmitter {
   private clients = new Map<string, JSONRPCClient>();
   private processes = new Map<string, ChildProcess>();
   private tools = new Map<string, { serverId: string; tool: McpTool }>();
+
+  constructor() {
+    super();
+  }
 
   /**
    * Connects to an MCP server via stdio
@@ -107,6 +112,9 @@ export class McpService {
       for (const tool of serverTools) {
         this.tools.set(tool.name, { serverId, tool });
       }
+
+      const allTools = await this.getAllTools();
+      this.emit('tools-updated', allTools);
     } catch (error) {
       logError("McpService", `Failed to list tools for ${serverId}: ${error}`);
     }
@@ -278,6 +286,9 @@ export class McpService {
         this.tools.delete(name);
       }
     }
+    this.getAllTools().then(tools => {
+      this.emit('tools-updated', tools);
+    });
   }
 
   shutdown(): void {
